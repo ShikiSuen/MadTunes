@@ -1,0 +1,221 @@
+// (c) 2025 and onwards Shiki Suen (AGPL v3.0 License or later).
+// ====================
+// This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
+
+import SwiftUI
+import UniformTypeIdentifiers
+
+// MARK: - MadTunesScene
+
+/// The top-level Scene provided by MadTunesKit.
+/// Use this from the `@main` App struct:
+///
+///     @main struct MadTunesApp: App {
+///       var body: some Scene { MadTunesScene() }
+///     }
+public struct MadTunesScene: Scene {
+  // MARK: Lifecycle
+
+  public init() {}
+
+  // MARK: Public
+
+  public var body: some Scene {
+    WindowGroup {
+      MadTunesMainView()
+    }
+    .commands {
+      CommandGroup(replacing: .newItem) {
+        Button("Open…") {
+          isFileImporterPresented = true
+        }
+        .keyboardShortcut("o")
+      }
+    }
+  }
+
+  // MARK: Private
+
+  @FocusedBinding(\.isFileImporterPresented) private var isFileImporterPresented
+}
+
+// MARK: - MadTunesMainView
+
+struct MadTunesMainView: View {
+  // MARK: Internal
+
+  var body: some View {
+    @Bindable var vm = viewModel
+    NavigationSplitView(
+      columnVisibility: $vm.screenVM.splitViewVisibility,
+      preferredCompactColumn: $viewColumn
+    ) {
+      SidebarView(library: viewModel.library, selectedPlaylistID: $vm.selectedPlaylistID)
+        .trackCanvasSize(debounceDelay: 0.3) {
+          let existingWidth = vm.screenVM.actualSidebarWidthObserved
+          let newValue = $0.width.rounded(.up)
+          guard existingWidth != newValue else { return }
+          vm.screenVM.actualSidebarWidthObserved = newValue
+        }
+    } detail: {
+      let albums = viewModel.currentAlbums
+      contentArea(albums: albums)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .safeAreaInset(edge: .bottom) {
+          ZStack {
+            BottomBarBackground()
+            PlayerControlsView(player: viewModel.player, artworkData: viewModel.currentTrackArtwork)
+              .fixedSize()
+              .frame(maxWidth: .infinity)
+              .padding([.horizontal, .bottom], 12)
+          }
+          .fixedSize(horizontal: false, vertical: true)
+        }
+        .toolbar {
+          ToolbarItem(placement: .primaryAction) {
+            if !viewModel.library.isImporting, !albums.isEmpty {
+              Button {
+                viewModel.isFileImporterPresented = true
+              } label: {
+                Label("Import Music", systemImage: "plus")
+              }
+            }
+          }
+          ToolbarItem(placement: .primaryAction) {
+            if !viewModel.library.isImporting, !albums.isEmpty {
+              Menu {
+                Picker("Sort", selection: $vm.albumSortOrder) {
+                  ForEach(AlbumSortOrder.allCases, id: \.self) { order in
+                    Text(order.rawValue).tag(order)
+                  }
+                }
+                .pickerStyle(.inline)
+              } label: {
+                Label("Sort", systemImage: "arrow.up.arrow.down")
+                  .tint(.primary)
+              }
+            }
+          }
+          #if DEBUG
+          ToolbarItem(placement: .primaryAction) {
+            if !viewModel.library.isImporting, !albums.isEmpty {
+              Button {
+                viewModel.player.stop()
+                viewModel.library.clearDatabase()
+              } label: {
+                Label("Clear Database", systemImage: "trash")
+              }
+            }
+          }
+          #endif
+        }
+    }
+    .fontWidth(.condensed)
+    .tint(.madTunesAccent)
+    .trackScreenVMParameters()
+    .fileImporter(
+      isPresented: $vm.isFileImporterPresented,
+      allowedContentTypes: SupportedFormats.importTypes,
+      allowsMultipleSelection: true
+    ) { result in
+      if case let .success(urls) = result {
+        viewModel.importURLs(urls)
+      }
+    }
+    .onDrop(of: [.fileURL], isTargeted: $vm.isDropTargeted) { providers in
+      viewModel.handleDrop(providers)
+    }
+    .focusedValue(\.isFileImporterPresented, $vm.isFileImporterPresented)
+    .environment(viewModel)
+    .onAppear {
+      viewModel.library.loadPersistedData()
+      viewModel.selectedPlaylistID = viewModel.library.playlists.first?.id
+    }
+  }
+
+  // MARK: Private
+
+  @State private var viewModel = MadTunesViewModel()
+  @State private var viewColumn: NavigationSplitViewColumn = .content
+  @FocusState private var isContentFocused: Bool
+
+  // MARK: - Content Area
+
+  @ViewBuilder
+  private func contentArea(albums displayAlbums: [Album]) -> some View {
+    @Bindable var vm = viewModel
+    NavigationStack {
+      Color.clear
+        .overlay {
+          AlbumGridView(
+            albums: displayAlbums,
+            expandedAlbumID: $vm.expandedAlbumID,
+            highlightedAlbumIDs: $vm.highlightedAlbumIDs,
+            selectedTrackIDs: $vm.selectedTrackIDs,
+            currentTrackID: viewModel.player.currentTrack?.id,
+            onTrackSelected: { track, albumTracks in
+              viewModel.onTrackSelected(track, albumTracks)
+            },
+            onAlbumDoubleClicked: { album in
+              viewModel.onAlbumDoubleClicked(album)
+            }
+          )
+          .focusable()
+          .focused($isContentFocused)
+          .focusEffectDisabled()
+          .frame(width: vm.screenVM.mainColumnCanvasSizeObserved.width)
+        }
+    }
+    .environment(viewModel)
+    .onKeyPress { press in
+      viewModel.handleKeyPress(press, albums: displayAlbums)
+    }
+    .onChange(of: viewModel.expandedAlbumID) { _, _ in
+      viewModel.selectedTrackIDs.removeAll()
+    }
+    .onChange(of: viewModel.highlightedAlbumIDs) { _, _ in
+      isContentFocused = true
+    }
+    .overlay {
+      LibraryContentAvailabilityOverlayView(displayAlbums: displayAlbums)
+    }
+  }
+}
+
+// MARK: - ImportPresenterKey
+
+private struct ImportPresenterKey: FocusedValueKey {
+  typealias Value = Binding<Bool>
+}
+
+extension FocusedValues {
+  var isFileImporterPresented: Binding<Bool>? {
+    get { self[ImportPresenterKey.self] }
+    set { self[ImportPresenterKey.self] = newValue }
+  }
+}
+
+// MARK: - BottomBarBackground
+
+private struct BottomBarBackground: View {
+  @Environment(\.colorScheme) var colorScheme
+
+  var body: some View {
+    let baseColor: Color = colorScheme == .dark
+      ? Color(nsColor: NSColor.windowBackgroundColor)
+      : .white
+    LinearGradient(
+      colors: [
+        baseColor.opacity(0),
+        baseColor.opacity(0.6),
+        baseColor.opacity(0.7),
+        baseColor.opacity(0.8),
+        baseColor.opacity(0.9),
+        baseColor,
+      ],
+      startPoint: .top,
+      endPoint: .bottom
+    )
+    .ignoresSafeArea(.all)
+  }
+}
