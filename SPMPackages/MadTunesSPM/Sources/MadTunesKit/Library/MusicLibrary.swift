@@ -77,12 +77,19 @@ public final class MusicLibrary {
     importTotalFileCount = allFileURLs.count
     importFinishedFileCount = 0
 
-    await withTaskGroup(of: Track.self) { group in
+    await withTaskGroup(of: Track?.self) { group in
       var iterator = allFileURLs.makeIterator()
 
       func enqueueNext() -> Bool {
         guard let fileURL = iterator.next() else { return false }
         group.addTask {
+          // Check if this is a Voice Memo before processing
+          let isVoice = await MetadataReader.isVoiceMemo(url: fileURL)
+          if isVoice {
+            print("[MusicLibrary] Skipping Voice Memo: \(fileURL.lastPathComponent)")
+            return nil
+          }
+
           let meta = await MetadataReader.readTrackInfo(from: fileURL)
           return meta.track
         }
@@ -94,8 +101,11 @@ public final class MusicLibrary {
         if !enqueueNext() { break }
       }
 
-      for await track in group {
+      for await optionalTrack in group {
         importFinishedFileCount += 1
+        // Skip voice memos (tracks that returned nil)
+        guard let track = optionalTrack else { continue }
+
         currentProcessingFileName = track.fileURL.lastPathComponent
         if !existingURLs.contains(track.fileURL) {
           existingURLs.insert(track.fileURL)
