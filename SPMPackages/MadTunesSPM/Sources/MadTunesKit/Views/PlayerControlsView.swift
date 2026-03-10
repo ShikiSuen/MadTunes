@@ -47,19 +47,40 @@ struct PlayerControlsView: View {
           duration: player.duration,
           onSeek: { player.seek(to: $0) }
         )
-        .frame(minWidth: 640)
+        .frame(minWidth: 500)
         HStack(spacing: 16) {
-          // Transport controls (centre)
-          transportControls
           // Now-playing info (left)
           nowPlayingInfo
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-          // Time + volume (right)
-          timeAndVolume
+          HStack(spacing: 4) {
+            transportControls
+            queueToggleButton
+          }
+
+          HStack(spacing: 4) {
+            playLoopBehaviorButton
+            volumeControls
+          }
+          .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .frame(height: sansBezel ? 26 : 34)
-        scrubber
+        HStack {
+          Button {
+            // Tap this to toggle the time between `currentTime` and `remainingTime`.
+          } label: {
+            Text(formatDuration(player.currentTime))
+              .fontWidth(.standard)
+              .font(.caption.monospacedDigit())
+              .frame(height: 6, alignment: .center)
+          }
+          .buttonStyle(.plain)
+          scrubber
+          Text(formatDuration(player.duration))
+            .fontWidth(.standard)
+            .font(.caption.monospacedDigit())
+            .frame(height: 6, alignment: .center)
+        }
       }
     }
     .fixedSize(horizontal: false, vertical: true)
@@ -68,6 +89,8 @@ struct PlayerControlsView: View {
 
   // MARK: Private
 
+  @State private var isQueuePopoverPresented = false
+
   private var volumeIcon: String {
     if player.volume <= 0 { return "speaker.slash.fill" }
     if player.volume < 0.33 { return "speaker.wave.1.fill" }
@@ -75,21 +98,43 @@ struct PlayerControlsView: View {
     return "speaker.wave.3.fill"
   }
 
+  private var loopBehaviorIcon: String {
+    switch player.loopBehavior {
+    case .sequential: "repeat"
+    case .repeatOne: "repeat.1"
+    case .shuffle: "shuffle"
+    }
+  }
+
+  private var loopBehaviorTooltip: String {
+    switch player.loopBehavior {
+    case .sequential: "Sequential (click for Repeat One)"
+    case .repeatOne: "Repeat One (click for Shuffle)"
+    case .shuffle: "Shuffle (click for Sequential)"
+    }
+  }
+
   // MARK: - Subviews
 
   @ViewBuilder private var nowPlayingInfo: some View {
     HStack(spacing: 10) {
       if let track = player.currentTrack {
-        VStack(alignment: .center, spacing: 1) {
+        let accumulated = "\(track.title)\n\n→ \(track.artist)"
+        VStack(alignment: .leading, spacing: 1) {
           Text(track.title)
             .font(.callout)
             .fontWeight(.medium)
             .lineLimit(1)
+            .truncationMode(.tail)
           Text(track.artist)
             .font(.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
+            .truncationMode(.tail)
         }
+        .contentShape(.rect)
+        .frame(maxWidth: 200, alignment: .leading)
+        .help(accumulated)
       } else {
         Text("Not Playing")
           .foregroundStyle(.secondary)
@@ -121,38 +166,60 @@ struct PlayerControlsView: View {
     }
     .buttonStyle(.plain)
     .buttonBorderShape(.circle)
-    .padding(.leading, 8)
     .frame(maxHeight: sansBezel ? 15 : 35)
   }
 
-  @ViewBuilder private var timeAndVolume: some View {
-    HStack(spacing: 12) {
-      HStack(spacing: 4) {
-        Text(formatDuration(player.currentTime))
-          .font(.caption.monospacedDigit())
-        Text("/")
-          .font(.caption)
-          .foregroundStyle(.tertiary)
-        Text(formatDuration(player.duration))
-          .font(.caption.monospacedDigit())
-          .foregroundStyle(.secondary)
+  @ViewBuilder private var playLoopBehaviorButton: some View {
+    let isActive = player.loopBehavior != .sequential
+    Button {
+      switch player.loopBehavior {
+      case .sequential: player.loopBehavior = .repeatOne
+      case .repeatOne: player.loopBehavior = .shuffle
+      case .shuffle: player.loopBehavior = .sequential
       }
+    } label: {
+      Image(systemName: loopBehaviorIcon)
+        .font(.callout)
+        .frame(width: 28, height: 28)
+        .contentShape(.rect)
+        .foregroundStyle(isActive ? Color.madTunesAccent : .secondary)
+    }
+    .buttonStyle(.plain)
+    .help(loopBehaviorTooltip)
+  }
 
-      HStack(spacing: 8) {
-        Image(systemName: volumeIcon)
-          .font(.caption)
-          .frame(width: 16)
+  @ViewBuilder private var queueToggleButton: some View {
+    Button {
+      isQueuePopoverPresented.toggle()
+    } label: {
+      Image(systemName: "list.bullet")
+        .font(.callout)
+        .frame(width: 28, height: 28)
+        .contentShape(.rect)
+        .foregroundStyle(isQueuePopoverPresented ? Color.madTunesAccent : .secondary)
+    }
+    .buttonStyle(.plain)
+    .popover(isPresented: $isQueuePopoverPresented) {
+      PlayingQueueView(player: player)
+    }
+    .help("Playing Queue")
+  }
 
-        Slider(
-          value: Binding<Double>(
-            get: { Double(player.volume) },
-            set: { player.setVolume(Float($0)) }
-          ),
-          in: 0 ... 1
-        )
-        .frame(width: 80)
-        .controlSize(.mini)
-      }
+  @ViewBuilder private var volumeControls: some View {
+    HStack(spacing: 8) {
+      Image(systemName: volumeIcon)
+        .font(.caption)
+        .frame(width: 16)
+
+      Slider(
+        value: Binding<Double>(
+          get: { Double(player.volume) },
+          set: { player.setVolume(Float($0)) }
+        ),
+        in: 0 ... 1
+      )
+      .frame(width: 80)
+      .controlSize(.mini)
     }
   }
 }

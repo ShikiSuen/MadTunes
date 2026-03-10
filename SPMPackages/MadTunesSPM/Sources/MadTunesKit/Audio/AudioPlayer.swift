@@ -13,6 +13,17 @@ import CoreAudio
 import AppKit
 #endif
 
+// MARK: - PlayLoopBehavior
+
+public enum PlayLoopBehavior: Sendable {
+  /// Play queue in order, stop when finished.
+  case sequential
+  /// Repeat the current single track.
+  case repeatOne
+  /// Shuffle the queue.
+  case shuffle
+}
+
 // MARK: - AudioPlayer
 
 /// Audio playback engine backed by AVPlayer. Manages a playback queue,
@@ -37,6 +48,7 @@ public final class AudioPlayer {
   public var volume: Float = 1.0
   public private(set) var queue: [Track] = []
   public private(set) var currentIndex: Int = 0
+  public var loopBehavior: PlayLoopBehavior = .sequential
 
   // MARK: - Queue Management
 
@@ -46,6 +58,16 @@ public final class AudioPlayer {
     if tracks.indices.contains(index) {
       currentIndex = index
       play(tracks[index])
+    }
+  }
+
+  /// Move a track within the queue (for drag-to-reorder).
+  public func moveQueueItem(from source: IndexSet, to destination: Int) {
+    let oldTrack = queue.indices.contains(currentIndex) ? queue[currentIndex] : nil
+    queue.move(fromOffsets: source, toOffset: destination)
+    // Re-sync currentIndex to follow the currently-playing track.
+    if let oldTrack, let newIdx = queue.firstIndex(where: { $0.id == oldTrack.id }) {
+      currentIndex = newIdx
     }
   }
 
@@ -109,12 +131,20 @@ public final class AudioPlayer {
 
   public func next() {
     guard !queue.isEmpty else { return }
-    let nextIndex = currentIndex + 1
-    if nextIndex < queue.count {
-      currentIndex = nextIndex
-      play(queue[nextIndex])
-    } else {
-      stop()
+    switch loopBehavior {
+    case .repeatOne:
+      play(queue[currentIndex])
+    case .shuffle:
+      currentIndex = Int.random(in: 0 ..< queue.count)
+      play(queue[currentIndex])
+    case .sequential:
+      let nextIndex = currentIndex + 1
+      if nextIndex < queue.count {
+        currentIndex = nextIndex
+        play(queue[nextIndex])
+      } else {
+        stop()
+      }
     }
   }
 
