@@ -135,6 +135,7 @@ struct AlbumGridView: View {
   }
 
   private func handleTrackRowSelection(album: Album) {
+    #if canImport(AppKit) && !canImport(UIKit)
     if NSEvent.modifierFlags.contains(.command) {
       if highlightedAlbumIDs.contains(album.id) {
         highlightedAlbumIDs.remove(album.id)
@@ -150,5 +151,9 @@ struct AlbumGridView: View {
       highlightedAlbumIDs = [album.id]
       expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
     }
+    #else
+    highlightedAlbumIDs = [album.id]
+    expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
+    #endif
   }
 }

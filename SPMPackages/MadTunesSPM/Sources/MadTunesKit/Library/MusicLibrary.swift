@@ -338,7 +338,7 @@ public final class MusicLibrary {
 
   private nonisolated static func resolveBookmark(_ data: Data) -> URL? {
     var stale = false
-    #if os(macOS)
+    #if os(macOS) || targetEnvironment(macCatalyst)
     return try? URL(
       resolvingBookmarkData: data,
       options: .withSecurityScope,
@@ -356,7 +356,7 @@ public final class MusicLibrary {
   }
 
   private nonisolated static func createBookmark(for url: URL) -> Data? {
-    #if os(macOS)
+    #if os(macOS) || targetEnvironment(macCatalyst)
     do {
       return try url.bookmarkData(
         options: .withSecurityScope,

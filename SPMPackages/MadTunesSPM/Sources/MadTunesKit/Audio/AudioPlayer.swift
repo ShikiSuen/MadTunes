@@ -157,7 +157,7 @@ public final class AudioPlayer {
 
   private nonisolated static func resolveBookmark(_ data: Data) -> URL? {
     var stale = false
-    #if os(macOS)
+    #if os(macOS) || targetEnvironment(macCatalyst)
     return try? URL(
       resolvingBookmarkData: data,
       options: .withSecurityScope,

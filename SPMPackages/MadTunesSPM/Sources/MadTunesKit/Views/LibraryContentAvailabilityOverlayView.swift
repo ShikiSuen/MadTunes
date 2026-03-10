@@ -44,11 +44,25 @@ struct LibraryContentAvailabilityOverlayView: View {
         } description: {
           Text("Import music files or folders to get started.")
         } actions: {
-          Button("Import Music") {
-            viewModel.isFileImporterPresented = true
+          switch OS.isAppKit {
+          case true:
+            Button("Import Files / Folders…") {
+              viewModel.isFolderImporterPresented = true
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+          case false:
+            Button("Import Files…") {
+              viewModel.isFileImporterPresented = true
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+            Button("Import Folder…") {
+              viewModel.isFolderImporterPresented = true
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
           }
-          .buttonStyle(.borderedProminent)
-          .buttonBorderShape(.capsule)
         }
       }
     }

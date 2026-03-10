@@ -18,7 +18,8 @@ final class MadTunesViewModel {
   var expandedAlbumID: UUID?
   var highlightedAlbumIDs: Set<UUID> = []
   var selectedTrackIDs: Set<UUID> = []
-  var isFileImporterPresented = false
+  var isFileImporterPresented = false // Only for non-AppKit targets.
+  var isFolderImporterPresented = false // Also used on macOS AppKit as File Importer.
   var isDropTargeted = false
   var albumSortOrder: AlbumSortOrder = .artistYearTitle
   var screenVM = ScreenVM.shared
@@ -102,7 +103,7 @@ final class MadTunesViewModel {
           guard let data = data as? Data,
                 let url = URL(dataRepresentation: data, relativeTo: nil)
           else { return }
-          #if os(macOS)
+          #if os(macOS) || targetEnvironment(macCatalyst)
           let bookmark = try? url.bookmarkData(
             options: .withSecurityScope,
             includingResourceValuesForKeys: nil,
@@ -114,7 +115,7 @@ final class MadTunesViewModel {
           Task { @MainActor in
             if let bookmark {
               var stale = false
-              #if os(macOS)
+              #if os(macOS) || targetEnvironment(macCatalyst)
               if let scopedURL = try? URL(
                 resolvingBookmarkData: bookmark,
                 options: .withSecurityScope,

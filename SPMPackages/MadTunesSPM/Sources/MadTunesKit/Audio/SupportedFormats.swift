@@ -12,8 +12,14 @@ public enum SupportedFormats {
     "sd2", "ac3", "flac",
   ]
 
-  /// UTTypes for the file importer (audio + video containers + folders).
-  public static let importTypes: [UTType] = [.audio, .movie, .folder]
+  /// UTTypes for the file importer (audio + video containers).
+  public static let fileImportTypes: [UTType] = [.audio, .movie]
+
+  /// UTType for folder import.
+  public static let folderImportTypes: [UTType] = [.folder]
+
+  /// UTType for import feature on macOS AppKit target.
+  public static let macImportTypes: [UTType] = fileImportTypes + folderImportTypes
 
   /// Check whether a given URL has a supported audio file extension.
   public static func isSupported(_ url: URL) -> Bool {

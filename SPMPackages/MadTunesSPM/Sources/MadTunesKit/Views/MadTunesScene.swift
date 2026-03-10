@@ -26,10 +26,14 @@ public struct MadTunesScene: Scene {
     }
     .commands {
       CommandGroup(replacing: .newItem) {
-        Button("Open…") {
+        Button("Open Files…") {
           isFileImporterPresented = true
         }
         .keyboardShortcut("o")
+        Button("Open Folder…") {
+          isFolderImporterPresented = true
+        }
+        .keyboardShortcut("o", modifiers: [.command, .shift])
       }
     }
   }
@@ -37,6 +41,7 @@ public struct MadTunesScene: Scene {
   // MARK: Private
 
   @FocusedBinding(\.isFileImporterPresented) private var isFileImporterPresented
+  @FocusedBinding(\.isFolderImporterPresented) private var isFolderImporterPresented
 }
 
 // MARK: - MadTunesMainView
@@ -61,6 +66,44 @@ struct MadTunesMainView: View {
       let albums = viewModel.currentAlbums
       contentArea(albums: albums)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+          ZStack {
+            switch OS.isAppKit {
+            case true:
+              Color.clear
+                .fileImporter(
+                  isPresented: $vm.isFolderImporterPresented,
+                  allowedContentTypes: SupportedFormats.macImportTypes,
+                  allowsMultipleSelection: true
+                ) { result in
+                  if case let .success(urls) = result {
+                    viewModel.importURLs(urls)
+                  }
+                }
+            case false:
+              Color.clear
+                .fileImporter(
+                  isPresented: $vm.isFileImporterPresented,
+                  allowedContentTypes: SupportedFormats.fileImportTypes,
+                  allowsMultipleSelection: true
+                ) { result in
+                  if case let .success(urls) = result {
+                    viewModel.importURLs(urls)
+                  }
+                }
+              Color.clear
+                .fileImporter(
+                  isPresented: $vm.isFolderImporterPresented,
+                  allowedContentTypes: SupportedFormats.folderImportTypes,
+                  allowsMultipleSelection: true
+                ) { result in
+                  if case let .success(urls) = result {
+                    viewModel.importURLs(urls)
+                  }
+                }
+            }
+          }
+        }
         .safeAreaInset(edge: .bottom) {
           ZStack {
             BottomBarBackground()
@@ -74,10 +117,29 @@ struct MadTunesMainView: View {
         .toolbar {
           ToolbarItem(placement: .primaryAction) {
             if !viewModel.library.isImporting, !albums.isEmpty {
-              Button {
-                viewModel.isFileImporterPresented = true
-              } label: {
-                Label("Import Music", systemImage: "plus")
+              switch OS.isAppKit {
+              case true:
+                Button {
+                  viewModel.isFolderImporterPresented = true
+                } label: {
+                  Label("Import Files / Folder…", systemImage: "folder")
+                }
+              case false:
+                Menu {
+                  Button {
+                    viewModel.isFileImporterPresented = true
+                  } label: {
+                    Label("Import Files…", systemImage: "music.note")
+                  }
+                  Button {
+                    viewModel.isFolderImporterPresented = true
+                  } label: {
+                    Label("Import Folder…", systemImage: "folder")
+                  }
+                } label: {
+                  Label("Import Music", systemImage: "plus")
+                    .tint(.primary)
+                }
               }
             }
           }
@@ -110,22 +172,16 @@ struct MadTunesMainView: View {
           #endif
         }
     }
+    #if os(macOS) || targetEnvironment(macCatalyst)
+    .onDrop(of: [.fileURL, .folder], isTargeted: $vm.isDropTargeted) { providers in
+      viewModel.handleDrop(providers)
+    }
+    #endif
     .fontWidth(.condensed)
     .tint(.madTunesAccent)
     .trackScreenVMParameters()
-    .fileImporter(
-      isPresented: $vm.isFileImporterPresented,
-      allowedContentTypes: SupportedFormats.importTypes,
-      allowsMultipleSelection: true
-    ) { result in
-      if case let .success(urls) = result {
-        viewModel.importURLs(urls)
-      }
-    }
-    .onDrop(of: [.fileURL], isTargeted: $vm.isDropTargeted) { providers in
-      viewModel.handleDrop(providers)
-    }
     .focusedValue(\.isFileImporterPresented, $vm.isFileImporterPresented)
+    .focusedValue(\.isFolderImporterPresented, $vm.isFolderImporterPresented)
     .environment(viewModel)
     .onAppear {
       viewModel.library.loadPersistedData()
@@ -188,10 +244,21 @@ private struct ImportPresenterKey: FocusedValueKey {
   typealias Value = Binding<Bool>
 }
 
+// MARK: - FolderImportPresenterKey
+
+private struct FolderImportPresenterKey: FocusedValueKey {
+  typealias Value = Binding<Bool>
+}
+
 extension FocusedValues {
   var isFileImporterPresented: Binding<Bool>? {
     get { self[ImportPresenterKey.self] }
     set { self[ImportPresenterKey.self] = newValue }
+  }
+
+  var isFolderImporterPresented: Binding<Bool>? {
+    get { self[FolderImportPresenterKey.self] }
+    set { self[FolderImportPresenterKey.self] = newValue }
   }
 }
 
@@ -201,9 +268,7 @@ private struct BottomBarBackground: View {
   @Environment(\.colorScheme) var colorScheme
 
   var body: some View {
-    let baseColor: Color = colorScheme == .dark
-      ? Color(nsColor: NSColor.windowBackgroundColor)
-      : .white
+    let baseColor = Color.secondary
     LinearGradient(
       colors: [
         baseColor.opacity(0),
@@ -217,5 +282,6 @@ private struct BottomBarBackground: View {
       endPoint: .bottom
     )
     .ignoresSafeArea(.all)
+    .colorInvert()
   }
 }

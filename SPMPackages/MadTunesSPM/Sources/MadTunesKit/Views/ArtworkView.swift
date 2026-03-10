@@ -4,12 +4,6 @@
 
 import SwiftUI
 
-#if canImport(UIKit)
-import UIKit
-#elseif canImport(AppKit)
-import AppKit
-#endif
-
 // MARK: - ArtworkView
 
 /// Displays album artwork from raw `Data`, falling back to a music-note placeholder.
@@ -47,15 +41,7 @@ struct ArtworkView: View {
   /// and desaturated colors. Falls back through secondary/tertiary candidates.
   /// Dominance is determined by hue bucket frequency.
   static func dominantColor(from data: Data) -> Color? {
-    #if canImport(UIKit)
-    guard let uiImage = UIImage(data: data), let cgImage = uiImage.cgImage else { return nil }
-    #elseif canImport(AppKit)
-    guard let nsImage = NSImage(data: data),
-          let cgImage = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil)
-    else { return nil }
-    #else
-    return nil
-    #endif
+    guard let cgImage = CGImage.instantiate(data: data) else { return nil }
 
     let width = cgImage.width
     let height = cgImage.height
@@ -146,15 +132,8 @@ struct ArtworkView: View {
   // MARK: - Platform Image Conversion
 
   private static func makeImage(from data: Data) -> Image? {
-    #if canImport(UIKit)
-    guard let uiImage = UIImage(data: data) else { return nil }
-    return Image(uiImage: uiImage)
-    #elseif canImport(AppKit)
-    guard let nsImage = NSImage(data: data) else { return nil }
-    return Image(nsImage: nsImage)
-    #else
-    return nil
-    #endif
+    guard let cgImage = CGImage.instantiate(data: data) else { return nil }
+    return Image(decorative: cgImage, scale: 1)
   }
 
   /// Convert RGB (0…1) to HSB (0…1).

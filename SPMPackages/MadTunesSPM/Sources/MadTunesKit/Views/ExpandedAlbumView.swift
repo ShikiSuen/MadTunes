@@ -192,7 +192,7 @@ struct ExpandedAlbumView: View {
   }
 
   private func handleTrackSelection(_ track: Track, in sortedTracks: [Track]) {
-    #if canImport(AppKit)
+    #if canImport(AppKit) && !canImport(UIKit)
     let modifiers = NSEvent.modifierFlags
     if modifiers.contains(.command) {
       if selectedTrackIDs.contains(track.id) {

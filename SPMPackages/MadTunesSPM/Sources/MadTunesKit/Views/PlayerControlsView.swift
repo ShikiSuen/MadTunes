@@ -227,18 +227,18 @@ private struct GlassEffectModifier: ViewModifier {
   // MARK: Private
 
   private let isLiquidGlass: Bool = {
-    #if compiler(>=6.2) && canImport(AppKit, _version: 26.0)
-    if let infoDict = Bundle.main.infoDictionary {
-      let verStr = (infoDict["DTPlatformVersion"] as? String)?.prefix(4) ?? "_"
-      if let verDouble = Double(verStr) {
-        if verDouble < 26 { return false }
-        let uiCompat = infoDict["UIDesignRequiresCompatibility"] as? Bool
-        if uiCompat == true { return false }
+    if #available(macOS 26, iOS 26, macCatalyst 26, *) {
+      if let infoDict = Bundle.main.infoDictionary {
+        let verStr = (infoDict["DTPlatformVersion"] as? String)?.prefix(4) ?? "_"
+        if let verDouble = Double(verStr) {
+          if verDouble < 26 { return false }
+          let uiCompat = infoDict["UIDesignRequiresCompatibility"] as? Bool
+          if uiCompat == true { return false }
+        }
       }
+      return true
+    } else {
+      return false
     }
-    return true
-    #else
-    return false
-    #endif
   }()
 }
