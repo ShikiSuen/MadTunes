@@ -219,7 +219,6 @@ struct MadTunesMainView: View {
           .focusable()
           .focused($isContentFocused)
           .focusEffectDisabled()
-          .frame(width: vm.screenVM.mainColumnCanvasSizeObserved.width)
         }
     }
     .environment(viewModel)

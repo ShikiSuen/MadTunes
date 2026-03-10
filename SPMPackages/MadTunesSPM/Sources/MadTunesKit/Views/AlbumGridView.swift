@@ -49,6 +49,7 @@ struct AlbumGridView: View {
                 onTrackSelected: onTrackSelected,
                 onClose: { withAnimation { expandedAlbumID = nil } }
               )
+              .drawingGroup()
               .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
               .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
               .onAppear { expandedAlbumWasInView = true }
@@ -57,7 +58,7 @@ struct AlbumGridView: View {
           }
         }
         .padding(spacing)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(width: canvasWidth - 24, alignment: .leading)
       }
       .onChange(of: expandedAlbumID) { _, newValue in
         guard let newValue else { return }
@@ -80,7 +81,13 @@ struct AlbumGridView: View {
         }
       }
     }
-    .animation(.easeOut(duration: 0.12), value: screenVM.mainColumnCanvasSizeObserved.width)
+    .animation(canvasAnimation, value: canvasWidth)
+    .opacity(screenVM.windowSizeEverObserved ? 1 : 0)
+  }
+
+  private var canvasAnimation: Animation {
+    let duration: TimeInterval = screenVM.windowSizeEverObserved ? 0.12 : 0
+    return .easeOut(duration: duration)
   }
 
   // MARK: - Row

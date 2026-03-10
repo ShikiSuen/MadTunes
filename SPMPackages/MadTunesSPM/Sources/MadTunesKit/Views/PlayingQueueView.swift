@@ -77,12 +77,17 @@ struct PlayingQueueView: View {
         #endif
       }
     }
-    .frame(width: 380, height: min(CGFloat(player.queue.count) * 56 + 60, 460))
+    .frame(width: 460, height: dynamicHeight)
   }
 
   // MARK: Private
 
   @Environment(MadTunesViewModel.self) private var viewModel
+
+  private var dynamicHeight: CGFloat? {
+    guard !player.queue.isEmpty else { return nil }
+    return min(CGFloat(player.queue.count) * 56 + 60, 460)
+  }
 
   private func artworkData(for track: Track) -> Data? {
     let key = viewModel.library.albumKey(title: track.albumTitle, artist: track.albumArtist)

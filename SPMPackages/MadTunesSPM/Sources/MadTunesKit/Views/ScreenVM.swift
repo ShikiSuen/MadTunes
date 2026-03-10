@@ -86,6 +86,7 @@ public final class ScreenVM {
   public var splitViewVisibility: NavigationSplitViewVisibility
 
   public private(set) var hashForTracking: Int = 0
+  public private(set) var windowSizeEverObserved: Bool = false
 
   public var mainColumnCanvasSizeObserved: CGSize {
     var newResult = windowSizeObserved
@@ -245,12 +246,18 @@ extension ScreenVM {
           var newSize = newSizeRAW
           newSize.width.round(.up)
           newSize.height.round(.up)
+          var everObserved = screenVM.windowSizeEverObserved
           let oldSize = screenVM.windowSizeObserved
           if oldSize.width != newSize.width {
             screenVM.windowSizeObserved.width = newSize.width
+            everObserved = true
           }
           if oldSize.height != newSize.height {
             screenVM.windowSizeObserved.height = newSize.height
+            everObserved = true
+          }
+          Task { @MainActor in
+            screenVM.windowSizeEverObserved = everObserved
           }
         }
         .onAppBecomeActive {
