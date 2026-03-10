@@ -11,9 +11,9 @@ import AppKit
 // MARK: - TrackFramePreferenceKey
 
 private struct TrackFramePreferenceKey: PreferenceKey {
-  nonisolated(unsafe) static var defaultValue: [UUID: CGRect] = [:]
+  nonisolated static var defaultValue: [UUID: CGRect] { [:] }
 
-  static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+  nonisolated static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
     value.merge(nextValue()) { _, new in new }
   }
 }
