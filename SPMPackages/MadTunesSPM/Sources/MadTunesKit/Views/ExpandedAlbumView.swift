@@ -8,6 +8,16 @@ import SwiftUI
 import AppKit
 #endif
 
+// MARK: - TrackFramePreferenceKey
+
+private struct TrackFramePreferenceKey: PreferenceKey {
+  nonisolated(unsafe) static var defaultValue: [UUID: CGRect] = [:]
+
+  static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+    value.merge(nextValue()) { _, new in new }
+  }
+}
+
 // MARK: - ExpandedAlbumView
 
 /// The detail pane shown when an album is expanded in the grid.
@@ -50,6 +60,10 @@ struct ExpandedAlbumView: View {
   // MARK: Private
 
   @State private var lastClickedTrackID: UUID?
+  @State private var trackFrames: [UUID: CGRect] = [:]
+  @State private var dragAnchorTrackID: UUID?
+  @State private var preDragSelection: Set<UUID> = []
+  @State private var isDragSelecting = false
 
   /// Track list width computed deterministically from the parent container width.
   /// Subtracts: LazyVStack padding (2×16=32), .padding(.horizontal,4) (2×4=8),
@@ -140,6 +154,14 @@ struct ExpandedAlbumView: View {
                   handleTrackSelection(track, in: sorted)
                 }
               }
+              .background(
+                GeometryReader { geo in
+                  Color.clear.preference(
+                    key: TrackFramePreferenceKey.self,
+                    value: [track.id: geo.frame(in: .named("trackList"))]
+                  )
+                }
+              )
               songDividerInList
             }
           }
@@ -154,6 +176,22 @@ struct ExpandedAlbumView: View {
         Spacer()
       }
     }
+    .coordinateSpace(name: "trackList")
+    .onPreferenceChange(TrackFramePreferenceKey.self) { trackFrames = $0 }
+    .gesture(
+      DragGesture(minimumDistance: 4, coordinateSpace: .named("trackList"))
+        .onChanged { value in
+          handleDragSelection(
+            startLocation: value.startLocation,
+            currentLocation: value.location,
+            sorted: sorted
+          )
+        }
+        .onEnded { _ in
+          isDragSelecting = false
+          dragAnchorTrackID = nil
+        }
+    )
   }
 
   @ViewBuilder private var songCountAndLengthView: some View {
@@ -215,6 +253,43 @@ struct ExpandedAlbumView: View {
     selectedTrackIDs = [track.id]
     #endif
     lastClickedTrackID = track.id
+  }
+
+  private func handleDragSelection(
+    startLocation: CGPoint, currentLocation: CGPoint, sorted: [Track]
+  ) {
+    #if canImport(AppKit) && !canImport(UIKit)
+    let modifiers = NSEvent.modifierFlags
+    // 僅在摁住 Shift 或 Command 時才啟用拖拽選擇，
+    // 避免與未來的拖放（drag-and-drop）功能衝突。
+    guard modifiers.contains(.shift) || modifiers.contains(.command) else {
+      return
+    }
+    if !isDragSelecting {
+      isDragSelecting = true
+      dragAnchorTrackID = trackIDAtLocation(startLocation)
+      if modifiers.contains(.command) {
+        preDragSelection = selectedTrackIDs
+      } else {
+        preDragSelection = []
+      }
+    }
+    guard let anchorID = dragAnchorTrackID,
+          let currentID = trackIDAtLocation(currentLocation),
+          let anchorIdx = sorted.firstIndex(where: { $0.id == anchorID }),
+          let currentIdx = sorted.firstIndex(where: { $0.id == currentID })
+    else { return }
+    let range = min(anchorIdx, currentIdx) ... max(anchorIdx, currentIdx)
+    var newSelection = preDragSelection
+    for i in range {
+      newSelection.insert(sorted[i].id)
+    }
+    selectedTrackIDs = newSelection
+    #endif
+  }
+
+  private func trackIDAtLocation(_ point: CGPoint) -> UUID? {
+    trackFrames.first { $0.value.contains(point) }?.key
   }
 }
 
