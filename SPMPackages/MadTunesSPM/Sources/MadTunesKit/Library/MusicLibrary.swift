@@ -2,7 +2,9 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
 
+import CoreGraphics
 import Foundation
+import ImageIO
 import Observation
 import SwiftData
 
@@ -175,6 +177,7 @@ public final class MusicLibrary {
     tracks.removeAll()
     albums.removeAll()
     artworkCache.removeAll()
+    artworkCacheOrder.removeAll()
     artworkAttemptedKeys.removeAll()
     albumIDMap.removeAll()
     if !playlists.isEmpty {
@@ -192,16 +195,53 @@ public final class MusicLibrary {
     artworkAttemptedKeys.insert(key)
     artworkLoadingKeys.insert(key)
     Task {
-      let data = await MetadataReader.readArtwork(from: sampleTrackURL)
+      var data = await MetadataReader.readArtwork(from: sampleTrackURL)
       artworkLoadingKeys.remove(key)
-      if let data {
-        artworkCache[key] = data
+
+      // Attempt to resize artwork to 512×512 px before caching
+      if let raw = data {
+        // Try standard instantiation first
+        var processedData: Data?
+
+        func resizeCGImage(_ cgImage: CGImage?) -> CGImage? {
+          cgImage?.directResized(
+            size: CGSize(width: 512, height: 512),
+            preserveAspectRatio: true
+          )
+        }
+
+        var useJPEGHint = false
+        let cgImage: CGImage? = {
+          let first = resizeCGImage(CGImage.instantiate(data: raw))
+          if first != nil { return first }
+          print("[MusicLibrary] Standard decode failed, retrying with JPEG hint...")
+          useJPEGHint = true
+          return resizeCGImage(CGImage.instantiate(data: raw, forceJPEG: true))
+        }()
+
+        if let resizedData = cgImage?.encodeToFileData(as: .jpeg(quality: 0.85)) {
+          processedData = resizedData
+          print("[MusicLibrary] \(useJPEGHint ? "JPEGHint" : "default") decode successful")
+        } else {
+          // If all decoding fails, keep original data as fallback
+          print("[MusicLibrary] All decode attempts failed, using original data")
+          processedData = raw
+        }
+
+        if let processedData {
+          data = processedData
+        }
       }
+
+      if let data {
+        self.cacheArtwork(data, forKey: key)
+      }
+
       // Update the corresponding Album in-place so views refresh.
-      if let idx = albums.firstIndex(
-        where: { albumKey(title: $0.title, artist: $0.artist) == key }
+      if let idx = self.albums.firstIndex(
+        where: { self.albumKey(title: $0.title, artist: $0.artist) == key }
       ) {
-        albums[idx].artworkData = data
+        self.albums[idx].artworkData = data
       }
     }
   }
@@ -264,7 +304,14 @@ public final class MusicLibrary {
 
   // MARK: Private
 
+  // MARK: - Artwork Cache State
+
+  /// Track deferred eviction to avoid race conditions with active display
+  private var pendingDeferredEvictionTask: Task<Void, Never>?
+
   private var albumIDMap: [String: UUID] = [:]
+  private var artworkCacheOrder: [String] = [] // FIFO order for LRU eviction
+  private let artworkCacheCapacity = 50 // Limit to ~10MB (50 × 200KB avg)
   private var artworkAttemptedKeys: Set<String> = []
   private var activeSecurityScopedURLs: [URL] = []
   nonisolated private let _modelContainer: ModelContainer?
@@ -394,6 +441,78 @@ public final class MusicLibrary {
     let id = UUID()
     albumIDMap[key] = id
     return id
+  }
+
+  // MARK: - LRU Artwork Cache Management
+
+  /// Check if artwork for a given cache key is currently in active display use.
+  /// Returns true if:
+  /// - The key is in `artworkLoadingKeys` (currently loading/displaying), OR
+  /// - An Album with this key has non-nil `artworkData` (visible in UI)
+  private func isArtworkInUse(forKey key: String) -> Bool {
+    // Check if currently loading
+    if artworkLoadingKeys.contains(key) { return true }
+
+    // Check if any album with this key has artwork data loaded in memory
+    let albumKey = key
+    if let albumIndex = albums.firstIndex(where: { albumKey == self.albumKey(title: $0.title, artist: $0.artist) }) {
+      return albums[albumIndex].artworkData != nil
+    }
+
+    return false
+  }
+
+  /// Store artwork data in cache with deferred LRU eviction when capacity is exceeded.
+  /// Capacity: 50 items (~10MB at 200KB per image)
+  /// Eviction is deferred to avoid removing items while they're being displayed.
+  private func cacheArtwork(_ data: Data, forKey key: String) {
+    // If key already exists, remove it from order to re-add at the end (mark as recently used)
+    if artworkCache[key] != nil {
+      artworkCacheOrder.removeAll { $0 == key }
+    }
+    artworkCache[key] = data
+    artworkCacheOrder.append(key)
+
+    // Schedule deferred eviction instead of evicting immediately
+    // This prevents removing items while views are still displaying them
+    performDeferredEviction()
+  }
+
+  /// Perform deferred LRU eviction with visibility checking.
+  /// Scheduled asynchronously to avoid concurrent display conflicts.
+  private func performDeferredEviction() {
+    // Cancel any pending eviction task to avoid queueing up multiple tasks
+    pendingDeferredEvictionTask?.cancel()
+
+    // Schedule eviction to run after a short delay (0.5 seconds)
+    // This gives current display operations time to complete before eviction
+    pendingDeferredEvictionTask = Task {
+      // Wait before attempting eviction
+      try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+
+      // Only proceed with eviction if not already cancelled
+      guard !Task.isCancelled else { return }
+
+      // Evict oldest items if capacity exceeded, but only if not in active use
+      while artworkCache.count > artworkCacheCapacity {
+        // Find the first item that is NOT in active use
+        var evicted = false
+        for i in 0 ..< artworkCacheOrder.count {
+          let keyToCheck = artworkCacheOrder[i]
+          if !isArtworkInUse(forKey: keyToCheck) {
+            // Safe to evict: not currently loading or displaying
+            artworkCache.removeValue(forKey: keyToCheck)
+            artworkCacheOrder.remove(at: i)
+            evicted = true
+            break
+          }
+        }
+
+        // If we couldn't find any item safe to evict, stop trying
+        // This means all cached items are currently in use
+        if !evicted { break }
+      }
+    }
   }
 
   private func scanDirectory(url: URL) -> [URL] {
