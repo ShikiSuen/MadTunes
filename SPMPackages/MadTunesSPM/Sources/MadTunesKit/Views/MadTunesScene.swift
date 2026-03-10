@@ -59,6 +59,7 @@ struct MadTunesMainView: View {
       preferredCompactColumn: $viewColumn
     ) {
       SidebarView(library: viewModel.library, selectedPlaylistID: $vm.selectedPlaylistID)
+        .navigationSplitViewColumnWidth(min: 210, ideal: 210, max: 210)
         .trackCanvasSize(debounceDelay: 0.3) {
           let existingWidth = vm.screenVM.actualSidebarWidthObserved
           let newValue = $0.width.rounded(.up)
@@ -233,7 +234,10 @@ struct MadTunesMainView: View {
       isContentFocused = true
     }
     .overlay {
-      LibraryContentAvailabilityOverlayView(displayAlbums: displayAlbums)
+      LibraryContentAvailabilityOverlayView(
+        displayAlbums: displayAlbums,
+        selectedPlaylist: viewModel.library.playlists.first(where: { $0.id == viewModel.selectedPlaylistID })
+      )
     }
   }
 }

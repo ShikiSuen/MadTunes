@@ -61,6 +61,15 @@ public final class AudioPlayer {
     }
   }
 
+  /// 在當前播放位置的下一首之前插入曲目，並立刻開始播放第一首插入的曲目。
+  public func insertAndPlay(_ tracks: [Track]) {
+    guard !tracks.isEmpty else { return }
+    let insertAt = min(currentIndex + 1, queue.count)
+    queue.insert(contentsOf: tracks, at: insertAt)
+    currentIndex = insertAt
+    play(queue[currentIndex])
+  }
+
   /// Move a track within the queue (for drag-to-reorder).
   public func moveQueueItem(from source: IndexSet, to destination: Int) {
     let oldTrack = queue.indices.contains(currentIndex) ? queue[currentIndex] : nil

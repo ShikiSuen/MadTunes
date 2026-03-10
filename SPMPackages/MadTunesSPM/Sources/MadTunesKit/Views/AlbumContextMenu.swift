@@ -1,0 +1,163 @@
+// (c) 2025 and onwards Shiki Suen (AGPL v3.0 License or later).
+// ====================
+// This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
+
+import SwiftUI
+
+// MARK: - AlbumContextMenu
+
+/// 專輯右鍵選單，用於 AlbumGridItemView。
+struct AlbumContextMenu: View {
+  // MARK: Lifecycle
+
+  init(
+    albums: [Album],
+    library: MusicLibrary,
+    audioPlayer: AudioPlayer,
+    currentPlaylistID: UUID? = nil,
+    onShowTrackInfo: @escaping () -> Void,
+    onShowDeleteConfirmation: @escaping () -> Void
+  ) {
+    self.albums = albums
+    self.library = library
+    self.audioPlayer = audioPlayer
+    self.currentPlaylistID = currentPlaylistID
+    self.onShowTrackInfo = onShowTrackInfo
+    self.onShowDeleteConfirmation = onShowDeleteConfirmation
+  }
+
+  // MARK: Internal
+
+  let albums: [Album]
+  let library: MusicLibrary
+  let audioPlayer: AudioPlayer
+  let currentPlaylistID: UUID?
+  let onShowTrackInfo: () -> Void
+  let onShowDeleteConfirmation: () -> Void
+
+  var body: some View {
+    // 加入到播放清單（子選單）
+    Menu {
+      ForEach(Array(library.playlists.dropFirst(2))) { playlist in
+        Button {
+          library.addTracks(trackIDs, toPlaylist: playlist.id)
+        } label: {
+          Text(playlist.name)
+        }
+      }
+    } label: {
+      Label("Add to Playlist", systemImage: "text.badge.plus")
+    }
+
+    Divider()
+
+    let tracks = sortedTracks
+    if !tracks.isEmpty {
+      // 播放選項
+      Button {
+        audioPlayer.setQueue(tracks, startingAt: 0)
+      } label: {
+        Label("Play Album", systemImage: "play.fill")
+      }
+
+      Button {
+        audioPlayer.setQueue(tracks.shuffled(), startingAt: 0)
+      } label: {
+        Label("Shuffle Album", systemImage: "shuffle")
+      }
+
+      Button {
+        audioPlayer.insertAndPlay(tracks)
+      } label: {
+        Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+      }
+
+      Divider()
+    }
+
+    // 取得資訊
+    Button {
+      onShowTrackInfo()
+    } label: {
+      Label("Get Info", systemImage: "info.circle")
+    }
+
+    // 加入喜好項目
+    Button {
+      library.toggleFavorite(trackIDs: trackIDs)
+    } label: {
+      Label(
+        allTracksFavorited ? "Remove from Favorites" : "Add to Favorites",
+        systemImage: allTracksFavorited ? "heart.fill" : "heart"
+      )
+    }
+
+    Divider()
+
+    // 顯示於檔案總管
+    #if os(macOS)
+    Button {
+      showInFinder()
+    } label: {
+      Label("Show in Finder", systemImage: "folder")
+    }
+    #endif
+
+    Divider()
+
+    // 從資料庫刪除登記
+    Button(role: .destructive) {
+      onShowDeleteConfirmation()
+    } label: {
+      Label("Remove from Library", systemImage: "trash")
+    }
+
+    // 移出當前播放清單（僅靜態播放清單）
+    if let playlistID = currentStaticPlaylistID {
+      Divider()
+      Button(role: .destructive) {
+        library.removeTracksFromPlaylist(trackIDs, playlistID: playlistID)
+      } label: {
+        Label("Remove from Playlist", systemImage: "minus.circle")
+      }
+    }
+  }
+
+  // MARK: Private
+
+  private var allTracks: [Track] {
+    albums.flatMap(\.tracks)
+  }
+
+  private var sortedTracks: [Track] {
+    allTracks.sorted {
+      ($0.albumTitle, $0.discNumber, $0.trackNumber, $0.title)
+        < ($1.albumTitle, $1.discNumber, $1.trackNumber, $1.title)
+    }
+  }
+
+  private var trackIDs: Set<UUID> {
+    Set(allTracks.map(\.id))
+  }
+
+  private var allTracksFavorited: Bool {
+    guard !allTracks.isEmpty else { return false }
+    let favorites = library.favoritesPlaylist.trackIDs
+    return allTracks.allSatisfy { favorites.contains($0.id) }
+  }
+
+  /// 當前正在檢視的靜態播放清單 ID（若有）。
+  private var currentStaticPlaylistID: UUID? {
+    guard let id = currentPlaylistID,
+          let playlist = library.playlists.first(where: { $0.id == id }),
+          playlist.kind == .staticList else { return nil }
+    return id
+  }
+
+  #if os(macOS)
+  private func showInFinder() {
+    guard let url = albums.first?.sortedTracks.first?.fileURL else { return }
+    NSWorkspace.shared.activateFileViewerSelecting([url])
+  }
+  #endif
+}

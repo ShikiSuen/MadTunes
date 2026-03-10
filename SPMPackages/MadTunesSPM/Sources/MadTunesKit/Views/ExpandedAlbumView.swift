@@ -32,6 +32,19 @@ struct ExpandedAlbumView: View {
   let onTrackSelected: (Track, [Track]) -> Void
   let onClose: () -> Void
 
+  // MARK: Private
+
+  @State private var vm: MadTunesViewModel = .shared
+
+  // Track Info Sheet state
+  @State private var isTrackInfoPresented = false
+  @State private var tracksForTrackInfo: [Track] = []
+  @State private var detailedMetadataList: [DetailedTrackMetadata?] = []
+
+  // Delete Confirmation state
+  @State private var showDeleteConfirmation = false
+  @State private var tracksToDelete: [Track] = []
+
   var body: some View {
     HStack(alignment: .top, spacing: 20) {
       // Track listing
@@ -55,6 +68,31 @@ struct ExpandedAlbumView: View {
         .fill(.secondary.opacity(0.1))
     )
     .padding(.horizontal, 4)
+    .sheet(isPresented: $isTrackInfoPresented) {
+      if tracksForTrackInfo.count == 1, let track = tracksForTrackInfo.first {
+        TrackInfoView(
+          track: track,
+          detailedMetadata: detailedMetadataList.first ?? nil
+        )
+      } else {
+        MultiTrackInfoView(
+          tracks: tracksForTrackInfo,
+          detailedMetadataList: detailedMetadataList
+        )
+      }
+    }
+    .alert("Remove from Library?", isPresented: $showDeleteConfirmation) {
+      Button("Cancel", role: .cancel) {}
+      Button("Remove", role: .destructive) {
+        let trackIDs = Set(tracksToDelete.map(\.id))
+        vm.library.removeTracks(ids: trackIDs)
+        tracksToDelete = []
+      }
+    } message: {
+      Text(
+        "This will remove \(tracksToDelete.count) track(s) from the library. The original files will not be deleted."
+      )
+    }
   }
 
   // MARK: Private
@@ -162,6 +200,33 @@ struct ExpandedAlbumView: View {
                   )
                 }
               )
+              .contextMenu {
+                let selectedTracks = selectedTrackIDs.contains(track.id)
+                  ? sorted.filter { selectedTrackIDs.contains($0.id) }
+                  : [track]
+                TrackContextMenu(
+                  tracks: selectedTracks,
+                  library: vm.library,
+                  audioPlayer: vm.player,
+                  currentPlaylistID: vm.selectedPlaylistID,
+                  onShowTrackInfo: {
+                    tracksForTrackInfo = selectedTracks
+                    Task {
+                      var metadataList: [DetailedTrackMetadata?] = []
+                      for tr in tracksForTrackInfo {
+                        let metadata = await MetadataReader.readDetailedMetadata(from: tr.fileURL)
+                        metadataList.append(metadata)
+                      }
+                      detailedMetadataList = metadataList
+                      isTrackInfoPresented = true
+                    }
+                  },
+                  onShowDeleteConfirmation: {
+                    tracksToDelete = selectedTracks
+                    showDeleteConfirmation = true
+                  }
+                )
+              }
               songDividerInList
             }
           }

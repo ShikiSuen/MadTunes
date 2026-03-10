@@ -82,6 +82,79 @@ public enum MetadataReader: Sendable {
     return false
   }
 
+  // MARK: - Detailed Metadata
+
+  /// 讀取詳盡的音軌中繼資料，包括音訊格式資訊。
+  public static func readDetailedMetadata(from url: URL) async -> DetailedTrackMetadata {
+    let asset = AVURLAsset(url: url)
+
+    // 獲取檔案大小
+    let fileSize: Int64? = {
+      do {
+        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        return attributes[.size] as? Int64
+      } catch {
+        return nil
+      }
+    }()
+
+    // 從音軌讀取音訊格式資訊
+    var bitDepth: Int?
+    var sampleRate: Double?
+    var codec: String?
+    var channelCount: Int?
+    var bitrate: Int?
+
+    do {
+      let tracks = try await asset.load(.tracks)
+      if let audioTrack = tracks.first(where: { $0.mediaType == .audio }) {
+        let formatDescriptions = try await audioTrack.load(.formatDescriptions)
+        if let formatDesc = formatDescriptions.first {
+          // 獲取 codec 資訊
+          let mediaSubType = CMFormatDescriptionGetMediaSubType(formatDesc)
+          codec = formatFourCCToString(mediaSubType)
+
+          // 獲取取樣率和聲道數
+          if let basicDesc = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc) {
+            sampleRate = basicDesc.pointee.mSampleRate
+            channelCount = Int(basicDesc.pointee.mChannelsPerFrame)
+            bitDepth = Int(basicDesc.pointee.mBitsPerChannel)
+
+            // 計算位元率（如果可用）
+            if basicDesc.pointee.mBytesPerFrame > 0, basicDesc.pointee.mFramesPerPacket > 0 {
+              let bytesPerPacket = basicDesc.pointee.mBytesPerPacket
+              let framesPerPacket = basicDesc.pointee.mFramesPerPacket
+              if bytesPerPacket > 0, framesPerPacket > 0, sampleRate != nil {
+                // 對於未壓縮音訊：bitrate = sampleRate * bytesPerFrame * channels
+                // 對於壓縮音訊，我們需要估算
+                bitrate = Int(Double(bytesPerPacket) * sampleRate! / Double(framesPerPacket) * 8)
+              }
+            }
+          }
+        }
+
+        // 嘗試從 estimatedDataRate 獲取位元率
+        if bitrate == nil {
+          let dataRate = try await audioTrack.load(.estimatedDataRate)
+          if dataRate > 0 {
+            bitrate = Int(dataRate) // estimatedDataRate 已是 bps
+          }
+        }
+      }
+    } catch {
+      // 忽略錯誤，返回已獲取的資訊
+    }
+
+    return DetailedTrackMetadata(
+      bitDepth: bitDepth,
+      sampleRate: sampleRate,
+      codec: codec,
+      bitrate: bitrate,
+      fileSize: fileSize,
+      channelCount: channelCount
+    )
+  }
+
   // MARK: Private
 
   private static func readTrackInternal(from url: URL, includeArtwork: Bool) async -> TrackMetadata {
@@ -224,5 +297,16 @@ public enum MetadataReader: Sendable {
     guard trimmed.count >= 4, let year = Int(trimmed.prefix(4)), year > 0
     else { return nil }
     return year
+  }
+
+  /// 將 FourCC 代碼轉換為可讀的字串
+  private static func formatFourCCToString(_ fourcc: FourCharCode) -> String {
+    let bytes: [UInt8] = [
+      UInt8((fourcc >> 24) & 0xFF),
+      UInt8((fourcc >> 16) & 0xFF),
+      UInt8((fourcc >> 8) & 0xFF),
+      UInt8(fourcc & 0xFF),
+    ]
+    return String(decoding: bytes, as: UTF8.self).trimmingCharacters(in: .whitespaces)
   }
 }

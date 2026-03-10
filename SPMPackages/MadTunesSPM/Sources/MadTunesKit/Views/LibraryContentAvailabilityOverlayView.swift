@@ -11,6 +11,7 @@ struct LibraryContentAvailabilityOverlayView: View {
   // MARK: Internal
 
   let displayAlbums: [Album]
+  let selectedPlaylist: Playlist?
 
   var body: some View {
     Group {
@@ -57,29 +58,37 @@ struct LibraryContentAvailabilityOverlayView: View {
         backgroundColorMesh
           .ignoresSafeArea()
           .overlay {
-            ContentUnavailableView {
-              Label("No Music", systemImage: "music.note")
-            } description: {
-              Text("Import music files or folders to get started.")
-            } actions: {
-              switch OS.isAppKit {
-              case true:
-                Button("Import Files / Folders…") {
-                  viewModel.isFolderImporterPresented = true
+            if isAllMusicPage {
+              ContentUnavailableView {
+                Label("No Music", systemImage: "music.note")
+              } description: {
+                Text("Import music files or folders to get started.")
+              } actions: {
+                switch OS.isAppKit {
+                case true:
+                  Button("Import Files / Folders…") {
+                    viewModel.isFolderImporterPresented = true
+                  }
+                  .buttonStyle(.borderedProminent)
+                  .buttonBorderShape(.capsule)
+                case false:
+                  Button("Import Files…") {
+                    viewModel.isFileImporterPresented = true
+                  }
+                  .buttonStyle(.borderedProminent)
+                  .buttonBorderShape(.capsule)
+                  Button("Import Folder…") {
+                    viewModel.isFolderImporterPresented = true
+                  }
+                  .buttonStyle(.borderedProminent)
+                  .buttonBorderShape(.capsule)
                 }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
-              case false:
-                Button("Import Files…") {
-                  viewModel.isFileImporterPresented = true
-                }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
-                Button("Import Folder…") {
-                  viewModel.isFolderImporterPresented = true
-                }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
+              }
+            } else {
+              ContentUnavailableView {
+                Label(playlistEmptyTitle, systemImage: playlistEmptyIcon)
+              } description: {
+                Text(playlistEmptyDescription)
               }
             }
           }
@@ -94,6 +103,43 @@ struct LibraryContentAvailabilityOverlayView: View {
   @Environment(MadTunesViewModel.self) private var viewModel
   @State private var currentProcessingFileName: String = ""
   @State private var currentProcessingFileCount: Int = 0
+
+  /// 是否為「All Music」頁面（playlists[0]）。
+  private var isAllMusicPage: Bool {
+    guard let playlist = selectedPlaylist else { return true }
+    return playlist.id == viewModel.library.playlists.first?.id
+  }
+
+  /// 是否為「♥ Favorites」頁面。
+  private var isFavoritesPage: Bool {
+    guard let playlist = selectedPlaylist,
+          viewModel.library.playlists.count > 1 else { return false }
+    return playlist.id == viewModel.library.playlists[1].id
+  }
+
+  private var playlistEmptyTitle: String {
+    if isFavoritesPage {
+      return "No Favorites"
+    }
+    return "Empty Playlist"
+  }
+
+  private var playlistEmptyIcon: String {
+    if isFavoritesPage {
+      return "heart.slash"
+    }
+    return "music.note"
+  }
+
+  private var playlistEmptyDescription: String {
+    if isFavoritesPage {
+      return "Songs you mark as favorites will appear here."
+    }
+    if let name = selectedPlaylist?.name {
+      return "\"\(name)\" has no tracks. Add songs from the context menu."
+    }
+    return "This playlist has no tracks yet."
+  }
 
   private var angularColorGradient: AngularGradient {
     AngularGradient(

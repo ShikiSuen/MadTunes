@@ -8,8 +8,24 @@ import SwiftUI
 struct SidebarView: View {
   var library: MusicLibrary
   @Binding var selectedPlaylistID: UUID?
-  @State private var isAddingPlaylist = false
-  @State private var newPlaylistName = ""
+
+  // Alert state — shared across both "New Playlist" and "Rename"
+  @State private var alertKind: AlertKind?
+  @State private var alertText = ""
+
+  private enum AlertKind: Identifiable {
+    case newPlaylist
+    case rename(UUID)
+
+    // MARK: Internal
+
+    var id: String {
+      switch self {
+      case .newPlaylist: return "new"
+      case let .rename(id): return id.uuidString
+      }
+    }
+  }
 
   var body: some View {
     List(selection: $selectedPlaylistID) {
@@ -18,33 +34,46 @@ struct SidebarView: View {
           Label(allMusic.name, systemImage: "music.note.list")
             .tag(allMusic.id)
         }
+        // Favorites 專用列（心形圖示）
+        if library.playlists.count > 1 {
+          let favorites = library.playlists[1]
+          Label(favorites.name, systemImage: "heart.fill")
+            .tag(favorites.id)
+        }
       }
 
       Section("Playlists") {
-        ForEach(Array(library.playlists.dropFirst())) { playlist in
+        // 只顯示 index >= 2 的播放清單（跳過 All Music 和 Favorites）
+        ForEach(Array(library.playlists.dropFirst(2).enumerated()), id: \.element.id) { _, playlist in
           Label(playlist.name, systemImage: "music.note.list")
             .tag(playlist.id)
+            .contextMenu {
+              Button {
+                alertText = playlist.name
+                alertKind = .rename(playlist.id)
+              } label: {
+                Label("Rename", systemImage: "pencil")
+              }
+              Button(role: .destructive) {
+                if selectedPlaylistID == playlist.id {
+                  selectedPlaylistID = library.playlists.first?.id
+                }
+                library.removePlaylist(id: playlist.id)
+              } label: {
+                Label("Delete", systemImage: "trash")
+              }
+            }
         }
         .onDelete { indexSet in
-          // Offset by 1 because dropFirst() removes the "All Music" entry.
+          // Offset by 2 because dropFirst(2) removes "All Music" and "Favorites"
           for index in indexSet {
-            library.removePlaylist(at: index + 1)
+            library.removePlaylist(at: index + 2)
           }
         }
 
-        if isAddingPlaylist {
-          TextField("Playlist Name", text: $newPlaylistName)
-            .onSubmit {
-              if !newPlaylistName.isEmpty {
-                library.addPlaylist(name: newPlaylistName)
-                newPlaylistName = ""
-              }
-              isAddingPlaylist = false
-            }
-        }
-
         Button {
-          isAddingPlaylist = true
+          alertText = ""
+          alertKind = .newPlaylist
         } label: {
           Label("New Playlist", systemImage: "plus")
         }
@@ -52,5 +81,58 @@ struct SidebarView: View {
     }
     .listStyle(.sidebar)
     .navigationTitle("MadTunes")
+    .alert(alertTitle, isPresented: alertIsPresented) {
+      TextField(alertPlaceholder, text: $alertText)
+      Button(alertConfirmLabel) {
+        commitAlert()
+      }
+      Button("Cancel", role: .cancel) {}
+    }
+  }
+
+  // MARK: - Alert helpers
+
+  private var alertTitle: String {
+    switch alertKind {
+    case .newPlaylist: return "New Playlist"
+    case .rename: return "Rename Playlist"
+    case nil: return ""
+    }
+  }
+
+  private var alertPlaceholder: String {
+    switch alertKind {
+    case .newPlaylist: return "Playlist Name"
+    case .rename: return "New Name"
+    case nil: return ""
+    }
+  }
+
+  private var alertConfirmLabel: String {
+    switch alertKind {
+    case .newPlaylist: return "Create"
+    case .rename: return "Rename"
+    case nil: return "OK"
+    }
+  }
+
+  private var alertIsPresented: Binding<Bool> {
+    Binding(
+      get: { alertKind != nil },
+      set: { if !$0 { alertKind = nil } }
+    )
+  }
+
+  private func commitAlert() {
+    let name = alertText.trimmingCharacters(in: .whitespaces)
+    guard !name.isEmpty else { return }
+    switch alertKind {
+    case .newPlaylist:
+      library.addPlaylist(name: name)
+    case let .rename(id):
+      library.renamePlaylist(id: id, newName: name)
+    case nil:
+      break
+    }
   }
 }

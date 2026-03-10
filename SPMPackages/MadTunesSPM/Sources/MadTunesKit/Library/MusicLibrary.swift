@@ -47,12 +47,22 @@ public final class MusicLibrary {
 
   public var tracks: [Track] = []
   public var albums: [Album] = []
-  public var playlists: [Playlist] = [Playlist(name: "All Music")]
+  public var playlists: [Playlist] = [
+    Playlist(name: "All Music", kind: .system),
+    Playlist(name: "Favorites", kind: .system),
+  ]
   public var isImporting: Bool = false
   public var artworkLoadingKeys: Set<String> = []
 
   public private(set) var importProgress = ImportProgress()
   public private(set) var hasLoadedPersistence = false
+
+  // MARK: - Favorites
+
+  /// 喜好項目播放清單（系統預設，不可刪除）
+  public var favoritesPlaylist: Playlist {
+    playlists[1]
+  }
 
   // MARK: - Importing
 
@@ -149,6 +159,7 @@ public final class MusicLibrary {
     }
     organizeAlbums()
     persistAllTracks()
+    persistAllPlaylists()
   }
 
   // MARK: - Persistence
@@ -180,12 +191,17 @@ public final class MusicLibrary {
       guard let track = pt.toTrack() else { continue }
       loadedTracks.append(track)
     }
-    guard !loadedTracks.isEmpty else { return }
+    guard !loadedTracks.isEmpty else {
+      // 即使沒有曲目，也要載入播放清單
+      loadPersistedPlaylists()
+      return
+    }
     tracks = loadedTracks
     if !playlists.isEmpty {
       playlists[0].trackIDs = tracks.map(\.id)
     }
     organizeAlbums()
+    loadPersistedPlaylists()
   }
 
   /// Clear all persisted data and in-memory state.
@@ -200,6 +216,7 @@ public final class MusicLibrary {
       let context = ModelContext(container)
       try? context.delete(model: PersistedTrack.self)
       try? context.delete(model: PersistedSourceBookmark.self)
+      try? context.delete(model: PersistedPlaylist.self)
       try? context.save()
     }
     // Clear in-memory state.
@@ -211,6 +228,9 @@ public final class MusicLibrary {
     albumIDMap.removeAll()
     if !playlists.isEmpty {
       playlists[0].trackIDs = []
+    }
+    if playlists.count > 1 {
+      playlists[1].trackIDs = []
     }
     hasLoadedPersistence = false
   }
@@ -278,12 +298,80 @@ public final class MusicLibrary {
   // MARK: - Playlists
 
   public func addPlaylist(name: String) {
-    playlists.append(Playlist(name: name))
+    playlists.append(Playlist(name: name, kind: .staticList))
+    persistAllPlaylists()
   }
 
   public func removePlaylist(at index: Int) {
-    guard index > 0, index < playlists.count else { return }
+    // 只允許刪除非系統播放清單（index > 1，保留 All Music 和 Favorites）
+    guard index > 1, index < playlists.count else { return }
     playlists.remove(at: index)
+    persistAllPlaylists()
+  }
+
+  public func removePlaylist(id: UUID) {
+    guard let index = playlists.firstIndex(where: { $0.id == id }) else { return }
+    removePlaylist(at: index)
+  }
+
+  public func renamePlaylist(id: UUID, newName: String) {
+    guard let index = playlists.firstIndex(where: { $0.id == id }),
+          index > 1 else { return }
+    playlists[index].name = newName
+    persistAllPlaylists()
+  }
+
+  /// 從指定播放清單中移除曲目（不影響資料庫）。
+  public func removeTracksFromPlaylist(_ trackIDs: Set<UUID>, playlistID: UUID) {
+    guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+    playlists[idx].trackIDs.removeAll { trackIDs.contains($0) }
+    persistAllPlaylists()
+  }
+
+  /// 檢查指定曲目是否已加入喜好項目
+  public func isFavorited(_ trackID: UUID) -> Bool {
+    favoritesPlaylist.trackIDs.contains(trackID)
+  }
+
+  /// 切換指定曲目的喜好狀態。
+  /// 若所有指定曲目皆已喜愛，則全部移除；否則將尚未喜愛的全部加入。
+  public func toggleFavorite(trackIDs: Set<UUID>) {
+    guard playlists.count > 1 else { return }
+    var favorites = playlists[1]
+    let existingSet = Set(favorites.trackIDs)
+    let allFavorited = trackIDs.allSatisfy { existingSet.contains($0) }
+    if allFavorited {
+      favorites.trackIDs.removeAll { trackIDs.contains($0) }
+    } else {
+      let newIDs = trackIDs.filter { !existingSet.contains($0) }
+      favorites.trackIDs.append(contentsOf: newIDs)
+    }
+    playlists[1] = favorites
+    persistAllPlaylists()
+  }
+
+  // MARK: - Track Management
+
+  /// 將指定曲目加入指定播放清單（跳過已存在的）
+  public func addTracks(_ trackIDs: Set<UUID>, toPlaylist playlistID: UUID) {
+    guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+    let existing = Set(playlists[idx].trackIDs)
+    let newIDs = trackIDs.filter { !existing.contains($0) }
+    playlists[idx].trackIDs.append(contentsOf: newIDs)
+    persistAllPlaylists()
+  }
+
+  /// 從資料庫中移除指定曲目（包含 SwiftData 持久層），並從所有播放清單中清理其引用
+  public func removeTracks(ids: Set<UUID>) {
+    // 從曲目列表移除
+    tracks.removeAll { ids.contains($0.id) }
+    // 從所有播放清單中移除引用
+    for i in playlists.indices {
+      playlists[i].trackIDs.removeAll { ids.contains($0) }
+    }
+    organizeAlbums()
+    persistAllTracks()
+    persistAllPlaylists()
   }
 
   public func tracks(for playlist: Playlist) -> [Track] {
@@ -366,7 +454,7 @@ public final class MusicLibrary {
   // MARK: - SwiftData Container
 
   private nonisolated static func makeModelContainer() -> ModelContainer? {
-    let schema = Schema([PersistedTrack.self, PersistedSourceBookmark.self])
+    let schema = Schema([PersistedTrack.self, PersistedSourceBookmark.self, PersistedPlaylist.self])
     let config = ModelConfiguration(schema: schema)
     do {
       return try ModelContainer(for: schema, configurations: [config])
@@ -433,6 +521,63 @@ public final class MusicLibrary {
       context.insert(PersistedTrack(from: track))
     }
     try? context.save()
+  }
+
+  /// Persist all playlists to SwiftData (full replacement).
+  private func persistAllPlaylists() {
+    guard let container = _modelContainer else { return }
+    let context = ModelContext(container)
+    // Clear existing playlist data and re-insert all playlists.
+    do {
+      try context.delete(model: PersistedPlaylist.self)
+    } catch {
+      return
+    }
+    for (index, playlist) in playlists.enumerated() {
+      let persisted = PersistedPlaylist(
+        playlistID: playlist.id.uuidString,
+        name: playlist.name,
+        trackIDStrings: playlist.trackIDs.map { $0.uuidString },
+        isSystemPlaylist: playlist.isSystemPlaylist,
+        sortIndex: index,
+        kindRawValue: playlist.kind.rawValue
+      )
+      context.insert(persisted)
+    }
+    try? context.save()
+  }
+
+  /// Load persisted playlists from SwiftData.
+  private func loadPersistedPlaylists() {
+    guard let container = _modelContainer else { return }
+    let context = ModelContext(container)
+    let descriptor = FetchDescriptor<PersistedPlaylist>(sortBy: [SortDescriptor(\.sortIndex)])
+    guard let persisted = try? context.fetch(descriptor) else { return }
+
+    // 保留系統播放清單（All Music 和 Favorites），只載入使用者建立的播放清單
+    var newPlaylists: [Playlist] = [
+      Playlist(name: "All Music", kind: .system),
+      Playlist(name: "♥ Favorites", kind: .system),
+    ]
+
+    for persistedPlaylist in persisted {
+      guard let playlist = persistedPlaylist.toPlaylist() else { continue }
+      // 只載入非系統播放清單，或名稱與系統播放清單匹配的（保留其 trackIDs）
+      if playlist.isSystemPlaylist {
+        // 更新系統播放清單的 trackIDs
+        if let index = newPlaylists.firstIndex(where: { $0.name == playlist.name }) {
+          newPlaylists[index].trackIDs = playlist.trackIDs
+        }
+      } else {
+        newPlaylists.append(playlist)
+      }
+    }
+
+    playlists = newPlaylists
+    // 確保 All Music 包含所有曲目
+    if !playlists.isEmpty {
+      playlists[0].trackIDs = tracks.map(\.id)
+    }
   }
 
   /// Persist a security-scoped bookmark for a user-selected source URL.

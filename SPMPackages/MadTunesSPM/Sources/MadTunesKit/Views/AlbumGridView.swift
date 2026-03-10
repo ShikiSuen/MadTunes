@@ -29,6 +29,15 @@ struct AlbumGridView: View {
   @State private var albumFrames: [UUID: CGRect] = [:]
   @State private var preDragHighlighted: Set<UUID> = []
 
+  // Track Info Sheet state
+  @State private var isTrackInfoPresented = false
+  @State private var tracksForTrackInfo: [Track] = []
+  @State private var detailedMetadataList: [DetailedTrackMetadata?] = []
+
+  // Delete Confirmation state
+  @State private var showDeleteConfirmation = false
+  @State private var albumsToDelete: [Album] = []
+
   private var canvasWidth: CGFloat {
     screenVM.mainColumnCanvasSizeObserved.width
   }
@@ -43,9 +52,32 @@ struct AlbumGridView: View {
   }
 
   var body: some View {
+    mainContent
+      .animation(canvasAnimation, value: canvasWidth)
+      .opacity(screenVM.windowSizeEverObserved ? 1 : 0)
+      .sheet(isPresented: $isTrackInfoPresented) {
+        trackInfoSheetContent
+      }
+      .alert("Remove from Library?", isPresented: $showDeleteConfirmation) {
+        Button("Cancel", role: .cancel) {}
+        Button("Remove", role: .destructive) {
+          let trackIDs = Set(albumsToDelete.flatMap { $0.tracks.map(\.id) })
+          vm.library.removeTracks(ids: trackIDs)
+          albumsToDelete = []
+        }
+      } message: {
+        Text(
+          "This will remove \(albumsToDelete.count) album(s) from the library. The original files will not be deleted."
+        )
+      }
+  }
+
+  // MARK: - Content Views
+
+  private var mainContent: some View {
     let rows = albums.chunked(into: columnCount)
 
-    ScrollViewReader { proxy in
+    return ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: spacing) {
           ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
@@ -103,8 +135,20 @@ struct AlbumGridView: View {
         }
       }
     }
-    .animation(canvasAnimation, value: canvasWidth)
-    .opacity(screenVM.windowSizeEverObserved ? 1 : 0)
+  }
+
+  @ViewBuilder private var trackInfoSheetContent: some View {
+    if tracksForTrackInfo.count == 1, let track = tracksForTrackInfo.first {
+      TrackInfoView(
+        track: track,
+        detailedMetadata: detailedMetadataList.first ?? nil
+      )
+    } else {
+      MultiTrackInfoView(
+        tracks: tracksForTrackInfo,
+        detailedMetadataList: detailedMetadataList
+      )
+    }
   }
 
   private var canvasAnimation: Animation {
@@ -245,6 +289,9 @@ struct AlbumGridView: View {
             }
           }
         }
+        .contextMenu {
+          albumContextMenu(for: album)
+        }
         .frame(maxWidth: .infinity)
       }
       // Invisible spacers to keep alignment when the row is not full.
@@ -279,6 +326,41 @@ struct AlbumGridView: View {
     highlightedAlbumIDs = [album.id]
     expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
     #endif
+  }
+
+  // MARK: - Context Menu
+
+  @ViewBuilder
+  private func albumContextMenu(for album: Album) -> some View {
+    let selectedAlbums = highlightedAlbumIDs.contains(album.id)
+      ? albums.filter { highlightedAlbumIDs.contains($0.id) }
+      : [album]
+    AlbumContextMenu(
+      albums: selectedAlbums,
+      library: vm.library,
+      audioPlayer: vm.player,
+      currentPlaylistID: vm.selectedPlaylistID,
+      onShowTrackInfo: {
+        showTrackInfo(for: selectedAlbums)
+      },
+      onShowDeleteConfirmation: {
+        albumsToDelete = selectedAlbums
+        showDeleteConfirmation = true
+      }
+    )
+  }
+
+  private func showTrackInfo(for selectedAlbums: [Album]) {
+    tracksForTrackInfo = selectedAlbums.flatMap(\.tracks)
+    Task {
+      var metadataList: [DetailedTrackMetadata?] = []
+      for track in tracksForTrackInfo {
+        let metadata = await MetadataReader.readDetailedMetadata(from: track.fileURL)
+        metadataList.append(metadata)
+      }
+      detailedMetadataList = metadataList
+      isTrackInfoPresented = true
+    }
   }
 }
 
