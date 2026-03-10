@@ -89,7 +89,9 @@ final class MadTunesViewModel {
   }
 
   func importURLs(_ urls: [URL]) {
-    Task { await library.importFiles(urls: urls) }
+    Task {
+      await library.importFiles(urls: urls)
+    }
   }
 
   // MARK: - Drop Handling

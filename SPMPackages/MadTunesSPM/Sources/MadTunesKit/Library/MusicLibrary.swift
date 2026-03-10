@@ -8,6 +8,26 @@ import ImageIO
 import Observation
 import SwiftData
 
+// MARK: - ImportProgress
+
+public struct ImportProgress {
+  // MARK: Lifecycle
+
+  public init(finishedCount: Int = 0, totalCount: Int = 0, fileName: String = "") {
+    self.finishedCount = finishedCount
+    self.totalCount = totalCount
+    self.fileName = fileName
+  }
+
+  // MARK: Public
+
+  public var finishedCount: Int = 0
+  public var totalCount: Int = 0
+  public var fileName: String = ""
+}
+
+// MARK: - MusicLibrary
+
 /// Manages the music library: importing files, reading metadata, organising
 /// tracks into albums, and maintaining playlists.
 @Observable
@@ -29,10 +49,9 @@ public final class MusicLibrary {
   public var albums: [Album] = []
   public var playlists: [Playlist] = [Playlist(name: "All Music")]
   public var isImporting: Bool = false
-  public var currentProcessingFileName: String = ""
-  public var importTotalFileCount: Int = 0
-  public var importFinishedFileCount: Int = 0
   public var artworkLoadingKeys: Set<String> = []
+
+  public private(set) var importProgress = ImportProgress()
   public private(set) var hasLoadedPersistence = false
 
   // MARK: - Importing
@@ -45,7 +64,7 @@ public final class MusicLibrary {
     defer {
       currentProcessingFileName = ""
       importTotalFileCount = 0
-      importFinishedFileCount = 0
+      importFinishedFileCount = 0 // This action auto-updates `importProgress`.
       isImporting = false
     }
 
@@ -324,7 +343,25 @@ public final class MusicLibrary {
   private let artworkCacheCapacity = 50 // Limit to ~10MB (50 × 200KB avg)
   private var artworkAttemptedKeys: Set<String> = []
   private var activeSecurityScopedURLs: [URL] = []
+  nonisolated private let importProgressDebouncer: Debouncer = .init(delay: 1)
   nonisolated private let _modelContainer: ModelContainer?
+
+  @ObservationIgnored private var currentProcessingFileName: String = ""
+  @ObservationIgnored private var importTotalFileCount: Int = 0
+
+  @ObservationIgnored private var importFinishedFileCount: Int = 0 {
+    didSet {
+      Task {
+        await importProgressDebouncer.debounce(keepFirstAttemptInstead: true) { @MainActor in
+          self.importProgress = .init(
+            finishedCount: self.importFinishedFileCount,
+            totalCount: self.importTotalFileCount,
+            fileName: self.currentProcessingFileName
+          )
+        }
+      }
+    }
+  }
 
   // MARK: - SwiftData Container
 

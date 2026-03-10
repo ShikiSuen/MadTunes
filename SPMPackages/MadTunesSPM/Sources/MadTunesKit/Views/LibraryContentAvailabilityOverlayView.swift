@@ -2,8 +2,8 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
 
-import SwiftUI
 import simd
+import SwiftUI
 
 /// Overlay that shows an importing spinner (with real-time filename) or an
 /// empty-library placeholder when no albums are present.
@@ -16,9 +16,10 @@ struct LibraryContentAvailabilityOverlayView: View {
     Group {
       if viewModel.library.isImporting {
         VStack(spacing: 8) {
-          let hasFileImporting = viewModel.library.importTotalFileCount > 0
-          let finished = viewModel.library.importFinishedFileCount
-          let total = viewModel.library.importTotalFileCount
+          let progress = viewModel.library.importProgress
+          let hasFileImporting = progress.totalCount > 0
+          let finished = progress.finishedCount
+          let total = progress.totalCount
           let percent = total > 0 ? finished * 100 / total : 0
           WinUI3ProgressRing(size: 64, lineWidth: 7)
             .tint(.primary)
@@ -31,8 +32,8 @@ struct LibraryContentAvailabilityOverlayView: View {
               }
             }
           Text("Importing Music…")
-          if !viewModel.library.currentProcessingFileName.isEmpty {
-            Text(viewModel.library.currentProcessingFileName)
+          if !progress.fileName.isEmpty {
+            Text(progress.fileName)
               .font(.caption)
               .foregroundStyle(.secondary)
               .lineLimit(1)
@@ -49,40 +50,40 @@ struct LibraryContentAvailabilityOverlayView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
           backgroundColorMesh
-          .ignoresSafeArea()
+            .ignoresSafeArea()
         }
         .compositingGroup()
       } else if displayAlbums.isEmpty {
         backgroundColorMesh
-        .ignoresSafeArea()
-        .overlay {
-          ContentUnavailableView {
-            Label("No Music", systemImage: "music.note")
-          } description: {
-            Text("Import music files or folders to get started.")
-          } actions: {
-            switch OS.isAppKit {
-            case true:
-              Button("Import Files / Folders…") {
-                viewModel.isFolderImporterPresented = true
+          .ignoresSafeArea()
+          .overlay {
+            ContentUnavailableView {
+              Label("No Music", systemImage: "music.note")
+            } description: {
+              Text("Import music files or folders to get started.")
+            } actions: {
+              switch OS.isAppKit {
+              case true:
+                Button("Import Files / Folders…") {
+                  viewModel.isFolderImporterPresented = true
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+              case false:
+                Button("Import Files…") {
+                  viewModel.isFileImporterPresented = true
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                Button("Import Folder…") {
+                  viewModel.isFolderImporterPresented = true
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
               }
-              .buttonStyle(.borderedProminent)
-              .buttonBorderShape(.capsule)
-            case false:
-              Button("Import Files…") {
-                viewModel.isFileImporterPresented = true
-              }
-              .buttonStyle(.borderedProminent)
-              .buttonBorderShape(.capsule)
-              Button("Import Folder…") {
-                viewModel.isFolderImporterPresented = true
-              }
-              .buttonStyle(.borderedProminent)
-              .buttonBorderShape(.capsule)
             }
           }
-        }
-        .compositingGroup()
+          .compositingGroup()
       }
     }
     .animation(.easeOut(duration: 0.12), value: viewModel.library.isImporting)
@@ -110,36 +111,36 @@ struct LibraryContentAvailabilityOverlayView: View {
   }
 
   @ViewBuilder private var backgroundColorMesh: some View {
-      Group {
-        if #available(macOS 15.0, *) {
-          MeshGradient(
-            width: 2,
-            height: 2,
-            points: [
-              SIMD2(0.0, 0.0), // Top-left
-              SIMD2(1.0, 0.0), // Top-right
-              SIMD2(0.0, 1.0), // Bottom-left
-              SIMD2(1.0, 1.0)  // Bottom-right
-            ],
-            colors: [
-              .red,
-              .blue,
-              .green,
-              .purple
-            ]
-          )
+    Group {
+      if #available(macOS 15.0, iOS 18.0, *) {
+        MeshGradient(
+          width: 2,
+          height: 2,
+          points: [
+            SIMD2(0.0, 0.0), // Top-left
+            SIMD2(1.0, 0.0), // Top-right
+            SIMD2(0.0, 1.0), // Bottom-left
+            SIMD2(1.0, 1.0), // Bottom-right
+          ],
+          colors: [
+            .red,
+            .blue,
+            .green,
+            .purple,
+          ]
+        )
+        .opacity(0.3)
+        .background {
+          Color.primary.colorInvert()
+        }
+      } else {
+        angularColorGradient
+          .blur(radius: 8)
           .opacity(0.3)
           .background {
             Color.primary.colorInvert()
           }
-        } else {
-          angularColorGradient
-            .blur(radius: 8)
-            .opacity(0.3)
-            .background {
-              Color.primary.colorInvert()
-            }
-        }
       }
+    }
   }
 }
