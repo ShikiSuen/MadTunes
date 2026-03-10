@@ -26,22 +26,25 @@ public struct MadTunesScene: Scene {
     }
     .commands {
       CommandGroup(replacing: .newItem) {
-        Button("Open Files…") {
-          isFileImporterPresented = true
+        switch OS.isAppKit {
+        case true:
+          Button("Open Files / Folders…") {
+            MadTunesViewModel.shared.isFolderImporterPresented = true
+          }
+          .keyboardShortcut("o")
+        case false:
+          Button("Open Files…") {
+            MadTunesViewModel.shared.isFileImporterPresented = true
+          }
+          .keyboardShortcut("o")
+          Button("Open Folder…") {
+            MadTunesViewModel.shared.isFolderImporterPresented = true
+          }
+          .keyboardShortcut("o", modifiers: [.command, .shift])
         }
-        .keyboardShortcut("o")
-        Button("Open Folder…") {
-          isFolderImporterPresented = true
-        }
-        .keyboardShortcut("o", modifiers: [.command, .shift])
       }
     }
   }
-
-  // MARK: Private
-
-  @FocusedBinding(\.isFileImporterPresented) private var isFileImporterPresented
-  @FocusedBinding(\.isFolderImporterPresented) private var isFolderImporterPresented
 }
 
 // MARK: - MadTunesMainView
@@ -180,8 +183,6 @@ struct MadTunesMainView: View {
     .fontWidth(.condensed)
     .tint(.madTunesAccent)
     .trackScreenVMParameters()
-    .focusedValue(\.isFileImporterPresented, $vm.isFileImporterPresented)
-    .focusedValue(\.isFolderImporterPresented, $vm.isFolderImporterPresented)
     .environment(viewModel)
     .onAppear {
       viewModel.library.loadPersistedData()
@@ -234,30 +235,6 @@ struct MadTunesMainView: View {
     .overlay {
       LibraryContentAvailabilityOverlayView(displayAlbums: displayAlbums)
     }
-  }
-}
-
-// MARK: - ImportPresenterKey
-
-private struct ImportPresenterKey: FocusedValueKey {
-  typealias Value = Binding<Bool>
-}
-
-// MARK: - FolderImportPresenterKey
-
-private struct FolderImportPresenterKey: FocusedValueKey {
-  typealias Value = Binding<Bool>
-}
-
-extension FocusedValues {
-  var isFileImporterPresented: Binding<Bool>? {
-    get { self[ImportPresenterKey.self] }
-    set { self[ImportPresenterKey.self] = newValue }
-  }
-
-  var isFolderImporterPresented: Binding<Bool>? {
-    get { self[FolderImportPresenterKey.self] }
-    set { self[FolderImportPresenterKey.self] = newValue }
   }
 }
 
