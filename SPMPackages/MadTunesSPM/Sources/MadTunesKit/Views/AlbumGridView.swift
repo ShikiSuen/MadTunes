@@ -27,6 +27,7 @@ struct AlbumGridView: View {
   @State private var dragOrigin: CGPoint?
   @State private var dragCurrent: CGPoint?
   @State private var albumFrames: [UUID: CGRect] = [:]
+  @State private var preDragHighlighted: Set<UUID> = []
 
   private var canvasWidth: CGFloat {
     screenVM.mainColumnCanvasSizeObserved.width
@@ -123,6 +124,15 @@ struct AlbumGridView: View {
             .onChanged { value in
               if dragOrigin == nil {
                 dragOrigin = value.startLocation
+                #if canImport(AppKit) && !canImport(UIKit)
+                if NSEvent.modifierFlags.contains(.command) {
+                  preDragHighlighted = highlightedAlbumIDs
+                } else {
+                  preDragHighlighted = []
+                }
+                #else
+                preDragHighlighted = []
+                #endif
               }
               dragCurrent = value.location
               updateDragSelection()
@@ -167,7 +177,7 @@ struct AlbumGridView: View {
 
   private func updateDragSelection() {
     guard let rect = selectionRect else { return }
-    var selected = Set<UUID>()
+    var selected = preDragHighlighted
     for (id, frame) in albumFrames {
       if rect.intersects(frame) {
         selected.insert(id)
