@@ -20,6 +20,10 @@ final class MadTunesViewModel {
   var expandedAlbumID: UUID?
   var highlightedAlbumIDs: Set<UUID> = []
   var selectedTrackIDs: Set<UUID> = []
+  /// The fixed anchor for Shift+Arrow range selection. Set on click / plain arrow.
+  var albumSelectionFixedAnchorID: UUID?
+  /// The moving cursor for Shift+Arrow range selection.
+  var albumSelectionCursorID: UUID?
   var isFileImporterPresented = false // Only for non-AppKit targets.
   var isFolderImporterPresented = false // Also used on macOS AppKit as File Importer.
   var isDropTargeted = false
@@ -166,11 +170,22 @@ final class MadTunesViewModel {
       || press.key == .leftArrow || press.key == .rightArrow
 
     if isArrowKey {
-      guard let hID = highlightedAlbumIDs.first,
+      let isShift = press.modifiers.contains(.shift)
+
+      // For Shift: navigate from the moving cursor. For plain: from any highlighted.
+      let referenceID: UUID? = isShift
+        ? (albumSelectionCursorID ?? highlightedAlbumIDs.first)
+        : highlightedAlbumIDs.first
+
+      guard let hID = referenceID,
             let idx = albums.firstIndex(where: { $0.id == hID }) else {
-        highlightedAlbumIDs = [albums[0].id]
+        let firstID = albums[0].id
+        highlightedAlbumIDs = [firstID]
+        albumSelectionFixedAnchorID = firstID
+        albumSelectionCursorID = firstID
         return .handled
       }
+
       let newIdx: Int
       if press.key == .rightArrow {
         newIdx = min(idx + 1, albums.count - 1)
@@ -181,7 +196,27 @@ final class MadTunesViewModel {
       } else {
         newIdx = max(idx - gridColumnCount, 0)
       }
-      highlightedAlbumIDs = [albums[newIdx].id]
+
+      if isShift {
+        // Establish fixed anchor on first Shift press if not yet set.
+        if albumSelectionFixedAnchorID == nil {
+          albumSelectionFixedAnchorID = hID
+        }
+        guard let anchorID = albumSelectionFixedAnchorID,
+              let anchorIdx = albums.firstIndex(where: { $0.id == anchorID }) else {
+          return .handled
+        }
+        let lo = min(anchorIdx, newIdx)
+        let hi = max(anchorIdx, newIdx)
+        highlightedAlbumIDs = Set(albums[lo ... hi].map(\.id))
+        albumSelectionCursorID = albums[newIdx].id
+        expandedAlbumID = nil
+      } else {
+        let newID = albums[newIdx].id
+        highlightedAlbumIDs = [newID]
+        albumSelectionFixedAnchorID = newID
+        albumSelectionCursorID = newID
+      }
       return .handled
     }
 

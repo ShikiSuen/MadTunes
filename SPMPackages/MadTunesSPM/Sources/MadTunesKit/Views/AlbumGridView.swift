@@ -23,12 +23,22 @@ struct AlbumGridView: View {
   @State private var screenVM: ScreenVM = .shared
   @State private var expandedAlbumWasInView = false
 
+  // Rubber-band drag selection state (macOS only).
+  @State private var dragOrigin: CGPoint?
+  @State private var dragCurrent: CGPoint?
+  @State private var albumFrames: [UUID: CGRect] = [:]
+
   private var canvasWidth: CGFloat {
     screenVM.mainColumnCanvasSizeObserved.width
   }
 
   private var columnCount: Int {
     max(1, Int((canvasWidth - spacing) / (minItemWidth + spacing)))
+  }
+
+  /// Whether rubber-band drag selection is allowed (no expanded album).
+  private var isDragSelectionEnabled: Bool {
+    expandedAlbumID == nil
   }
 
   var body: some View {
@@ -59,6 +69,16 @@ struct AlbumGridView: View {
           }
         }
         .padding(spacing)
+        .coordinateSpace(name: "albumGrid")
+        .onPreferenceChange(AlbumFramePreferenceKey.self) { frames in
+          albumFrames = frames
+        }
+        .background {
+          rubberBandDragLayer
+        }
+        .overlay {
+          rubberBandRectOverlay
+        }
       }
       .frame(width: canvasWidth, alignment: .leading)
       .onChange(of: expandedAlbumID) { _, newValue in
@@ -91,6 +111,76 @@ struct AlbumGridView: View {
     return .easeOut(duration: duration)
   }
 
+  // MARK: - Rubber-Band Drag Layer (background — does not block taps on album items)
+
+  @ViewBuilder private var rubberBandDragLayer: some View {
+    #if canImport(AppKit) && !canImport(UIKit)
+    if isDragSelectionEnabled {
+      Color.clear
+        .contentShape(Rectangle())
+        .gesture(
+          DragGesture(minimumDistance: 4, coordinateSpace: .named("albumGrid"))
+            .onChanged { value in
+              if dragOrigin == nil {
+                dragOrigin = value.startLocation
+              }
+              dragCurrent = value.location
+              updateDragSelection()
+            }
+            .onEnded { _ in
+              dragOrigin = nil
+              dragCurrent = nil
+            }
+        )
+    }
+    #endif
+  }
+
+  // MARK: - Rubber-Band Rect Overlay (visual only — not hit-testable)
+
+  @ViewBuilder private var rubberBandRectOverlay: some View {
+    #if canImport(AppKit) && !canImport(UIKit)
+    if let rect = selectionRect {
+      Rectangle()
+        .fill(Color.accentColor.opacity(0.15))
+        .overlay(
+          Rectangle()
+            .stroke(Color.accentColor.opacity(0.6), lineWidth: 1)
+        )
+        .frame(width: rect.width, height: rect.height)
+        .position(x: rect.midX, y: rect.midY)
+        .allowsHitTesting(false)
+    }
+    #endif
+  }
+
+  /// The normalised selection rectangle from drag origin to current position.
+  private var selectionRect: CGRect? {
+    guard let origin = dragOrigin, let current = dragCurrent else { return nil }
+    return CGRect(
+      x: min(origin.x, current.x),
+      y: min(origin.y, current.y),
+      width: abs(current.x - origin.x),
+      height: abs(current.y - origin.y)
+    )
+  }
+
+  private func updateDragSelection() {
+    guard let rect = selectionRect else { return }
+    var selected = Set<UUID>()
+    for (id, frame) in albumFrames {
+      if rect.intersects(frame) {
+        selected.insert(id)
+      }
+    }
+    highlightedAlbumIDs = selected
+    expandedAlbumID = nil
+    if let first = albums.first(where: { selected.contains($0.id) }) {
+      vm.albumSelectionFixedAnchorID = first.id
+      vm.albumSelectionCursorID = first.id
+    }
+  }
+
   // MARK: - Row
 
   @ViewBuilder
@@ -107,6 +197,14 @@ struct AlbumGridView: View {
           isExpanded: isExpanded,
           isSelected: isSelected,
           isMultipleSelection: isMultiSelection
+        )
+        .background(
+          GeometryReader { geo in
+            Color.clear.preference(
+              key: AlbumFramePreferenceKey.self,
+              value: [album.id: geo.frame(in: .named("albumGrid"))]
+            )
+          }
         )
         .contentShape(Rectangle())
         .animation(
@@ -165,9 +263,21 @@ struct AlbumGridView: View {
       highlightedAlbumIDs = [album.id]
       expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
     }
+    vm.albumSelectionFixedAnchorID = album.id
+    vm.albumSelectionCursorID = album.id
     #else
     highlightedAlbumIDs = [album.id]
     expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
     #endif
+  }
+}
+
+// MARK: - AlbumFramePreferenceKey
+
+private struct AlbumFramePreferenceKey: PreferenceKey {
+  nonisolated(unsafe) static var defaultValue: [UUID: CGRect] = [:]
+
+  static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+    value.merge(nextValue(), uniquingKeysWith: { $1 })
   }
 }
