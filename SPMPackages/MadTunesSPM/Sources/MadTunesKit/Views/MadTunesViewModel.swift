@@ -147,14 +147,30 @@ final class MadTunesViewModel {
   // MARK: - Keyboard Navigation
 
   func handleKeyPress(_ press: KeyPress, albums: [Album]) -> KeyPress.Result {
-    if let expandedID = expandedAlbumID,
-       let album = albums.first(where: { $0.id == expandedID }) {
+    // Spacebar: prioritise toggling play/pause when a track is loaded,
+    // but only when an album is expanded.
+    spaceTask: if press.characters == " " {
+      let hasAlbumExpanded = expandedAlbumID != nil
+      switch press.modifiers {
+      case [] where player.currentTrack != nil && hasAlbumExpanded:
+        player.togglePlayPause()
+        return .handled
+      case [.shift] where !(player.currentTrack != nil && hasAlbumExpanded):
+        player.togglePlayPause()
+        return .handled
+      default: break spaceTask
+      }
+    }
+
+    switch albums.first(where: { $0.id == expandedAlbumID }) {
+    case .none:
+      // album 沒有命中，此時 expandedAlbumID 必然為 nil。
+      return handleGridKeyPress(press, albums: albums)
+    case let .some(album):
       let result = handleExpandedKeyPress(press, album: album, albums: albums)
       if result == .handled { return .handled }
     }
-    if expandedAlbumID == nil {
-      return handleGridKeyPress(press, albums: albums)
-    }
+
     return .ignored
   }
 
@@ -166,10 +182,8 @@ final class MadTunesViewModel {
   private func handleGridKeyPress(_ press: KeyPress, albums: [Album]) -> KeyPress.Result {
     guard !albums.isEmpty else { return .ignored }
 
-    let isArrowKey = press.key == .upArrow || press.key == .downArrow
-      || press.key == .leftArrow || press.key == .rightArrow
-
-    if isArrowKey {
+    handleArrowKey: if press.isArrowKey {
+      // 此處使用 `press.modifiers == [.shift]` 反而無效。
       let isShift = press.modifiers.contains(.shift)
 
       // For Shift: navigate from the moving cursor. For plain: from any highlighted.
@@ -187,14 +201,17 @@ final class MadTunesViewModel {
       }
 
       let newIdx: Int
-      if press.key == .rightArrow {
+      switch press.key {
+      case .rightArrow:
         newIdx = min(idx + 1, albums.count - 1)
-      } else if press.key == .leftArrow {
+      case .leftArrow:
         newIdx = max(idx - 1, 0)
-      } else if press.key == .downArrow {
+      case .downArrow:
         newIdx = min(idx + gridColumnCount, albums.count - 1)
-      } else {
+      case .upArrow:
         newIdx = max(idx - gridColumnCount, 0)
+      default:
+        break handleArrowKey
       }
 
       if isShift {
@@ -220,11 +237,11 @@ final class MadTunesViewModel {
       return .handled
     }
 
-    if press.key == .return || press.characters == " "
-      || (press.modifiers.contains(.command) && press.key == .downArrow) {
-      if let hID = highlightedAlbumIDs.first, highlightedAlbumIDs.count == 1 {
+    if press.isAlbumExpansionAssignmentKey {
+      if highlightedAlbumIDs.count == 1 {
         withAnimation(.easeInOut(duration: 0.3)) {
-          expandedAlbumID = hID
+          // 此時 first 必命中，無須 guard-let。
+          expandedAlbumID = highlightedAlbumIDs.first
         }
         return .handled
       }
@@ -248,8 +265,7 @@ final class MadTunesViewModel {
       return .handled
     }
 
-    if press.key == .return || press.characters == " "
-      || (press.modifiers.contains(.command) && press.key == .downArrow) {
+    if press.isAlbumExpansionAssignmentKey {
       let selectedSorted = sorted.filter { selectedTrackIDs.contains($0.id) }
       if !selectedSorted.isEmpty {
         player.setQueue(selectedSorted, startingAt: 0)
@@ -261,23 +277,22 @@ final class MadTunesViewModel {
       return .handled
     }
 
-    let isArrowKey = press.key == .upArrow || press.key == .downArrow
-      || press.key == .leftArrow || press.key == .rightArrow
-    if isArrowKey {
+    if press.isArrowKey {
       if selectedTrackIDs.isEmpty {
-        if press.key == .downArrow {
+        switch press.key {
+        case .downArrow:
           if let first = sorted.first {
             selectedTrackIDs = [first.id]
           }
           return .handled
-        }
-        if press.key == .upArrow {
+        case .upArrow:
           withAnimation(.easeInOut(duration: 0.3)) {
             expandedAlbumID = nil
           }
           return .handled
+        default:
+          return navigateAlbumFromExpanded(press, albums: albums)
         }
-        return navigateAlbumFromExpanded(press, albums: albums)
       }
 
       guard let anchorID = selectedTrackIDs.first(where: { _ in true }),
@@ -285,9 +300,11 @@ final class MadTunesViewModel {
       else { return .handled }
 
       let maxRowsPerColumn = 7
-      let columnCount = sorted.count > maxRowsPerColumn
-        ? max(1, Int(ceil(Double(sorted.count) / Double(maxRowsPerColumn))))
-        : 1
+      let trackListWidth = max(300, screenVM.mainColumnCanvasSizeObserved.width - 292)
+      let minColumnWidth: CGFloat = 300
+      let maxPossibleColumns = max(1, Int(trackListWidth / minColumnWidth))
+      let desiredColumns = sorted.count > maxRowsPerColumn ? maxPossibleColumns : 1
+      let columnCount = max(1, min(sorted.count, desiredColumns))
       let itemsPerColumn = Int(ceil(Double(sorted.count) / Double(columnCount)))
 
       switch press.key {
@@ -332,11 +349,12 @@ final class MadTunesViewModel {
       return .ignored
     }
     let newIdx: Int
-    if press.key == .rightArrow {
+    switch press.key {
+    case .rightArrow:
       newIdx = min(idx + 1, albums.count - 1)
-    } else if press.key == .leftArrow {
+    case .leftArrow:
       newIdx = max(idx - 1, 0)
-    } else {
+    default:
       newIdx = max(idx - gridColumnCount, 0)
     }
     guard newIdx != idx else { return .handled }
@@ -346,5 +364,19 @@ final class MadTunesViewModel {
       expandedAlbumID = newAlbumID
     }
     return .handled
+  }
+}
+
+extension KeyPress {
+  public var isArrowKey: Bool {
+    [.upArrow, .downArrow, .leftArrow, .rightArrow].contains(key)
+  }
+
+  public var isAlbumExpansionAssignmentKey: Bool {
+    switch key {
+    case .return: return true
+    case .downArrow: return modifiers.contains(.command)
+    default: return characters == " "
+    }
   }
 }

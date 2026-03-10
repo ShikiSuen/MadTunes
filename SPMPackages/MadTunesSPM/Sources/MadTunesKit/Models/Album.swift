@@ -20,6 +20,7 @@ public struct Album: Identifiable, Sendable {
     self.title = title
     self.artist = artist
     self.tracks = tracks
+    self.allTrackIDsSet = .init(tracks.map(\.id))
     self.artworkData = artworkData
   }
 
@@ -28,7 +29,8 @@ public struct Album: Identifiable, Sendable {
   public let id: UUID
   public let title: String
   public let artist: String
-  public var tracks: [Track]
+  public let tracks: [Track]
+  public let allTrackIDsSet: Set<UUID>
   public var artworkData: Data?
 
   public var sortedTracks: [Track] {
