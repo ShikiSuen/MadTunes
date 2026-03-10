@@ -31,6 +31,57 @@ public enum MetadataReader: Sendable {
     return await loadData(from: meta, id: .commonIdentifierArtwork)
   }
 
+  /// Check if a file is an iTunes Voice Memo.
+  /// Uses authoritative markers:
+  /// 1. ID3 tag: `----:com.apple.iTunes:voice-memo-uuid` (definitive Apple marker)
+  /// 2. Tool identifier: `com.apple.VoiceMemos` in encoding tool metadata
+  /// 3. Fallback: Path check for "Voice Memos" directory
+  public static func isVoiceMemo(url: URL) async -> Bool {
+    do {
+      let asset = AVURLAsset(url: url)
+      let allMetadata = try await asset.load(.metadata)
+
+      // Check 1: Look for voice-memo-uuid in iTunes ID3 metadata
+      // This is the definitive Apple marker for voice memos
+      for item in allMetadata {
+        // Check for the iTunes voice memo UUID tag
+        if let identifier = item.identifier?.rawValue,
+           identifier.contains("voice-memo-uuid") || identifier.contains("voice_memo_uuid") {
+          return true
+        }
+
+        // Check 2: Check for com.apple.VoiceMemos in tool/encoding information
+        if let identifier = item.identifier?.rawValue,
+           identifier.contains("tool") || identifier.contains("encoding") || identifier == "©too" {
+          if let toolString = try? await item.load(.stringValue),
+             toolString.contains("com.apple.VoiceMemos") {
+            return true
+          }
+        }
+
+        // Also check in regular comment/description fields for com.apple.VoiceMemos
+        if let toolString = try? await item.load(.stringValue),
+           toolString.contains("com.apple.VoiceMemos") {
+          return true
+        }
+      }
+
+      // Check 3: Fallback to path check
+      let pathComponents = url.pathComponents
+      if pathComponents.contains("Voice Memos") || pathComponents.contains("VoiceMemos") {
+        return true
+      }
+    } catch {
+      // If metadata can't be read, fall back to path check
+      let pathComponents = url.pathComponents
+      if pathComponents.contains("Voice Memos") || pathComponents.contains("VoiceMemos") {
+        return true
+      }
+    }
+
+    return false
+  }
+
   // MARK: Private
 
   private static func readTrackInternal(from url: URL, includeArtwork: Bool) async -> TrackMetadata {
