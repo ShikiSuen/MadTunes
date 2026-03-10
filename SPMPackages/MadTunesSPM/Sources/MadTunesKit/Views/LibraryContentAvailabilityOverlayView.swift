@@ -32,7 +32,7 @@ struct LibraryContentAvailabilityOverlayView: View {
                   .foregroundStyle(.secondary)
               }
             }
-          Text("Importing Music…")
+          Text(String(localized: "i18n:Import.ImportingMusic", bundle: #bundle))
           if !progress.fileName.isEmpty {
             Text(progress.fileName)
               .font(.caption)
@@ -42,7 +42,7 @@ struct LibraryContentAvailabilityOverlayView: View {
           }
           // Show the "currentlyFinishedFileCount/TotalCount" here with a trailing integer percent.
           if hasFileImporting {
-            Text("\(finished)/\(total)")
+            Text(verbatim: "\(finished)/\(total)")
               .font(.caption)
               .monospacedDigit()
               .foregroundStyle(.secondary)
@@ -60,24 +60,24 @@ struct LibraryContentAvailabilityOverlayView: View {
           .overlay {
             if isAllMusicPage {
               ContentUnavailableView {
-                Label("No Music", systemImage: "music.note")
+                Label(String(localized: "i18n:EmptyState.NoMusic", bundle: #bundle), systemImage: "music.note")
               } description: {
-                Text("Import music files or folders to get started.")
+                Text(String(localized: "i18n:EmptyState.ImportPrompt", bundle: #bundle))
               } actions: {
                 switch OS.isAppKit {
                 case true:
-                  Button("Import Files / Folders…") {
+                  Button(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle)) {
                     viewModel.isFolderImporterPresented = true
                   }
                   .buttonStyle(.borderedProminent)
                   .buttonBorderShape(.capsule)
                 case false:
-                  Button("Import Files…") {
+                  Button(String(localized: "i18n:Import.ImportFiles", bundle: #bundle)) {
                     viewModel.isFileImporterPresented = true
                   }
                   .buttonStyle(.borderedProminent)
                   .buttonBorderShape(.capsule)
-                  Button("Import Folder…") {
+                  Button(String(localized: "i18n:Import.ImportFolder", bundle: #bundle)) {
                     viewModel.isFolderImporterPresented = true
                   }
                   .buttonStyle(.borderedProminent)
@@ -119,9 +119,9 @@ struct LibraryContentAvailabilityOverlayView: View {
 
   private var playlistEmptyTitle: String {
     if isFavoritesPage {
-      return "No Favorites"
+      return String(localized: "i18n:EmptyState.NoFavorites", bundle: #bundle)
     }
-    return "Empty Playlist"
+    return String(localized: "i18n:EmptyState.EmptyPlaylist", bundle: #bundle)
   }
 
   private var playlistEmptyIcon: String {
@@ -133,12 +133,16 @@ struct LibraryContentAvailabilityOverlayView: View {
 
   private var playlistEmptyDescription: String {
     if isFavoritesPage {
-      return "Songs you mark as favorites will appear here."
+      return String(localized: "i18n:EmptyState.FavoritesDescription", bundle: #bundle)
     }
     if let name = selectedPlaylist?.name {
-      return "\"\(name)\" has no tracks. Add songs from the context menu."
+      return String(
+        localized: "i18n:EmptyState.PlaylistEmptyDescription",
+        defaultValue: "\"\(name)\" has no tracks. Add songs from the context menu.",
+        bundle: #bundle
+      )
     }
-    return "This playlist has no tracks yet."
+    return String(localized: "i18n:EmptyState.PlaylistNoTracksYet", bundle: #bundle)
   }
 
   private var angularColorGradient: AngularGradient {

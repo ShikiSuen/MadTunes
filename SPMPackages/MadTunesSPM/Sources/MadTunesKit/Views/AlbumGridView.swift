@@ -58,17 +58,22 @@ struct AlbumGridView: View {
       .sheet(isPresented: $isTrackInfoPresented) {
         trackInfoSheetContent
       }
-      .alert("Remove from Library?", isPresented: $showDeleteConfirmation) {
-        Button("Cancel", role: .cancel) {}
-        Button("Remove", role: .destructive) {
+      .alert(
+        String(localized: "i18n:Alert.RemoveFromLibraryTitle", bundle: #bundle),
+        isPresented: $showDeleteConfirmation
+      ) {
+        Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
+        Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
           let trackIDs = Set(albumsToDelete.flatMap { $0.tracks.map(\.id) })
           vm.library.removeTracks(ids: trackIDs)
           albumsToDelete = []
         }
       } message: {
-        Text(
-          "This will remove \(albumsToDelete.count) album(s) from the library. The original files will not be deleted."
-        )
+        Text(String(
+          localized: "i18n:Alert.RemoveAlbumsMessage",
+          defaultValue: "This will remove \(albumsToDelete.count) album(s) from the library. The original files will not be deleted.",
+          bundle: #bundle
+        ))
       }
   }
 

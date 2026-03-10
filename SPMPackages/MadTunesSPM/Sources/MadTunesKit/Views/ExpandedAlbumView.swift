@@ -81,17 +81,22 @@ struct ExpandedAlbumView: View {
         )
       }
     }
-    .alert("Remove from Library?", isPresented: $showDeleteConfirmation) {
-      Button("Cancel", role: .cancel) {}
-      Button("Remove", role: .destructive) {
+    .alert(
+      String(localized: "i18n:Alert.RemoveFromLibraryTitle", bundle: #bundle),
+      isPresented: $showDeleteConfirmation
+    ) {
+      Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
+      Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
         let trackIDs = Set(tracksToDelete.map(\.id))
         vm.library.removeTracks(ids: trackIDs)
         tracksToDelete = []
       }
     } message: {
-      Text(
-        "This will remove \(tracksToDelete.count) track(s) from the library. The original files will not be deleted."
-      )
+      Text(String(
+        localized: "i18n:Alert.RemoveTracksMessage",
+        defaultValue: "This will remove \(tracksToDelete.count) track(s) from the library. The original files will not be deleted.",
+        bundle: #bundle
+      ))
     }
   }
 
@@ -261,7 +266,11 @@ struct ExpandedAlbumView: View {
 
   @ViewBuilder private var songCountAndLengthView: some View {
     HStack {
-      Text("\(album.tracks.count) songs")
+      Text(String(
+        localized: "i18n:ExpandedAlbum.SongCount",
+        defaultValue: "\(album.tracks.count) songs",
+        bundle: #bundle
+      ))
       Spacer()
       Text(formatDuration(album.totalDuration))
     }

@@ -112,9 +112,9 @@ struct PlayerControlsView: View {
 
   private var loopBehaviorTooltip: String {
     switch player.loopBehavior {
-    case .sequential: "Sequential (click for Repeat One)"
-    case .repeatOne: "Repeat One (click for Shuffle)"
-    case .shuffle: "Shuffle (click for Sequential)"
+    case .sequential: String(localized: "i18n:Player.LoopSequential", bundle: #bundle)
+    case .repeatOne: String(localized: "i18n:Player.LoopRepeatOne", bundle: #bundle)
+    case .shuffle: String(localized: "i18n:Player.LoopShuffle", bundle: #bundle)
     }
   }
 
@@ -140,7 +140,7 @@ struct PlayerControlsView: View {
         .frame(maxWidth: 200, alignment: .leading)
         .help(accumulated)
       } else {
-        Text("Not Playing")
+        Text(String(localized: "i18n:Player.NotPlaying", bundle: #bundle))
           .foregroundStyle(.secondary)
           .font(.callout)
       }
@@ -206,7 +206,7 @@ struct PlayerControlsView: View {
     .popover(isPresented: $isQueuePopoverPresented) {
       PlayingQueueView(player: player)
     }
-    .help("Playing Queue")
+    .help(String(localized: "i18n:Player.PlayingQueue", bundle: #bundle))
   }
 
   @ViewBuilder private var volumeControls: some View {

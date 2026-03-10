@@ -29,7 +29,7 @@ struct SidebarView: View {
 
   var body: some View {
     List(selection: $selectedPlaylistID) {
-      Section("Library") {
+      Section(String(localized: "i18n:Sidebar.Sections.Library", bundle: #bundle)) {
         if let allMusic = library.playlists.first {
           Label(allMusic.name, systemImage: "music.note.list")
             .tag(allMusic.id)
@@ -42,7 +42,7 @@ struct SidebarView: View {
         }
       }
 
-      Section("Playlists") {
+      Section(String(localized: "i18n:Sidebar.Sections.Playlists", bundle: #bundle)) {
         // 只顯示 index >= 2 的播放清單（跳過 All Music 和 Favorites）
         ForEach(Array(library.playlists.dropFirst(2).enumerated()), id: \.element.id) { _, playlist in
           Label(playlist.name, systemImage: "music.note.list")
@@ -52,7 +52,7 @@ struct SidebarView: View {
                 alertText = playlist.name
                 alertKind = .rename(playlist.id)
               } label: {
-                Label("Rename", systemImage: "pencil")
+                Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
               }
               Button(role: .destructive) {
                 if selectedPlaylistID == playlist.id {
@@ -60,7 +60,7 @@ struct SidebarView: View {
                 }
                 library.removePlaylist(id: playlist.id)
               } label: {
-                Label("Delete", systemImage: "trash")
+                Label(String(localized: "i18n:Common.Delete", bundle: #bundle), systemImage: "trash")
               }
             }
         }
@@ -75,7 +75,7 @@ struct SidebarView: View {
           alertText = ""
           alertKind = .newPlaylist
         } label: {
-          Label("New Playlist", systemImage: "plus")
+          Label(String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle), systemImage: "plus")
         }
       }
     }
@@ -86,7 +86,7 @@ struct SidebarView: View {
       Button(alertConfirmLabel) {
         commitAlert()
       }
-      Button("Cancel", role: .cancel) {}
+      Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
     }
   }
 
@@ -94,25 +94,25 @@ struct SidebarView: View {
 
   private var alertTitle: String {
     switch alertKind {
-    case .newPlaylist: return "New Playlist"
-    case .rename: return "Rename Playlist"
+    case .newPlaylist: return String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle)
+    case .rename: return String(localized: "i18n:Sidebar.Alert.RenamePlaylistTitle", bundle: #bundle)
     case nil: return ""
     }
   }
 
   private var alertPlaceholder: String {
     switch alertKind {
-    case .newPlaylist: return "Playlist Name"
-    case .rename: return "New Name"
+    case .newPlaylist: return String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle)
+    case .rename: return String(localized: "i18n:Sidebar.Alert.NewNamePlaceholder", bundle: #bundle)
     case nil: return ""
     }
   }
 
   private var alertConfirmLabel: String {
     switch alertKind {
-    case .newPlaylist: return "Create"
-    case .rename: return "Rename"
-    case nil: return "OK"
+    case .newPlaylist: return String(localized: "i18n:Common.Create", bundle: #bundle)
+    case .rename: return String(localized: "i18n:Common.Rename", bundle: #bundle)
+    case nil: return String(localized: "i18n:Common.OK", bundle: #bundle)
     }
   }
 

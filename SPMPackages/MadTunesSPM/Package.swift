@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
   name: "MadTunesSPM",
+  defaultLocalization: "en",
   platforms: [
     .iOS(.v17),
     .macOS(.v14),
@@ -15,6 +16,11 @@ let package = Package(
     ),
   ],
   targets: [
-    .target(name: "MadTunesKit"),
+    .target(
+      name: "MadTunesKit",
+      resources: [
+        .process("./Resources"),
+      ]
+    ),
   ]
 )

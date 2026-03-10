@@ -46,7 +46,7 @@ struct AlbumContextMenu: View {
         }
       }
     } label: {
-      Label("Add to Playlist", systemImage: "text.badge.plus")
+      Label(String(localized: "i18n:ContextMenu.AddToPlaylist", bundle: #bundle), systemImage: "text.badge.plus")
     }
 
     Divider()
@@ -57,19 +57,22 @@ struct AlbumContextMenu: View {
       Button {
         audioPlayer.setQueue(tracks, startingAt: 0)
       } label: {
-        Label("Play Album", systemImage: "play.fill")
+        Label(String(localized: "i18n:ContextMenu.PlayAlbum", bundle: #bundle), systemImage: "play.fill")
       }
 
       Button {
         audioPlayer.setQueue(tracks.shuffled(), startingAt: 0)
       } label: {
-        Label("Shuffle Album", systemImage: "shuffle")
+        Label(String(localized: "i18n:ContextMenu.ShuffleAlbum", bundle: #bundle), systemImage: "shuffle")
       }
 
       Button {
         audioPlayer.insertAndPlay(tracks)
       } label: {
-        Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+        Label(
+          String(localized: "i18n:ContextMenu.PlayNext", bundle: #bundle),
+          systemImage: "text.line.first.and.arrowtriangle.forward"
+        )
       }
 
       Divider()
@@ -79,7 +82,7 @@ struct AlbumContextMenu: View {
     Button {
       onShowTrackInfo()
     } label: {
-      Label("Get Info", systemImage: "info.circle")
+      Label(String(localized: "i18n:ContextMenu.GetInfo", bundle: #bundle), systemImage: "info.circle")
     }
 
     // 加入喜好項目
@@ -87,7 +90,9 @@ struct AlbumContextMenu: View {
       library.toggleFavorite(trackIDs: trackIDs)
     } label: {
       Label(
-        allTracksFavorited ? "Remove from Favorites" : "Add to Favorites",
+        allTracksFavorited
+          ? String(localized: "i18n:ContextMenu.RemoveFromFavorites", bundle: #bundle)
+          : String(localized: "i18n:ContextMenu.AddToFavorites", bundle: #bundle),
         systemImage: allTracksFavorited ? "heart.fill" : "heart"
       )
     }
@@ -99,7 +104,7 @@ struct AlbumContextMenu: View {
     Button {
       showInFinder()
     } label: {
-      Label("Show in Finder", systemImage: "folder")
+      Label(String(localized: "i18n:ContextMenu.ShowInFinder", bundle: #bundle), systemImage: "folder")
     }
     #endif
 
@@ -109,7 +114,7 @@ struct AlbumContextMenu: View {
     Button(role: .destructive) {
       onShowDeleteConfirmation()
     } label: {
-      Label("Remove from Library", systemImage: "trash")
+      Label(String(localized: "i18n:ContextMenu.RemoveFromLibrary", bundle: #bundle), systemImage: "trash")
     }
 
     // 移出當前播放清單（僅靜態播放清單）
@@ -118,7 +123,7 @@ struct AlbumContextMenu: View {
       Button(role: .destructive) {
         library.removeTracksFromPlaylist(trackIDs, playlistID: playlistID)
       } label: {
-        Label("Remove from Playlist", systemImage: "minus.circle")
+        Label(String(localized: "i18n:ContextMenu.RemoveFromPlaylist", bundle: #bundle), systemImage: "minus.circle")
       }
     }
   }

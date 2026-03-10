@@ -17,7 +17,7 @@ struct PlayingQueueView: View {
     VStack(spacing: 0) {
       // Header with controls
       HStack {
-        Text("Playing Queue")
+        Text(String(localized: "i18n:Queue.Header", bundle: #bundle))
           .font(.headline)
         Spacer()
         Button {
@@ -27,8 +27,8 @@ struct PlayingQueueView: View {
             .font(.caption)
         }
         .buttonStyle(.plain)
-        .help("Scramble queue order")
-        Text("\(player.queue.count) tracks")
+        .help(String(localized: "i18n:Queue.ScrambleHelp", bundle: #bundle))
+        Text(String(localized: "i18n:Queue.TrackCount", defaultValue: "\(player.queue.count) tracks", bundle: #bundle))
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -39,9 +39,9 @@ struct PlayingQueueView: View {
 
       if player.queue.isEmpty {
         ContentUnavailableView {
-          Label("Queue Empty", systemImage: "music.note.list")
+          Label(String(localized: "i18n:Queue.Empty", bundle: #bundle), systemImage: "music.note.list")
         } description: {
-          Text("Play an album or track to populate the queue.")
+          Text(String(localized: "i18n:Queue.EmptyDescription", bundle: #bundle))
         }
         .frame(minHeight: 200)
       } else {
@@ -151,7 +151,7 @@ struct PlayingQueueRow: View {
           .lineLimit(1)
         HStack(spacing: 4) {
           Text(track.artist)
-          Text("·")
+          Text(verbatim: "·")
           Text(track.albumTitle)
         }
         .font(.caption)
@@ -174,7 +174,7 @@ struct PlayingQueueRow: View {
             .frame(width: 20, height: 20)
         }
         .buttonStyle(.plain)
-        .help("Move up")
+        .help(String(localized: "i18n:Queue.MoveUp", bundle: #bundle))
         .opacity(index > 0 ? 1 : 0.3)
         .disabled(index <= 0)
 
@@ -186,7 +186,7 @@ struct PlayingQueueRow: View {
             .frame(width: 20, height: 20)
         }
         .buttonStyle(.plain)
-        .help("Move down")
+        .help(String(localized: "i18n:Queue.MoveDown", bundle: #bundle))
         .opacity(index < queueCount - 1 ? 1 : 0.3)
         .disabled(index >= queueCount - 1)
 
@@ -199,7 +199,7 @@ struct PlayingQueueRow: View {
             .foregroundStyle(.red.opacity(0.6))
         }
         .buttonStyle(.plain)
-        .help("Remove from queue")
+        .help(String(localized: "i18n:Queue.RemoveFromQueue", bundle: #bundle))
       }
     }
     .padding(.vertical, 2)

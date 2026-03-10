@@ -48,8 +48,14 @@ public final class MusicLibrary {
   public var tracks: [Track] = []
   public var albums: [Album] = []
   public var playlists: [Playlist] = [
-    Playlist(name: "All Music", kind: .system),
-    Playlist(name: "Favorites", kind: .system),
+    Playlist(
+      name: String(localized: "i18n:Playlists.SystemLists.AllMusic", bundle: #bundle),
+      kind: .system
+    ),
+    Playlist(
+      name: String(localized: "i18n:Playlists.SystemLists.Favorites", bundle: #bundle),
+      kind: .system
+    ),
   ]
   public var isImporting: Bool = false
   public var artworkLoadingKeys: Set<String> = []
@@ -556,8 +562,14 @@ public final class MusicLibrary {
 
     // 保留系統播放清單（All Music 和 Favorites），只載入使用者建立的播放清單
     var newPlaylists: [Playlist] = [
-      Playlist(name: "All Music", kind: .system),
-      Playlist(name: "♥ Favorites", kind: .system),
+      Playlist(
+        name: String(localized: "i18n:Playlists.SystemLists.AllMusic", bundle: #bundle),
+        kind: .system
+      ),
+      Playlist(
+        name: String(localized: "i18n:Playlists.SystemLists.Favorites", bundle: #bundle),
+        kind: .system
+      ),
     ]
 
     for persistedPlaylist in persisted {

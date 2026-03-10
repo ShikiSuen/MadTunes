@@ -76,4 +76,14 @@ public enum AlbumSortOrder: String, CaseIterable, Sendable {
   case artistYearTitle = "Artist › Year › Title"
   case artistTitleYear = "Artist › Title › Year"
   case yearArtistTitle = "Year › Artist › Title"
+
+  // MARK: Internal
+
+  var localizedName: String {
+    switch self {
+    case .artistYearTitle: String(localized: "i18n:Sort.ArtistYearTitle", bundle: #bundle)
+    case .artistTitleYear: String(localized: "i18n:Sort.ArtistTitleYear", bundle: #bundle)
+    case .yearArtistTitle: String(localized: "i18n:Sort.YearArtistTitle", bundle: #bundle)
+    }
+  }
 }

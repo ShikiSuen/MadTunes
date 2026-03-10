@@ -28,16 +28,16 @@ public struct MadTunesScene: Scene {
       CommandGroup(replacing: .newItem) {
         switch OS.isAppKit {
         case true:
-          Button("Open Files / Folders…") {
+          Button(String(localized: "i18n:Menu.OpenFilesFolders", bundle: #bundle)) {
             MadTunesViewModel.shared.isFolderImporterPresented = true
           }
           .keyboardShortcut("o")
         case false:
-          Button("Open Files…") {
+          Button(String(localized: "i18n:Menu.OpenFiles", bundle: #bundle)) {
             MadTunesViewModel.shared.isFileImporterPresented = true
           }
           .keyboardShortcut("o")
-          Button("Open Folder…") {
+          Button(String(localized: "i18n:Menu.OpenFolder", bundle: #bundle)) {
             MadTunesViewModel.shared.isFolderImporterPresented = true
           }
           .keyboardShortcut("o", modifiers: [.command, .shift])
@@ -126,22 +126,22 @@ struct MadTunesMainView: View {
                 Button {
                   viewModel.isFolderImporterPresented = true
                 } label: {
-                  Label("Import Files / Folder…", systemImage: "folder")
+                  Label(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle), systemImage: "folder")
                 }
               case false:
                 Menu {
                   Button {
                     viewModel.isFileImporterPresented = true
                   } label: {
-                    Label("Import Files…", systemImage: "music.note")
+                    Label(String(localized: "i18n:Import.ImportFiles", bundle: #bundle), systemImage: "music.note")
                   }
                   Button {
                     viewModel.isFolderImporterPresented = true
                   } label: {
-                    Label("Import Folder…", systemImage: "folder")
+                    Label(String(localized: "i18n:Import.ImportFolder", bundle: #bundle), systemImage: "folder")
                   }
                 } label: {
-                  Label("Import Music", systemImage: "plus")
+                  Label(String(localized: "i18n:Import.ImportMusic", bundle: #bundle), systemImage: "plus")
                     .tint(.primary)
                 }
               }
@@ -150,14 +150,14 @@ struct MadTunesMainView: View {
           ToolbarItem(placement: .primaryAction) {
             if !viewModel.library.isImporting, !albums.isEmpty {
               Menu {
-                Picker("Sort", selection: $vm.albumSortOrder) {
+                Picker(String(localized: "i18n:Sort.Label", bundle: #bundle), selection: $vm.albumSortOrder) {
                   ForEach(AlbumSortOrder.allCases, id: \.self) { order in
-                    Text(order.rawValue).tag(order)
+                    Text(order.localizedName).tag(order)
                   }
                 }
                 .pickerStyle(.inline)
               } label: {
-                Label("Sort", systemImage: "arrow.up.arrow.down")
+                Label(String(localized: "i18n:Sort.Label", bundle: #bundle), systemImage: "arrow.up.arrow.down")
                   .tint(.primary)
               }
             }
@@ -169,7 +169,7 @@ struct MadTunesMainView: View {
                 viewModel.player.stop()
                 viewModel.library.clearDatabase()
               } label: {
-                Label("Clear Database", systemImage: "trash")
+                Label(String(localized: "i18n:Debug.ClearDatabase", bundle: #bundle), systemImage: "trash")
               }
             }
           }

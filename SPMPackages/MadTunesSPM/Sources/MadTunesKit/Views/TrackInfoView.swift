@@ -17,49 +17,101 @@ struct TrackInfoView: View {
     NavigationStack {
       List {
         // 基本資訊
-        Section("Basic Info") {
-          InfoRow(label: "Title", value: track.title)
-          InfoRow(label: "Artist", value: track.artist)
-          InfoRow(label: "Album", value: track.albumTitle)
-          InfoRow(label: "Album Artist", value: track.albumArtist.isEmpty ? "—" : track.albumArtist)
-          InfoRow(label: "Track Number", value: track.trackNumber > 0 ? String(track.trackNumber) : "—")
-          InfoRow(label: "Disc Number", value: track.discNumber > 0 ? String(track.discNumber) : "—")
-          InfoRow(label: "Duration", value: formatDuration(track.duration))
-          InfoRow(label: "Genre", value: track.genre.isEmpty ? "—" : track.genre)
-          InfoRow(label: "Year", value: track.year.map(String.init) ?? "—")
+        Section(String(localized: "i18n:TrackInfo.Sections.BasicInfo", bundle: #bundle)) {
+          InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Title", bundle: #bundle), value: track.title)
+          InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Artist", bundle: #bundle), value: track.artist)
+          InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Album", bundle: #bundle), value: track.albumTitle)
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.AlbumArtist", bundle: #bundle),
+            value: track.albumArtist.isEmpty ? "—" : track.albumArtist
+          )
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.TrackNumber", bundle: #bundle),
+            value: track.trackNumber > 0 ? String(track.trackNumber) : "—"
+          )
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.DiscNumber", bundle: #bundle),
+            value: track.discNumber > 0 ? String(track.discNumber) : "—"
+          )
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.Duration", bundle: #bundle),
+            value: formatDuration(track.duration)
+          )
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.Genre", bundle: #bundle),
+            value: track.genre.isEmpty ? "—" : track.genre
+          )
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.Year", bundle: #bundle),
+            value: track.year.map(String.init) ?? "—"
+          )
         }
 
         // 檔案資訊
-        Section("File Info") {
-          InfoRow(label: "File Path", value: track.fileURL.path)
+        Section(String(localized: "i18n:TrackInfo.Sections.FileInfo", bundle: #bundle)) {
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.FilePath", bundle: #bundle),
+            value: track.fileURL.path
+          )
           if let fileSize = detailedMetadata?.fileSize {
-            InfoRow(label: "File Size", value: formatFileSize(fileSize))
+            InfoRow(
+              label: String(localized: "i18n:TrackInfo.Labels.FileSize", bundle: #bundle),
+              value: formatFileSize(fileSize)
+            )
           }
         }
 
         // 音訊格式資訊
         if let detailed = detailedMetadata {
-          Section("Audio Format") {
-            InfoRow(label: "Codec", value: detailed.codec ?? "—")
+          Section(String(localized: "i18n:TrackInfo.Sections.AudioFormat", bundle: #bundle)) {
+            InfoRow(
+              label: String(localized: "i18n:TrackInfo.Labels.Codec", bundle: #bundle),
+              value: detailed.codec ?? "—"
+            )
             if let bitDepth = detailed.bitDepth {
-              InfoRow(label: "Bit Depth", value: "\(bitDepth)-bit")
+              InfoRow(
+                label: String(localized: "i18n:TrackInfo.Labels.BitDepth", bundle: #bundle),
+                value: String(
+                  localized: "i18n:TrackInfo.Values.BitDepthFormat",
+                  defaultValue: "\(bitDepth)-bit",
+                  bundle: #bundle
+                )
+              )
             }
             if let sampleRate = detailed.sampleRate {
-              InfoRow(label: "Sample Rate", value: formatSampleRate(sampleRate))
+              InfoRow(
+                label: String(localized: "i18n:TrackInfo.Labels.SampleRate", bundle: #bundle),
+                value: formatSampleRate(sampleRate)
+              )
             }
             if let channelCount = detailed.channelCount {
-              InfoRow(label: "Channels", value: channelCount == 1 ? "Mono" : "\(channelCount)ch")
+              InfoRow(
+                label: String(localized: "i18n:TrackInfo.Labels.Channels", bundle: #bundle),
+                value: channelCount == 1 ? String(localized: "i18n:TrackInfo.Values.Mono", bundle: #bundle) :
+                  String(
+                    localized: "i18n:TrackInfo.Values.ChannelCountFormat",
+                    defaultValue: "\(channelCount)ch",
+                    bundle: #bundle
+                  )
+              )
             }
             if let bitrate = detailed.bitrate {
-              InfoRow(label: "Bitrate", value: "\(bitrate / 1000) kbps")
+              InfoRow(
+                label: String(localized: "i18n:TrackInfo.Labels.Bitrate", bundle: #bundle),
+                value: String(
+                  localized: "i18n:TrackInfo.Values.BitrateFormat",
+                  defaultValue: "\(bitrate / 1000) kbps",
+                  bundle: #bundle
+                )
+              )
             }
           }
         }
       }
-      .navigationTitle("Track Info")
+      .navigationTitle(String(localized: "i18n:TrackInfo.Title", bundle: #bundle))
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
-          Button("Done") { dismiss() }
+          Button(String(localized: "i18n:Common.Done", bundle: #bundle)) { dismiss() }
         }
       }
     }
@@ -84,37 +136,56 @@ struct MultiTrackInfoView: View {
     NavigationStack {
       List {
         // 統計資訊
-        Section("Statistics") {
-          InfoRow(label: "Tracks", value: "\(tracks.count)")
-          InfoRow(label: "Total Duration", value: formatDuration(totalDuration))
-          InfoRow(label: "Total File Size", value: totalFileSize.map(formatFileSize) ?? "—")
-          InfoRow(label: "Average Track Length", value: formatDuration(averageDuration))
+        Section(String(localized: "i18n:TrackInfo.Sections.Statistics", bundle: #bundle)) {
+          InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Tracks", bundle: #bundle), value: "\(tracks.count)")
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.TotalDuration", bundle: #bundle),
+            value: formatDuration(totalDuration)
+          )
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.TotalFileSize", bundle: #bundle),
+            value: totalFileSize.map(formatFileSize) ?? "—"
+          )
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.AverageTrackLength", bundle: #bundle),
+            value: formatDuration(averageDuration)
+          )
 
           if let commonAlbum = commonAlbum, !commonAlbum.isEmpty {
-            InfoRow(label: "Album", value: commonAlbum)
+            InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Album", bundle: #bundle), value: commonAlbum)
           }
           if let commonArtist = commonArtist, !commonArtist.isEmpty {
-            InfoRow(label: "Artist", value: commonArtist)
+            InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Artist", bundle: #bundle), value: commonArtist)
           }
           if let commonAlbumArtist = commonAlbumArtist, !commonAlbumArtist.isEmpty {
-            InfoRow(label: "Album Artist", value: commonAlbumArtist)
+            InfoRow(
+              label: String(localized: "i18n:TrackInfo.Labels.AlbumArtist", bundle: #bundle),
+              value: commonAlbumArtist
+            )
           }
           if let yearRange = yearRange {
-            InfoRow(label: "Year Range", value: yearRange)
+            InfoRow(label: String(localized: "i18n:TrackInfo.Labels.YearRange", bundle: #bundle), value: yearRange)
           }
         }
 
         // 音訊格式統計
-        Section("Audio Formats") {
+        Section(String(localized: "i18n:TrackInfo.Sections.AudioFormats", bundle: #bundle)) {
           ForEach(Array(codecCounts.sorted(by: { $0.value > $1.value })), id: \.key) { codec, count in
-            InfoRow(label: codec.isEmpty ? "Unknown" : codec, value: "\(count) tracks")
+            InfoRow(
+              label: codec.isEmpty ? String(localized: "i18n:TrackInfo.Values.Unknown", bundle: #bundle) : codec,
+              value: String(
+                localized: "i18n:TrackInfo.Values.TrackCountFormat",
+                defaultValue: "\(count) tracks",
+                bundle: #bundle
+              )
+            )
           }
         }
       }
-      .navigationTitle("Multiple Tracks")
+      .navigationTitle(String(localized: "i18n:TrackInfo.MultipleTracksTitle", bundle: #bundle))
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
-          Button("Done") { dismiss() }
+          Button(String(localized: "i18n:Common.Done", bundle: #bundle)) { dismiss() }
         }
       }
     }
