@@ -47,7 +47,6 @@ struct PlayerControlsView: View {
           duration: player.duration,
           onSeek: { player.seek(to: $0) }
         )
-        .frame(minWidth: 500)
         HStack(spacing: 16) {
           // Now-playing info (left)
           nowPlayingInfo
@@ -67,9 +66,12 @@ struct PlayerControlsView: View {
         .frame(height: sansBezel ? 26 : 34)
         HStack {
           Button {
-            // Tap this to toggle the time between `currentTime` and `remainingTime`.
+            showRemainingTime.toggle()
           } label: {
-            Text(formatDuration(player.currentTime))
+            let timeText = showRemainingTime
+              ? "-\(formatDuration(max(0, player.duration - player.currentTime)))"
+              : formatDuration(player.currentTime)
+            Text(timeText)
               .fontWidth(.standard)
               .font(.caption.monospacedDigit())
               .frame(height: 6, alignment: .center)
@@ -81,6 +83,7 @@ struct PlayerControlsView: View {
             .font(.caption.monospacedDigit())
             .frame(height: 6, alignment: .center)
         }
+        .frame(minWidth: 500)
       }
     }
     .fixedSize(horizontal: false, vertical: true)
@@ -90,6 +93,7 @@ struct PlayerControlsView: View {
   // MARK: Private
 
   @State private var isQueuePopoverPresented = false
+  @State private var showRemainingTime = false
 
   private var volumeIcon: String {
     if player.volume <= 0 { return "speaker.slash.fill" }
