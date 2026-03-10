@@ -19,6 +19,7 @@ struct AlbumGridView: View {
   private let minItemWidth: CGFloat = 160
   private let spacing: CGFloat = 16
 
+  @State private var vm: MadTunesViewModel = .shared
   @State private var screenVM: ScreenVM = .shared
   @State private var expandedAlbumWasInView = false
 
@@ -58,8 +59,8 @@ struct AlbumGridView: View {
           }
         }
         .padding(spacing)
-        .frame(width: canvasWidth - 24, alignment: .leading)
       }
+      .frame(width: canvasWidth, alignment: .leading)
       .onChange(of: expandedAlbumID) { _, newValue in
         guard let newValue else { return }
         Task { @MainActor in
@@ -108,6 +109,12 @@ struct AlbumGridView: View {
           isMultipleSelection: isMultiSelection
         )
         .contentShape(Rectangle())
+        .animation(
+          .easeOut(duration: 0.12),
+          value: vm.library.artworkLoadingKeys.contains(
+            vm.library.albumKey(title: album.title, artist: album.artist)
+          )
+        )
         .onTapGesture(count: 2) {
           Task { @MainActor in
             // Double-clicking an already-expanded album should NOT collapse it.

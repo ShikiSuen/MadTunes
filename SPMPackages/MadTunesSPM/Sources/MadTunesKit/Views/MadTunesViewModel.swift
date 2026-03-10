@@ -12,6 +12,8 @@ import UniformTypeIdentifiers
 final class MadTunesViewModel {
   // MARK: Internal
 
+  static let shared = MadTunesViewModel()
+
   var library = MusicLibrary()
   var player = AudioPlayer()
   var selectedPlaylistID: UUID?

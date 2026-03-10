@@ -191,7 +191,7 @@ struct MadTunesMainView: View {
 
   // MARK: Private
 
-  @State private var viewModel = MadTunesViewModel()
+  @State private var viewModel = MadTunesViewModel.shared
   @State private var viewColumn: NavigationSplitViewColumn = .content
   @FocusState private var isContentFocused: Bool
 
