@@ -7,13 +7,13 @@ import UniformTypeIdentifiers
 public enum SupportedFormats {
   /// File extensions supported for audio playback, matching r128x's format list.
   public static let fileExtensions: Set<String> = [
-    "mov", "mp4", "mp3", "mp2", "m4a", "aac",
+    "mp3", "mp2", "m4a", "aac",
     "wav", "aif", "ogg", "aiff", "caf",
     "sd2", "ac3", "flac",
   ]
 
-  /// UTTypes for the file importer (audio + video containers).
-  public static let fileImportTypes: [UTType] = [.audio, .movie]
+  /// UTTypes for the file importer (audio).
+  public static let fileImportTypes: [UTType] = [.audio]
 
   /// UTType for folder import.
   public static let folderImportTypes: [UTType] = [.folder]

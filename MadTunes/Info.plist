@@ -14,7 +14,6 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.audio</string>
-				<string>public.movie</string>
 				<string>com.apple.m4a-audio</string>
 				<string>public.mp3</string>
 				<string>public.mpeg-4-audio</string>
