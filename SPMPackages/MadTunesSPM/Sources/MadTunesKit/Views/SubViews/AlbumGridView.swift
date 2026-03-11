@@ -136,6 +136,7 @@ struct AlbumGridView: View {
           rubberBandRectOverlay
         }
       }
+      .scrollContentBackground(.hidden)
       .frame(width: canvasWidth, alignment: .leading)
       .onChange(of: expandedAlbumID) { _, newValue in
         guard let newValue else { return }

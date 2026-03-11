@@ -40,6 +40,8 @@ struct MadTunesMainView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
           ZStack {
+            Color.primary.opacity(0.05)
+              .ignoresSafeArea(.all)
             switch OS.isAppKit {
             case true:
               Color.clear
@@ -75,6 +77,7 @@ struct MadTunesMainView: View {
                 }
             }
           }
+          .ignoresSafeArea(.all)
         }
         .safeAreaInset(edge: .bottom) {
           ZStack {
@@ -159,52 +162,50 @@ struct MadTunesMainView: View {
   @ViewBuilder
   private func contentArea(albums displayAlbums: [Album]) -> some View {
     @Bindable var vm = viewModel
-    NavigationStack {
-      Color.clear
-        .overlay {
-          AlbumGridView(
-            albums: displayAlbums,
-            expandedAlbumID: $vm.expandedAlbumID,
-            highlightedAlbumIDs: $vm.highlightedAlbumIDs,
-            selectedTrackIDs: $vm.selectedTrackIDs,
-            currentTrackID: viewModel.player.currentTrack?.id,
-            onTrackSelected: { track, albumTracks in
-              viewModel.onTrackSelected(track, albumTracks)
-            },
-            onAlbumDoubleClicked: { album in
-              viewModel.onAlbumDoubleClicked(album)
-            }
-          )
-          .focusable()
-          .focused($isContentFocused)
-          .focusEffectDisabled()
-        }
-        .searchable(
-          text: $vm.searchText,
-          placement: .toolbar,
-          prompt: String(localized: "i18n:Search.Prompt", bundle: #bundle)
+    Color.clear
+      .overlay {
+        AlbumGridView(
+          albums: displayAlbums,
+          expandedAlbumID: $vm.expandedAlbumID,
+          highlightedAlbumIDs: $vm.highlightedAlbumIDs,
+          selectedTrackIDs: $vm.selectedTrackIDs,
+          currentTrackID: viewModel.player.currentTrack?.id,
+          onTrackSelected: { track, albumTracks in
+            viewModel.onTrackSelected(track, albumTracks)
+          },
+          onAlbumDoubleClicked: { album in
+            viewModel.onAlbumDoubleClicked(album)
+          }
         )
-    }
-    .environment(viewModel)
-    .onKeyPress { press in
-      viewModel.handleKeyPress(press, albums: displayAlbums)
-    }
-    .onChange(of: viewModel.expandedAlbumID) { _, _ in
-      viewModel.selectedTrackIDs.removeAll()
-    }
-    .onChange(of: viewModel.highlightedAlbumIDs) { _, _ in
-      isContentFocused = true
-    }
-    .onChange(of: viewModel.selectedPlaylistID) { _, _ in
-      viewModel.resetColumnBrowserFilters()
-      viewModel.searchText = ""
-    }
-    .overlay {
-      ContentAvailabilityOverlay(
-        displayAlbums: displayAlbums,
-        selectedPlaylist: viewModel.library.playlists.first(where: { $0.id == viewModel.selectedPlaylistID })
+        .focusable()
+        .focused($isContentFocused)
+        .focusEffectDisabled()
+      }
+      .searchable(
+        text: $vm.searchText,
+        placement: .toolbar,
+        prompt: String(localized: "i18n:Search.Prompt", bundle: #bundle)
       )
-    }
+      .environment(viewModel)
+      .onKeyPress { press in
+        viewModel.handleKeyPress(press, albums: displayAlbums)
+      }
+      .onChange(of: viewModel.expandedAlbumID) { _, _ in
+        viewModel.selectedTrackIDs.removeAll()
+      }
+      .onChange(of: viewModel.highlightedAlbumIDs) { _, _ in
+        isContentFocused = true
+      }
+      .onChange(of: viewModel.selectedPlaylistID) { _, _ in
+        viewModel.resetColumnBrowserFilters()
+        viewModel.searchText = ""
+      }
+      .overlay {
+        ContentAvailabilityOverlay(
+          displayAlbums: displayAlbums,
+          selectedPlaylist: viewModel.library.playlists.first(where: { $0.id == viewModel.selectedPlaylistID })
+        )
+      }
   }
 }
 
