@@ -43,6 +43,8 @@ struct AlbumGridView: View {
   @State private var newPlaylistName = ""
   @State private var trackIDsForNewPlaylist: Set<UUID> = []
 
+  @State private var expansionDebouncer: Debouncer = .init(delay: 0.3)
+
   private var canvasWidth: CGFloat {
     screenVM.mainColumnCanvasSizeObserved.width
   }
@@ -307,28 +309,37 @@ struct AlbumGridView: View {
             vm.library.albumKey(title: album.title, artist: album.artist)
           )
         )
-        .onTapGesture(count: 2) {
+        // 外置 simultaneousGesture 可以徹底消滅單擊時的延遲。
+        // 但這樣在執行內層雙擊任務時會連帶觸發單擊的操作，所以需要「首發准許型 Debounce」處理。
+        .onTapGesture(count: 1) {
           Task { @MainActor in
-            // Double-clicking an already-expanded album should NOT collapse it.
-            if expandedAlbumID != album.id {
+            expansionDebouncer.debounceOnMain(keepFirstAttemptInstead: true) {
               withAnimation(.easeInOut(duration: 0.3)) {
                 handleTrackRowSelection(album: album)
               }
-            } else {
-              highlightedAlbumIDs = [album.id]
-            }
-          }
-          Task { @MainActor in
-            onAlbumDoubleClicked?(album)
-          }
-        }
-        .onTapGesture(count: 1) {
-          Task { @MainActor in
-            withAnimation(.easeInOut(duration: 0.3)) {
-              handleTrackRowSelection(album: album)
             }
           }
         }
+        .simultaneousGesture(
+          TapGesture(count: 2)
+            .onEnded { _ in
+              Task { @MainActor in
+                // Double-clicking an already-expanded album should NOT collapse it.
+                if expandedAlbumID != album.id {
+                  expansionDebouncer.debounceOnMain(keepFirstAttemptInstead: true) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                      handleTrackRowSelection(album: album)
+                    }
+                  }
+                } else {
+                  highlightedAlbumIDs = [album.id]
+                }
+              }
+              Task { @MainActor in
+                onAlbumDoubleClicked?(album)
+              }
+            }
+        )
         .contextMenu {
           albumContextMenu(for: album)
         }

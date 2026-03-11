@@ -215,19 +215,19 @@ struct ExpandedAlbumView: View {
                   isSelected: selectedTrackIDs.contains(track.id)
                 )
                 .contentShape(Rectangle())
+                // 外置 simultaneousGesture 可以徹底消滅單擊時的延遲。
+                // 這樣在執行內層雙擊任務時會連帶觸發單擊的操作。但在當前視圖這是符合需求的行為。
                 .onTapGesture(count: 2) {
-                  Task { @MainActor in
-                    handleTrackSelection(track, in: sorted)
-                  }
                   Task { @MainActor in
                     onTrackSelected(track, sorted)
                   }
                 }
-                .onTapGesture(count: 1) {
-                  Task { @MainActor in
-                    handleTrackSelection(track, in: sorted)
-                  }
-                }
+                .simultaneousGesture(
+                  TapGesture(count: 1)
+                    .onEnded { _ in
+                      handleTrackSelection(track, in: sorted)
+                    }
+                )
                 .background(
                   GeometryReader { geo in
                     Color.clear.preference(
