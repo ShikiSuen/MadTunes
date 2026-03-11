@@ -28,23 +28,40 @@ public struct MadTunesScene: Scene {
       CommandGroup(replacing: .newItem) {
         switch OS.isAppKit {
         case true:
-          Button(String(localized: "i18n:Menu.OpenFilesFolders", bundle: #bundle)) {
-            MadTunesViewModel.shared.isFolderImporterPresented = true
+          Button {
+            viewModel.isFolderImporterPresented = true
+          } label: {
+            Label(
+              String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle),
+              systemImage: "folder"
+            )
           }
           .keyboardShortcut("o")
         case false:
-          Button(String(localized: "i18n:Menu.OpenFiles", bundle: #bundle)) {
-            MadTunesViewModel.shared.isFileImporterPresented = true
+          Button {
+            viewModel.isFileImporterPresented = true
+          } label: {
+            Label(
+              String(localized: "i18n:Import.ImportFiles", bundle: #bundle),
+              systemImage: "music.note"
+            )
           }
           .keyboardShortcut("o")
-          Button(String(localized: "i18n:Menu.OpenFolder", bundle: #bundle)) {
-            MadTunesViewModel.shared.isFolderImporterPresented = true
+          Button {
+            viewModel.isFolderImporterPresented = true
+          } label: {
+            Label(
+              String(localized: "i18n:Import.ImportFolder", bundle: #bundle),
+              systemImage: "folder"
+            )
           }
           .keyboardShortcut("o", modifiers: [.command, .shift])
         }
       }
     }
   }
+
+  @State private var viewModel = MadTunesViewModel.shared
 }
 
 // MARK: - MadTunesMainView
