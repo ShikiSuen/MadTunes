@@ -32,7 +32,7 @@ struct PlayingQueueView: View {
           .font(.caption)
           .foregroundStyle(.secondary)
       }
-      .padding(.horizontal, 12)
+      .padding(.horizontal, 20)
       .padding(.vertical, 8)
 
       Divider()
@@ -72,6 +72,7 @@ struct PlayingQueueView: View {
           }
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         #if !os(macOS)
           .environment(\.editMode, .constant(.active))
         #endif
