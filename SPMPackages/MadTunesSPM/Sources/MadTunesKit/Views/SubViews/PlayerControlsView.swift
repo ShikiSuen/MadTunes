@@ -40,11 +40,29 @@ struct PlayerControlsView: View {
       let artWorkViewHeight: Double = sansBezel ? 28 : 40
       ArtworkView(data: artworkData)
         .frame(width: artWorkViewHeight, height: artWorkViewHeight)
+        .contentShape(Rectangle())
         .onTapGesture(count: 2) {
-          guard let track = player.currentTrack,
-                let album = vm.currentAlbums.first(where: { $0.tracks.contains { $0.id == track.id } })
-          else { return }
-          vm.scrollToAlbumID = album.id
+          guard let track = player.currentTrack else { return }
+          if let album = vm.currentAlbums.first(
+            where: { $0.allTrackIDsSet.contains(track.id) }
+          ) {
+            vm.scrollToAlbumID = album.id
+          } else if vm.isColumnBrowserFiltering || !vm.searchText.isEmpty {
+            // Album hidden by filters — reset and defer scroll.
+            let targetAlbum = vm.library.albums.first(
+              where: { $0.allTrackIDsSet.contains(track.id) }
+            )
+            guard let targetAlbum else { return }
+            vm.resetColumnBrowserFilters()
+            vm.searchText = ""
+            Task { @MainActor in
+              try? await Task.sleep(for: .milliseconds(150))
+              vm.scrollToAlbumID = targetAlbum.id
+            }
+          }
+        }
+        .onTapGesture(count: 1) {
+          // Required on macOS so the double-tap gesture is not swallowed.
         }
       VStack(spacing: 0) {
         // Progress scrubber

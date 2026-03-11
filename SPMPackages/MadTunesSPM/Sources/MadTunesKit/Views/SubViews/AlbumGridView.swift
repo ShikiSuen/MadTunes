@@ -160,8 +160,17 @@ struct AlbumGridView: View {
       .onChange(of: vm.scrollToAlbumID) { _, newValue in
         guard let albumID = newValue else { return }
         vm.scrollToAlbumID = nil
-        withAnimation(.easeInOut(duration: 0.3)) {
-          proxy.scrollTo(albumID, anchor: .center)
+        // Compute the row offset that contains the target album.
+        // ForEach uses `id: \.offset` so `proxy.scrollTo(offset)` works
+        // even for rows that LazyVStack hasn't realised yet.
+        let rows = albums.chunked(into: columnCount)
+        guard let rowIndex = rows.firstIndex(where: { $0.contains { $0.id == albumID } })
+        else { return }
+        Task { @MainActor in
+          try? await Task.sleep(for: .milliseconds(50))
+          withAnimation(.easeInOut(duration: 0.3)) {
+            proxy.scrollTo(rowIndex, anchor: .center)
+          }
         }
       }
     }
@@ -322,7 +331,6 @@ struct AlbumGridView: View {
         .contextMenu {
           albumContextMenu(for: album)
         }
-        .id(album.id)
         .frame(maxWidth: .infinity)
       }
       // Invisible spacers to keep alignment when the row is not full.
