@@ -33,6 +33,9 @@ final class MadTunesViewModel {
   // Keyword search
   var searchText: String = ""
 
+  // Scroll-to-album trigger (set by artwork double-click, consumed by AlbumGridView)
+  var scrollToAlbumID: UUID?
+
   // Column Browser filter state (empty set = "All")
   var columnBrowserSelectedGenres: Set<String> = []
   var columnBrowserSelectedArtists: Set<String> = []

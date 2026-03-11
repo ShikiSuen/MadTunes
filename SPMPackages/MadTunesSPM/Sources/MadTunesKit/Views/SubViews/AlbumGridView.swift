@@ -157,6 +157,13 @@ struct AlbumGridView: View {
           }
         }
       }
+      .onChange(of: vm.scrollToAlbumID) { _, newValue in
+        guard let albumID = newValue else { return }
+        vm.scrollToAlbumID = nil
+        withAnimation(.easeInOut(duration: 0.3)) {
+          proxy.scrollTo(albumID, anchor: .center)
+        }
+      }
     }
   }
 
@@ -315,6 +322,7 @@ struct AlbumGridView: View {
         .contextMenu {
           albumContextMenu(for: album)
         }
+        .id(album.id)
         .frame(maxWidth: .infinity)
       }
       // Invisible spacers to keep alignment when the row is not full.

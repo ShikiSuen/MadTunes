@@ -40,6 +40,12 @@ struct PlayerControlsView: View {
       let artWorkViewHeight: Double = sansBezel ? 28 : 40
       ArtworkView(data: artworkData)
         .frame(width: artWorkViewHeight, height: artWorkViewHeight)
+        .onTapGesture(count: 2) {
+          guard let track = player.currentTrack,
+                let album = vm.currentAlbums.first(where: { $0.tracks.contains { $0.id == track.id } })
+          else { return }
+          vm.scrollToAlbumID = album.id
+        }
       VStack(spacing: 0) {
         // Progress scrubber
         let scrubber = ProgressScrubber(
