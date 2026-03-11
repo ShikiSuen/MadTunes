@@ -210,18 +210,24 @@ public enum MetadataReader: Sendable {
       }
 
       // Fallback chains:
-      // - Artist: metadata artist → composer → "Unknown Artist"
+      // - Artist: metadata artist → composer → album artist → "Unknown Artist"
       // - Album: metadata album → track title → "Unknown Album"
       let effectiveArtist: String
-      if let artist, !artist.isEmpty { effectiveArtist = artist } else if let composer,
-                                                                          !composer
-                                                                          .isEmpty { effectiveArtist = composer }
-      else { effectiveArtist = "Unknown Artist" }
+
+      if let artist, !artist.isEmpty {
+        effectiveArtist = artist
+      } else if let composer, !composer.isEmpty {
+        effectiveArtist = composer
+      } else if let albumArtist, !albumArtist.isEmpty {
+        effectiveArtist = albumArtist
+      } else {
+        effectiveArtist = "Unknown Artist"
+      }
 
       let effectiveAlbumTitle: String
-      if let albumName, !albumName.isEmpty { effectiveAlbumTitle = albumName } else if let title,
-                                                                                       !title
-                                                                                       .isEmpty {
+      if let albumName, !albumName.isEmpty {
+        effectiveAlbumTitle = albumName
+      } else if let title, !title.isEmpty {
         effectiveAlbumTitle = title
       } else {
         effectiveAlbumTitle =
