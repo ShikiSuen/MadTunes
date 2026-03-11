@@ -182,120 +182,123 @@ struct ExpandedAlbumView: View {
           || (track.year.map(String.init) ?? "").contains(query)
       }
     }
-    let hideArtist = album.allTrackArtistsSameAsAlbumArtist
-    let showDisc = album.showDiscNumber
-    let maxRowsPerColumn = 7
 
-    let columnCount = trackListColumnCount(
-      trackCount: sorted.count,
-      availableWidth: trackListWidth,
-      maxRowsPerColumn: maxRowsPerColumn
-    )
-    let useSingleColumn = columnCount == 1
-    let itemsPerColumn = Int(ceil(Double(sorted.count) / Double(columnCount)))
-    let columns: [[Track]] = stride(from: 0, to: sorted.count, by: itemsPerColumn).map {
-      Array(sorted[$0 ..< min($0 + itemsPerColumn, sorted.count)])
-    }
+    if !sorted.isEmpty {
+      let hideArtist = album.allTrackArtistsSameAsAlbumArtist
+      let showDisc = album.showDiscNumber
+      let maxRowsPerColumn = 7
 
-    HStack(alignment: .top, spacing: 6) {
-      ForEach(Array(columns.enumerated()), id: \.offset) { _, column in
-        VStack(spacing: 0) {
-          ForEach(Array(column.enumerated()), id: \.offset) { offset, track in
-            VStack(spacing: 0) {
-              if offset == 0 {
-                songDividerInList
-              }
-              TrackRow(
-                track: track,
-                hideArtist: hideArtist,
-                showDiscNumber: showDisc,
-                isPlaying: track.id == currentTrackID,
-                isSelected: selectedTrackIDs.contains(track.id)
-              )
-              .contentShape(Rectangle())
-              .onTapGesture(count: 2) {
-                Task { @MainActor in
-                  handleTrackSelection(track, in: sorted)
+      let columnCount = trackListColumnCount(
+        trackCount: sorted.count,
+        availableWidth: trackListWidth,
+        maxRowsPerColumn: maxRowsPerColumn
+      )
+      let useSingleColumn = columnCount == 1
+      let itemsPerColumn = Int(ceil(Double(sorted.count) / Double(columnCount)))
+      let columns: [[Track]] = stride(from: 0, to: sorted.count, by: itemsPerColumn).map {
+        Array(sorted[$0 ..< min($0 + itemsPerColumn, sorted.count)])
+      }
+
+      HStack(alignment: .top, spacing: 6) {
+        ForEach(Array(columns.enumerated()), id: \.offset) { _, column in
+          VStack(spacing: 0) {
+            ForEach(Array(column.enumerated()), id: \.offset) { offset, track in
+              VStack(spacing: 0) {
+                if offset == 0 {
+                  songDividerInList
                 }
-                Task { @MainActor in
-                  onTrackSelected(track, sorted)
+                TrackRow(
+                  track: track,
+                  hideArtist: hideArtist,
+                  showDiscNumber: showDisc,
+                  isPlaying: track.id == currentTrackID,
+                  isSelected: selectedTrackIDs.contains(track.id)
+                )
+                .contentShape(Rectangle())
+                .onTapGesture(count: 2) {
+                  Task { @MainActor in
+                    handleTrackSelection(track, in: sorted)
+                  }
+                  Task { @MainActor in
+                    onTrackSelected(track, sorted)
+                  }
                 }
-              }
-              .onTapGesture(count: 1) {
-                Task { @MainActor in
-                  handleTrackSelection(track, in: sorted)
+                .onTapGesture(count: 1) {
+                  Task { @MainActor in
+                    handleTrackSelection(track, in: sorted)
+                  }
                 }
-              }
-              .background(
-                GeometryReader { geo in
-                  Color.clear.preference(
-                    key: TrackFramePreferenceKey.self,
-                    value: [track.id: geo.frame(in: .named("trackList"))]
-                  )
-                }
-              )
-              .contextMenu {
-                let selectedTracks = selectedTrackIDs.contains(track.id)
-                  ? sorted.filter { selectedTrackIDs.contains($0.id) }
-                  : [track]
-                TrackContextMenu(
-                  tracks: selectedTracks,
-                  library: vm.library,
-                  audioPlayer: vm.player,
-                  currentPlaylistID: vm.selectedPlaylistID,
-                  onShowTrackInfo: {
-                    tracksForTrackInfo = selectedTracks
-                    Task {
-                      var metadataList: [DetailedTrackMetadata?] = []
-                      for tr in tracksForTrackInfo {
-                        let metadata = await MetadataReader.readDetailedMetadata(from: tr.fileURL)
-                        metadataList.append(metadata)
-                      }
-                      detailedMetadataList = metadataList
-                      isTrackInfoPresented = true
-                    }
-                  },
-                  onShowDeleteConfirmation: {
-                    tracksToDelete = selectedTracks
-                    showDeleteConfirmation = true
-                  },
-                  onNewPlaylistWithTracks: { trackIDs in
-                    trackIDsForNewPlaylist = trackIDs
-                    newPlaylistName = ""
-                    showNewPlaylistAlert = true
+                .background(
+                  GeometryReader { geo in
+                    Color.clear.preference(
+                      key: TrackFramePreferenceKey.self,
+                      value: [track.id: geo.frame(in: .named("trackList"))]
+                    )
                   }
                 )
+                .contextMenu {
+                  let selectedTracks = selectedTrackIDs.contains(track.id)
+                    ? sorted.filter { selectedTrackIDs.contains($0.id) }
+                    : [track]
+                  TrackContextMenu(
+                    tracks: selectedTracks,
+                    library: vm.library,
+                    audioPlayer: vm.player,
+                    currentPlaylistID: vm.selectedPlaylistID,
+                    onShowTrackInfo: {
+                      tracksForTrackInfo = selectedTracks
+                      Task {
+                        var metadataList: [DetailedTrackMetadata?] = []
+                        for tr in tracksForTrackInfo {
+                          let metadata = await MetadataReader.readDetailedMetadata(from: tr.fileURL)
+                          metadataList.append(metadata)
+                        }
+                        detailedMetadataList = metadataList
+                        isTrackInfoPresented = true
+                      }
+                    },
+                    onShowDeleteConfirmation: {
+                      tracksToDelete = selectedTracks
+                      showDeleteConfirmation = true
+                    },
+                    onNewPlaylistWithTracks: { trackIDs in
+                      trackIDsForNewPlaylist = trackIDs
+                      newPlaylistName = ""
+                      showNewPlaylistAlert = true
+                    }
+                  )
+                }
+                songDividerInList
               }
-              songDividerInList
             }
           }
-        }
-        // 僅單欄時，最大欄寬 500px。
-        .frame(
-          maxWidth: useSingleColumn ? 500 : .infinity,
-          alignment: .leading
-        )
-      }
-      if useSingleColumn {
-        Spacer()
-      }
-    }
-    .coordinateSpace(name: "trackList")
-    .onPreferenceChange(TrackFramePreferenceKey.self) { trackFrames = $0 }
-    .gesture(
-      DragGesture(minimumDistance: 4, coordinateSpace: .named("trackList"))
-        .onChanged { value in
-          handleDragSelection(
-            startLocation: value.startLocation,
-            currentLocation: value.location,
-            sorted: sorted
+          // 僅單欄時，最大欄寬 500px。
+          .frame(
+            maxWidth: useSingleColumn ? 500 : .infinity,
+            alignment: .leading
           )
         }
-        .onEnded { _ in
-          isDragSelecting = false
-          dragAnchorTrackID = nil
+        if useSingleColumn {
+          Spacer()
         }
-    )
+      }
+      .coordinateSpace(name: "trackList")
+      .onPreferenceChange(TrackFramePreferenceKey.self) { trackFrames = $0 }
+      .gesture(
+        DragGesture(minimumDistance: 4, coordinateSpace: .named("trackList"))
+          .onChanged { value in
+            handleDragSelection(
+              startLocation: value.startLocation,
+              currentLocation: value.location,
+              sorted: sorted
+            )
+          }
+          .onEnded { _ in
+            isDragSelecting = false
+            dragAnchorTrackID = nil
+          }
+      )
+    }
   }
 
   @ViewBuilder private var songCountAndLengthView: some View {
