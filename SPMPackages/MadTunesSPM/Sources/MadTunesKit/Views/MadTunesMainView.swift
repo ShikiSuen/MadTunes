@@ -119,18 +119,6 @@ struct MadTunesMainView: View {
               }
             }
           }
-          #if DEBUG
-          ToolbarItem(placement: .primaryAction) {
-            if !viewModel.library.isImporting, !albums.isEmpty {
-              Button {
-                viewModel.player.stop()
-                viewModel.library.clearDatabase()
-              } label: {
-                Label(String(localized: "i18n:Debug.ClearDatabase", bundle: #bundle), systemImage: "trash")
-              }
-            }
-          }
-          #endif
         }
     }
     #if os(macOS) || targetEnvironment(macCatalyst)

@@ -57,6 +57,24 @@ public struct MadTunesScene: Scene {
           }
           .keyboardShortcut("o", modifiers: [.command, .shift])
         }
+        #if DEBUG
+        Divider()
+        Menu {
+          if !viewModel.library.isImporting, !viewModel.library.albums.isEmpty {
+            Button(role: .destructive) {
+              viewModel.player.stop()
+              viewModel.library.clearDatabase()
+            } label: {
+              Label(
+                String(localized: "i18n:Debug.ClearDatabase", bundle: #bundle),
+                systemImage: "trash"
+              )
+            }
+          }
+        } label: {
+          Label("# DEBUG".description, systemImage: "pc")
+        }
+        #endif
       }
     }
   }
