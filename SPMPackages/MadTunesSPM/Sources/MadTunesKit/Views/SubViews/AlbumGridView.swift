@@ -326,8 +326,10 @@ struct AlbumGridView: View {
         .frame(maxWidth: .infinity)
       }
       // Invisible spacers to keep alignment when the row is not full.
-      if row.count < columnCount {
-        ForEach(0 ..< (columnCount - row.count), id: \.self) { _ in
+      // Defensive: ensure spacerCount is never negative (edge case: columnCount may change during resize).
+      let spacerCount = max(0, columnCount - row.count)
+      if spacerCount > 0 {
+        ForEach(0 ..< spacerCount, id: \.self) { _ in
           Color.clear.frame(maxWidth: .infinity).aspectRatio(1, contentMode: .fit)
         }
       }

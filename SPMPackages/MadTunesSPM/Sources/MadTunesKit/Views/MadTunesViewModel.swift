@@ -398,7 +398,8 @@ final class MadTunesViewModel {
       let maxPossibleColumns = max(1, Int(trackListWidth / minColumnWidth))
       let desiredColumns = sorted.count > maxRowsPerColumn ? maxPossibleColumns : 1
       let columnCount = max(1, min(sorted.count, desiredColumns))
-      let itemsPerColumn = Int(ceil(Double(sorted.count) / Double(columnCount)))
+      // Defensive: avoid division by zero; itemsPerColumn is at least 1 when sorted is not empty.
+      let itemsPerColumn = sorted.isEmpty ? 0 : Int(ceil(Double(sorted.count) / Double(columnCount)))
 
       switch press.key {
       case .upArrow:

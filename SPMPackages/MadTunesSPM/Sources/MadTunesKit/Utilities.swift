@@ -21,8 +21,12 @@ func formatDuration(_ duration: TimeInterval) -> String {
 // MARK: - Array Chunking
 
 extension Array {
+  /// Splits the array into chunks of the specified size.
+  /// - Parameter size: The maximum size of each chunk (must be > 0).
+  /// - Returns: An array of chunks. Returns empty array if `size` <= 0 or if the original array is empty.
   func chunked(into size: Int) -> [[Element]] {
-    guard size > 0 else { return [] }
+    // Defensive: guard against invalid size and empty array to avoid runtime issues with stride.
+    guard size > 0, !isEmpty else { return [] }
     return stride(from: 0, to: count, by: size).map {
       Array(self[$0 ..< Swift.min($0 + size, count)])
     }
