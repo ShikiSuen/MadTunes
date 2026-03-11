@@ -1961,6 +1961,34 @@
         }
       }
     },
+    "i18n:TrackInfo.FallbackNotice" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fields shown with strikethrough were automatically filled in because the original metadata is missing. The actual situation is subject to the track's own metadata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取り消し線で表示されている項目は、元のメタデータが欠落しているため自動的に補完されたものです。実際の情報は楽曲自体のメタデータに準じます。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以删除线标注的栏位为因原始中继资料缺失而自动填充的内容，实际情况以原始乐曲自身的中继资料为准。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以刪除線標注的欄位為因原始中繼資料缺失而自動填寫的內容，實際情況以原始樂曲自身的中繼資料為準。"
+          }
+        }
+      }
+    },
     "i18n:TrackInfo.Labels.Album" : {
       "localizations" : {
         "en" : {

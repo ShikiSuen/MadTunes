@@ -24,6 +24,7 @@ final class PersistedTrack {
     self.duration = track.duration
     self.genre = track.genre
     self.year = track.year
+    self.fallbackFieldsRawValue = track.fallbackFields.rawValue
   }
 
   // MARK: Internal
@@ -40,6 +41,7 @@ final class PersistedTrack {
   var duration: Double
   var genre: String
   var year: Int?
+  var fallbackFieldsRawValue: Int = 0
 
   func toTrack() -> Track? {
     guard let id = UUID(uuidString: trackID),
@@ -55,7 +57,8 @@ final class PersistedTrack {
       discNumber: discNumber,
       duration: duration,
       genre: genre,
-      year: year
+      year: year,
+      fallbackFields: TrackFieldFallbacks(rawValue: fallbackFieldsRawValue)
     )
     track.bookmarkData = bookmarkData
     return track

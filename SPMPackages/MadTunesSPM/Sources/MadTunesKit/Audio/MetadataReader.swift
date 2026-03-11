@@ -212,16 +212,20 @@ public enum MetadataReader: Sendable {
       // Fallback chains:
       // - Artist: metadata artist → composer → album artist → "Unknown Artist"
       // - Album: metadata album → track title → "Unknown Album"
+      var fallbacks: TrackFieldFallbacks = []
       let effectiveArtist: String
 
       if let artist, !artist.isEmpty {
         effectiveArtist = artist
       } else if let composer, !composer.isEmpty {
         effectiveArtist = composer
+        fallbacks.insert(.artist)
       } else if let albumArtist, !albumArtist.isEmpty {
         effectiveArtist = albumArtist
+        fallbacks.insert(.artist)
       } else {
         effectiveArtist = "Unknown Artist"
+        fallbacks.insert(.artist)
       }
 
       let effectiveAlbumTitle: String
@@ -229,9 +233,11 @@ public enum MetadataReader: Sendable {
         effectiveAlbumTitle = albumName
       } else if let title, !title.isEmpty {
         effectiveAlbumTitle = title
+        fallbacks.insert(.albumTitle)
       } else {
         effectiveAlbumTitle =
           "Unknown Album"
+        fallbacks.insert(.albumTitle)
       }
 
       let track = Track(
@@ -244,7 +250,8 @@ public enum MetadataReader: Sendable {
         discNumber: discNumber,
         duration: duration.isFinite ? duration : 0,
         genre: genre,
-        year: year
+        year: year,
+        fallbackFields: fallbacks
       )
 
       return TrackMetadata(track: track, artworkData: artworkData)

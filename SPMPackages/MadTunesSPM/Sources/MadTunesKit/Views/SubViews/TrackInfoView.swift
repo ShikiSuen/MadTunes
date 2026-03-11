@@ -18,12 +18,25 @@ struct TrackInfoView: View {
       List {
         // 基本資訊
         Section(String(localized: "i18n:TrackInfo.Sections.BasicInfo", bundle: #bundle)) {
-          InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Title", bundle: #bundle), value: track.title)
-          InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Artist", bundle: #bundle), value: track.artist)
-          InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Album", bundle: #bundle), value: track.albumTitle)
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.Title", bundle: #bundle),
+            value: track.title,
+            isFallback: track.fallbackFields.contains(.title)
+          )
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.Artist", bundle: #bundle),
+            value: track.artist,
+            isFallback: track.fallbackFields.contains(.artist)
+          )
+          InfoRow(
+            label: String(localized: "i18n:TrackInfo.Labels.Album", bundle: #bundle),
+            value: track.albumTitle,
+            isFallback: track.fallbackFields.contains(.albumTitle)
+          )
           InfoRow(
             label: String(localized: "i18n:TrackInfo.Labels.AlbumArtist", bundle: #bundle),
-            value: track.albumArtist.isEmpty ? "—" : track.albumArtist
+            value: track.albumArtist.isEmpty ? "—" : track.albumArtist,
+            isFallback: track.fallbackFields.contains(.albumArtist)
           )
           InfoRow(
             label: String(localized: "i18n:TrackInfo.Labels.TrackNumber", bundle: #bundle),
@@ -45,6 +58,14 @@ struct TrackInfoView: View {
             label: String(localized: "i18n:TrackInfo.Labels.Year", bundle: #bundle),
             value: track.year.map(String.init) ?? "—"
           )
+        }
+
+        if !track.fallbackFields.isEmpty {
+          Section {
+            Text(String(localized: "i18n:TrackInfo.FallbackNotice", bundle: #bundle))
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+          }
         }
 
         // 檔案資訊
@@ -248,10 +269,13 @@ struct MultiTrackInfoView: View {
 private struct InfoRow: View {
   let label: String
   let value: String
+  var isFallback: Bool = false
 
   var body: some View {
     LabeledContent {
       Text(value)
+        .strikethrough(isFallback, color: .secondary)
+        .foregroundStyle(isFallback ? .secondary : .primary)
         .textSelection(.enabled)
     } label: {
       Text(label)

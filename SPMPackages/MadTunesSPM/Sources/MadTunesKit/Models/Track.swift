@@ -4,6 +4,29 @@
 
 import Foundation
 
+// MARK: - TrackFieldFallbacks
+
+public struct TrackFieldFallbacks: OptionSet, Sendable, Hashable {
+  // MARK: Lifecycle
+
+  public init(rawValue: Int) { self.rawValue = rawValue }
+
+  // MARK: Public
+
+  /// Title fell back to filename.
+  public static let title = TrackFieldFallbacks(rawValue: 1 << 0)
+  /// Artist fell back to composer, album artist, or "Unknown Artist".
+  public static let artist = TrackFieldFallbacks(rawValue: 1 << 1)
+  /// Album title fell back to track title or "Unknown Album".
+  public static let albumTitle = TrackFieldFallbacks(rawValue: 1 << 2)
+  /// Album artist fell back to (effective) artist.
+  public static let albumArtist = TrackFieldFallbacks(rawValue: 1 << 3)
+
+  public let rawValue: Int
+}
+
+// MARK: - Track
+
 public struct Track: Identifiable, Hashable, Sendable {
   // MARK: Lifecycle
 
@@ -18,7 +41,8 @@ public struct Track: Identifiable, Hashable, Sendable {
     discNumber: Int = 0,
     duration: TimeInterval = 0,
     genre: String = "",
-    year: Int? = nil
+    year: Int? = nil,
+    fallbackFields: TrackFieldFallbacks = []
   ) {
     self.id = id
     self.fileURL = fileURL
@@ -31,6 +55,11 @@ public struct Track: Identifiable, Hashable, Sendable {
     self.duration = duration
     self.genre = genre
     self.year = year
+    // Merge caller-provided fallback flags with init-level fallbacks.
+    var fb = fallbackFields
+    if title == nil { fb.insert(.title) }
+    if albumArtist.isEmpty { fb.insert(.albumArtist) }
+    self.fallbackFields = fb
   }
 
   // MARK: Public
@@ -47,4 +76,5 @@ public struct Track: Identifiable, Hashable, Sendable {
   public var genre: String
   public var year: Int?
   public var bookmarkData: Data?
+  public var fallbackFields: TrackFieldFallbacks = []
 }
