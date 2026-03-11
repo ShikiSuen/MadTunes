@@ -32,6 +32,7 @@ final class MadTunesViewModel {
 
   // Keyword search
   var searchText: String = ""
+  var searchFilterMode: SearchFilterMode = .either
 
   // Scroll-to-album trigger (set by artwork double-click, consumed by AlbumGridView)
   var scrollToAlbumID: UUID?
@@ -62,15 +63,32 @@ final class MadTunesViewModel {
     let query = searchText.trimmingCharacters(in: .whitespaces)
     if !query.isEmpty {
       result = result.filter { album in
-        album.title.localizedCaseInsensitiveContains(query)
-          || album.artist.localizedCaseInsensitiveContains(query)
-          || album.tracks.contains { track in
+        // 先檢查專輯層級的欄位（根據過濾模式）
+        let albumMatches: Bool = switch searchFilterMode {
+        case .trackTitle:
+          false // 專輯標題不屬於曲目名稱
+        case .artist:
+          album.artist.localizedCaseInsensitiveContains(query)
+        case .either:
+          album.artist.localizedCaseInsensitiveContains(query)
+        }
+
+        // 檢查曲目層級的欄位
+        let trackMatches = album.tracks.contains { track in
+          switch searchFilterMode {
+          case .trackTitle:
+            track.title.localizedCaseInsensitiveContains(query)
+          case .artist:
+            track.artist.localizedCaseInsensitiveContains(query)
+              || track.albumArtist.localizedCaseInsensitiveContains(query)
+          case .either:
             track.title.localizedCaseInsensitiveContains(query)
               || track.artist.localizedCaseInsensitiveContains(query)
-              || track.genre.localizedCaseInsensitiveContains(query)
               || track.albumArtist.localizedCaseInsensitiveContains(query)
-              || (track.year.map(String.init) ?? "").contains(query)
           }
+        }
+
+        return albumMatches || trackMatches
       }
     }
     return sortedAlbums(result)
@@ -169,10 +187,36 @@ final class MadTunesViewModel {
   }
 
   func onAlbumDoubleClicked(_ album: Album) {
-    let tracks = album.sortedTracks
-    guard tracks.first != nil else { return }
-    player.setQueue(tracks, startingAt: 0)
+    let tracks = filteredTracksForPlayback(from: album)
+    guard let firstTrack = tracks.first else { return }
+    guard let startIndex = tracks.firstIndex(where: { $0.id == firstTrack.id }) else { return }
+    player.setQueue(tracks, startingAt: startIndex)
     highlightedAlbumIDs = [album.id]
+  }
+
+  /// 從專輯中取得符合當前搜尋條件的曲目，用於播放。
+  /// 如果沒有搜尋條件，返回該專輯所有曲目。
+  func filteredTracksForPlayback(from album: Album) -> [Track] {
+    let query = searchText.trimmingCharacters(in: .whitespaces)
+    let allTracks = album.sortedTracks
+
+    guard !query.isEmpty else {
+      return allTracks
+    }
+
+    return allTracks.filter { track in
+      switch searchFilterMode {
+      case .trackTitle:
+        return track.title.localizedCaseInsensitiveContains(query)
+      case .artist:
+        return track.artist.localizedCaseInsensitiveContains(query)
+          || track.albumArtist.localizedCaseInsensitiveContains(query)
+      case .either:
+        return track.title.localizedCaseInsensitiveContains(query)
+          || track.artist.localizedCaseInsensitiveContains(query)
+          || track.albumArtist.localizedCaseInsensitiveContains(query)
+      }
+    }
   }
 
   func importURLs(_ urls: [URL]) {
