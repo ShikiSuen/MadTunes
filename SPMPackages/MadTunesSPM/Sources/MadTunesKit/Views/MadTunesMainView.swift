@@ -178,6 +178,9 @@ struct MadTunesMainView: View {
     .onChange(of: viewModel.highlightedAlbumIDs) { _, _ in
       isContentFocused = true
     }
+    .onChange(of: viewModel.selectedPlaylistID) { _, _ in
+      viewModel.resetColumnBrowserFilters()
+    }
     .overlay {
       ContentAvailabilityOverlay(
         displayAlbums: displayAlbums,

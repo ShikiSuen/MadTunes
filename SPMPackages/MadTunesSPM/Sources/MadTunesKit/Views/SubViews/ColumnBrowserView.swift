@@ -1,0 +1,179 @@
+// (c) 2026 and onwards Shiki Suen (AGPL v3.0 License or later).
+// ====================
+// This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
+
+import SwiftUI
+
+// MARK: - ColumnBrowserView
+
+/// A three-column filter popover (Genre / Artist / Album) modelled after
+/// iTunes' Column Browser but using a modern popover interaction with native Tables.
+/// Each column supports multiple selection; selecting "All" clears the column.
+struct ColumnBrowserView: View {
+  // MARK: Internal
+
+  var body: some View {
+    VStack(spacing: 0) {
+      // Header with controls
+      HStack(alignment: .bottom) {
+        Text(String(localized: "i18n:ColumnBrowser.Title", bundle: #bundle))
+          .font(.headline)
+        Spacer()
+        if vm.isColumnBrowserFiltering {
+          Button(role: .destructive) {
+            vm.resetColumnBrowserFilters()
+          } label: {
+            Text(String(localized: "i18n:ColumnBrowser.ClearAll", bundle: #bundle))
+              .font(.caption)
+              .foregroundStyle(.primary)
+          }
+          .tint(.red)
+          .controlSize(.mini)
+        }
+      }
+      .padding(.horizontal, 20)
+      .frame(height: 28)
+      Grid(horizontalSpacing: 0, verticalSpacing: 0) {
+        GridRow {
+          Group {
+            Text(String(localized: "i18n:ColumnBrowser.Genres", bundle: #bundle))
+            Text(String(localized: "i18n:ColumnBrowser.Artists", bundle: #bundle))
+            Text(String(localized: "i18n:ColumnBrowser.Albums", bundle: #bundle))
+          }
+          .font(.caption)
+          .fontWeight(.semibold)
+          .foregroundStyle(.secondary)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 4)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .background {
+            Rectangle()
+              .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
+          }
+        }
+        GridRow {
+          filterColumnTable(
+            title: String(localized: "i18n:ColumnBrowser.Genres", bundle: #bundle),
+            allLabel: String(localized: "i18n:ColumnBrowser.AllGenres", bundle: #bundle),
+            items: vm.columnBrowserGenres,
+            selection: $vm.columnBrowserSelectedGenres,
+            onSelectionChange: {
+              // Cascade: if genre selection changed, update available artists/albums
+              vm.columnBrowserSelectedArtists.formIntersection(Set(vm.columnBrowserArtists))
+              vm.columnBrowserSelectedAlbumTitles.formIntersection(Set(vm.columnBrowserAlbumTitles))
+            }
+          )
+          filterColumnTable(
+            title: String(localized: "i18n:ColumnBrowser.Artists", bundle: #bundle),
+            allLabel: String(localized: "i18n:ColumnBrowser.AllArtists", bundle: #bundle),
+            items: vm.columnBrowserArtists,
+            selection: $vm.columnBrowserSelectedArtists,
+            onSelectionChange: {
+              // Cascade: if artist selection changed, update available albums
+              vm.columnBrowserSelectedAlbumTitles.formIntersection(Set(vm.columnBrowserAlbumTitles))
+            }
+          )
+          filterColumnTable(
+            title: String(localized: "i18n:ColumnBrowser.Albums", bundle: #bundle),
+            allLabel: String(localized: "i18n:ColumnBrowser.AllAlbums", bundle: #bundle),
+            items: vm.columnBrowserAlbumTitles,
+            selection: $vm.columnBrowserSelectedAlbumTitles,
+            onSelectionChange: {}
+          )
+        }
+      }
+    }
+    .frame(width: 640, height: 300)
+  }
+
+  // MARK: Private
+
+  @State private var vm: MadTunesViewModel = .shared
+  @Environment(\.colorScheme) private var colorScheme
+
+  // MARK: - Table-based filter column
+
+  @ViewBuilder
+  private func filterColumnTable(
+    title: String,
+    allLabel: String,
+    items: [String],
+    selection: Binding<Set<String>>,
+    onSelectionChange: @escaping () -> Void
+  )
+    -> some View {
+    Table(tableItems(allLabel: allLabel, items: items), selection: selection) {
+      TableColumn(title) { item in
+        Text(item.label)
+          .font(.caption)
+          .lineLimit(1)
+          .truncationMode(.tail)
+          .listRowBackground(Color.clear)
+      }
+    }
+    .contextMenu(forSelectionType: String.self) { _ in } primaryAction: { _ in
+      vm.playFilteredTracks()
+    }
+    .tableColumnHeaders(.hidden)
+    .tableStyle(.inset)
+    .contrast(colorScheme == .dark ? 1.5 : 1)
+    .blendMode(colorScheme == .dark ? .plusLighter : .plusDarker)
+    .modifier(TableSelectionHandler(
+      selection: selection,
+      allItems: items,
+      onSelectionChange: onSelectionChange
+    ))
+  }
+
+  /// Build table items: prepend "All" entry, then list regular items.
+  /// When "All" is in selection, clear it; when anything else is added, remove "All".
+  private func tableItems(allLabel: String, items: [String]) -> [FilterTableItem] {
+    var result = [FilterTableItem(value: "__all__", label: allLabel)]
+    result.append(contentsOf: items.map { FilterTableItem(value: $0, label: $0) })
+    return result
+  }
+}
+
+// MARK: - TableSelectionHandler
+
+/// Custom modifier to handle "All" row logic and cascade filtering.
+private struct TableSelectionHandler: ViewModifier {
+  @Binding var selection: Set<String>
+
+  let allItems: [String]
+  let onSelectionChange: () -> Void
+
+  func body(content: Content) -> some View {
+    content
+      .onChange(of: selection) { oldValue, newValue in
+        // Check if "__all__" was toggled
+        let hadAll = oldValue.contains("__all__")
+        let hasAll = newValue.contains("__all__")
+
+        if hasAll, !hadAll {
+          // "All" was just selected → clear selection (empty = all items)
+          selection = []
+          onSelectionChange()
+        } else if !hasAll, hadAll {
+          // "All" was just deselected → no-op, already cleared
+          onSelectionChange()
+        } else if hasAll, newValue.count > 1 {
+          // If "All" is present with other items, remove "__all__" (user selected a specific item)
+          selection.remove("__all__")
+          onSelectionChange()
+        } else {
+          // Regular item toggled
+          onSelectionChange()
+        }
+      }
+  }
+}
+
+// MARK: - FilterTableItem
+
+private struct FilterTableItem: Identifiable {
+  let value: String
+  let label: String
+
+  var id: String { value }
+}

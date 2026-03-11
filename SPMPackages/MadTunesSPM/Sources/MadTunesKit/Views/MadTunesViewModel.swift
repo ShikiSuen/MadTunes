@@ -30,29 +30,90 @@ final class MadTunesViewModel {
   var albumSortOrder: AlbumSortOrder = .artistYearTitle
   var screenVM = ScreenVM.shared
 
+  // Column Browser filter state (empty set = "All")
+  var columnBrowserSelectedGenres: Set<String> = []
+  var columnBrowserSelectedArtists: Set<String> = []
+  var columnBrowserSelectedAlbumTitles: Set<String> = []
+
   var gridColumnCount: Int {
     let width = screenVM.mainColumnCanvasSizeObserved.width
     return max(1, Int((width - gridSpacing) / (minItemWidth + gridSpacing)))
   }
 
-  // MARK: - Computed Helpers
-
   var currentAlbums: [Album] {
-    let unsorted: [Album]
-    if let playlistID = selectedPlaylistID,
-       let playlist = library.playlists.first(where: { $0.id == playlistID }),
-       playlist.id != library.playlists.first?.id {
-      unsorted = library.albums(for: playlist)
-    } else {
-      unsorted = library.albums
+    var result = unfilteredAlbums
+    if !columnBrowserSelectedGenres.isEmpty {
+      result = result.filter { album in
+        album.tracks.contains { columnBrowserSelectedGenres.contains($0.genre) }
+      }
     }
-    return sortedAlbums(unsorted)
+    if !columnBrowserSelectedArtists.isEmpty {
+      result = result.filter { columnBrowserSelectedArtists.contains($0.artist) }
+    }
+    if !columnBrowserSelectedAlbumTitles.isEmpty {
+      result = result.filter { columnBrowserSelectedAlbumTitles.contains($0.title) }
+    }
+    return sortedAlbums(result)
+  }
+
+  /// Whether any column browser filter is active.
+  var isColumnBrowserFiltering: Bool {
+    !columnBrowserSelectedGenres.isEmpty
+      || !columnBrowserSelectedArtists.isEmpty
+      || !columnBrowserSelectedAlbumTitles.isEmpty
+  }
+
+  /// All unique genres from the currently visible playlist (before column browser filter).
+  var columnBrowserGenres: [String] {
+    let genres = Set(unfilteredAlbums.flatMap { $0.tracks.map(\.genre) })
+    return genres.filter { !$0.isEmpty }.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+  }
+
+  /// Unique artists available given the current genre filter.
+  var columnBrowserArtists: [String] {
+    var source = unfilteredAlbums
+    if !columnBrowserSelectedGenres.isEmpty {
+      source = source.filter { album in
+        album.tracks.contains { columnBrowserSelectedGenres.contains($0.genre) }
+      }
+    }
+    let artists = Set(source.map(\.artist))
+    return artists.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+  }
+
+  /// Unique album titles available given the current genre + artist filter.
+  var columnBrowserAlbumTitles: [String] {
+    var source = unfilteredAlbums
+    if !columnBrowserSelectedGenres.isEmpty {
+      source = source.filter { album in
+        album.tracks.contains { columnBrowserSelectedGenres.contains($0.genre) }
+      }
+    }
+    if !columnBrowserSelectedArtists.isEmpty {
+      source = source.filter { columnBrowserSelectedArtists.contains($0.artist) }
+    }
+    let titles = Set(source.map(\.title))
+    return titles.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
   }
 
   var currentTrackArtwork: Data? {
     guard let track = player.currentTrack else { return nil }
     let key = library.albumKey(title: track.albumTitle, artist: track.albumArtist)
     return library.artworkCache[key]
+  }
+
+  /// Resets column browser filters.
+  func resetColumnBrowserFilters() {
+    columnBrowserSelectedGenres = []
+    columnBrowserSelectedArtists = []
+    columnBrowserSelectedAlbumTitles = []
+  }
+
+  /// Plays all tracks matching the current column browser filter state.
+  func playFilteredTracks() {
+    let tracks = currentAlbums.flatMap(\.sortedTracks)
+    guard !tracks.isEmpty else { return }
+    player.setQueue(tracks, startingAt: 0)
   }
 
   // MARK: - Sorting
@@ -178,6 +239,18 @@ final class MadTunesViewModel {
 
   private let minItemWidth: CGFloat = 160
   private let gridSpacing: CGFloat = 16
+
+  // MARK: - Computed Helpers
+
+  /// Albums from the current playlist, before column browser filtering.
+  private var unfilteredAlbums: [Album] {
+    if let playlistID = selectedPlaylistID,
+       let playlist = library.playlists.first(where: { $0.id == playlistID }),
+       playlist.id != library.playlists.first?.id {
+      return library.albums(for: playlist)
+    }
+    return library.albums
+  }
 
   private func handleGridKeyPress(_ press: KeyPress, albums: [Album]) -> KeyPress.Result {
     guard !albums.isEmpty else { return .ignored }

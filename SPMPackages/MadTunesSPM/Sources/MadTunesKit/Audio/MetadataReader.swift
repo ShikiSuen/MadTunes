@@ -199,6 +199,16 @@ public enum MetadataReader: Sendable {
         year = await loadYear(from: iTunesMeta, id: .iTunesMetadataReleaseDate)
       }
 
+      // Genre: try iTunes user genre, ID3 content type (TCON), QuickTime genre.
+      var genre = ""
+      if let g = await loadString(from: iTunesMeta, id: .iTunesMetadataUserGenre) {
+        genre = g
+      } else if let g = await loadString(from: iTunesMeta, id: .id3MetadataContentType) {
+        genre = g
+      } else if let g = await loadString(from: iTunesMeta, id: .quickTimeMetadataGenre) {
+        genre = g
+      }
+
       // Fallback chains:
       // - Artist: metadata artist → composer → "Unknown Artist"
       // - Album: metadata album → track title → "Unknown Album"
@@ -227,6 +237,7 @@ public enum MetadataReader: Sendable {
         trackNumber: trackNumber,
         discNumber: discNumber,
         duration: duration.isFinite ? duration : 0,
+        genre: genre,
         year: year
       )
 

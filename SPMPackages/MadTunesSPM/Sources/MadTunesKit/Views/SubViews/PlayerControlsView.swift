@@ -53,6 +53,7 @@ struct PlayerControlsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
           HStack(spacing: 4) {
+            columnBrowserToggleButton
             transportControls
             queueToggleButton
           }
@@ -92,6 +93,8 @@ struct PlayerControlsView: View {
 
   // MARK: Private
 
+  @State private var vm: MadTunesViewModel = .shared
+  @State private var isColumnBrowserPopoverPresented = false
   @State private var isQueuePopoverPresented = false
   @State private var showRemainingTime = false
 
@@ -190,6 +193,30 @@ struct PlayerControlsView: View {
     }
     .buttonStyle(.plain)
     .help(loopBehaviorTooltip)
+  }
+
+  @ViewBuilder private var columnBrowserToggleButton: some View {
+    let isFiltering = vm.isColumnBrowserFiltering
+    let iconName = (isFiltering || isColumnBrowserPopoverPresented)
+      ? "line.3.horizontal.decrease.circle.fill"
+      : "line.3.horizontal.decrease.circle"
+    let iconColor: Color = isColumnBrowserPopoverPresented
+      ? .primary
+      : (isFiltering ? .red : .secondary)
+    Button {
+      isColumnBrowserPopoverPresented.toggle()
+    } label: {
+      Image(systemName: iconName)
+        .font(.callout)
+        .frame(width: 28, height: 28)
+        .contentShape(.rect)
+        .foregroundStyle(iconColor)
+    }
+    .buttonStyle(.plain)
+    .popover(isPresented: $isColumnBrowserPopoverPresented) {
+      ColumnBrowserView()
+    }
+    .help(String(localized: "i18n:ColumnBrowser.Title", bundle: #bundle))
   }
 
   @ViewBuilder private var queueToggleButton: some View {
