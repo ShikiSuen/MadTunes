@@ -7,7 +7,7 @@ import SwiftUI
 
 /// Overlay that shows an importing spinner (with real-time filename) or an
 /// empty-library placeholder when no albums are present.
-struct LibraryContentAvailabilityOverlayView: View {
+struct ContentAvailabilityOverlay: View {
   // MARK: Internal
 
   let displayAlbums: [Album]
@@ -110,7 +110,7 @@ struct LibraryContentAvailabilityOverlayView: View {
     return playlist.id == viewModel.library.playlists.first?.id
   }
 
-  /// 是否為「♥ Favorites」頁面。
+  /// 是否為「Favorites」頁面。
   private var isFavoritesPage: Bool {
     guard let playlist = selectedPlaylist,
           viewModel.library.playlists.count > 1 else { return false }
