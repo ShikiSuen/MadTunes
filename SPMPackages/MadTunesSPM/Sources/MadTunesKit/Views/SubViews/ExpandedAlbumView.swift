@@ -170,7 +170,18 @@ struct ExpandedAlbumView: View {
   }
 
   @ViewBuilder private var trackList: some View {
-    let sorted = album.sortedTracks
+    let query = vm.searchText.trimmingCharacters(in: .whitespaces)
+    let sorted: [Track] = if query.isEmpty {
+      album.sortedTracks
+    } else {
+      album.sortedTracks.filter { track in
+        track.title.localizedCaseInsensitiveContains(query)
+          || track.artist.localizedCaseInsensitiveContains(query)
+          || track.genre.localizedCaseInsensitiveContains(query)
+          || track.albumArtist.localizedCaseInsensitiveContains(query)
+          || (track.year.map(String.init) ?? "").contains(query)
+      }
+    }
     let hideArtist = album.allTrackArtistsSameAsAlbumArtist
     let showDisc = album.showDiscNumber
     let maxRowsPerColumn = 7

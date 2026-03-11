@@ -30,6 +30,9 @@ final class MadTunesViewModel {
   var albumSortOrder: AlbumSortOrder = .artistYearTitle
   var screenVM = ScreenVM.shared
 
+  // Keyword search
+  var searchText: String = ""
+
   // Column Browser filter state (empty set = "All")
   var columnBrowserSelectedGenres: Set<String> = []
   var columnBrowserSelectedArtists: Set<String> = []
@@ -52,6 +55,20 @@ final class MadTunesViewModel {
     }
     if !columnBrowserSelectedAlbumTitles.isEmpty {
       result = result.filter { columnBrowserSelectedAlbumTitles.contains($0.title) }
+    }
+    let query = searchText.trimmingCharacters(in: .whitespaces)
+    if !query.isEmpty {
+      result = result.filter { album in
+        album.title.localizedCaseInsensitiveContains(query)
+          || album.artist.localizedCaseInsensitiveContains(query)
+          || album.tracks.contains { track in
+            track.title.localizedCaseInsensitiveContains(query)
+              || track.artist.localizedCaseInsensitiveContains(query)
+              || track.genre.localizedCaseInsensitiveContains(query)
+              || track.albumArtist.localizedCaseInsensitiveContains(query)
+              || (track.year.map(String.init) ?? "").contains(query)
+          }
+      }
     }
     return sortedAlbums(result)
   }

@@ -179,6 +179,11 @@ struct MadTunesMainView: View {
           .focused($isContentFocused)
           .focusEffectDisabled()
         }
+        .searchable(
+          text: $vm.searchText,
+          placement: .toolbar,
+          prompt: String(localized: "i18n:Search.Prompt", bundle: #bundle)
+        )
     }
     .environment(viewModel)
     .onKeyPress { press in
@@ -192,6 +197,7 @@ struct MadTunesMainView: View {
     }
     .onChange(of: viewModel.selectedPlaylistID) { _, _ in
       viewModel.resetColumnBrowserFilters()
+      viewModel.searchText = ""
     }
     .overlay {
       ContentAvailabilityOverlay(

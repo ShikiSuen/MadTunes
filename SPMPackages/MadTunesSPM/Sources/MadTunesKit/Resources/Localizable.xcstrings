@@ -1625,6 +1625,34 @@
         }
       }
     },
+    "i18n:Search.Prompt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検索"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜尋"
+          }
+        }
+      }
+    },
     "i18n:Sidebar.Alert.NewNamePlaceholder" : {
       "localizations" : {
         "en" : {
