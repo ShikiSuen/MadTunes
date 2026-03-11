@@ -23,6 +23,7 @@ public struct MadTunesScene: Scene {
   public var body: some Scene {
     WindowGroup {
       MadTunesMainView()
+        .frame(minHeight: 514)
     }
     .commands {
       CommandGroup(replacing: .newItem) {
