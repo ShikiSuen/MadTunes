@@ -142,7 +142,21 @@ public final class MusicLibrary {
         guard let track = optionalTrack else { continue }
 
         currentProcessingFileName = track.fileURL.lastPathComponent
-        if !existingURLs.contains(track.fileURL) {
+        if existingURLs.contains(track.fileURL) {
+          // Duplicate: update existing track's metadata in-place.
+          if let idx = tracks.firstIndex(where: { $0.fileURL == track.fileURL }) {
+            tracks[idx].title = track.title
+            tracks[idx].artist = track.artist
+            tracks[idx].albumTitle = track.albumTitle
+            tracks[idx].albumArtist = track.albumArtist
+            tracks[idx].trackNumber = track.trackNumber
+            tracks[idx].discNumber = track.discNumber
+            tracks[idx].duration = track.duration
+            tracks[idx].genre = track.genre
+            tracks[idx].year = track.year
+            tracks[idx].fallbackFields = track.fallbackFields
+          }
+        } else {
           existingURLs.insert(track.fileURL)
           pendingTracks.append(track)
         }
