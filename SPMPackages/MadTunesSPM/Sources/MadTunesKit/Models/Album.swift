@@ -87,3 +87,24 @@ public enum AlbumSortOrder: String, CaseIterable, Sendable {
     }
   }
 }
+
+// MARK: - SearchFilterMode
+
+/// 搜尋過濾模式：決定搜尋文字要比對哪些欄位
+public enum SearchFilterMode: String, CaseIterable, Sendable {
+  case trackTitle = "Track Title"
+  case albumTitle = "Album Title"
+  case artist = "Artist & Album Artist"
+  case either = "Either"
+
+  // MARK: Internal
+
+  var localizedName: String {
+    switch self {
+    case .trackTitle: String(localized: "i18n:SearchFilterMode.TrackTitle", bundle: #bundle)
+    case .albumTitle: String(localized: "i18n:SearchFilterMode.AlbumTitle", bundle: #bundle)
+    case .artist: String(localized: "i18n:SearchFilterMode.Artist", bundle: #bundle)
+    case .either: String(localized: "i18n:SearchFilterMode.Either", bundle: #bundle)
+    }
+  }
+}

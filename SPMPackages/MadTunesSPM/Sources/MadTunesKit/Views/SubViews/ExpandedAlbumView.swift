@@ -169,19 +169,40 @@ struct ExpandedAlbumView: View {
     .padding(.bottom, 8)
   }
 
-  @ViewBuilder private var trackList: some View {
-    let query = vm.searchText.trimmingCharacters(in: .whitespaces)
-    let sorted: [Track] = if query.isEmpty {
-      album.sortedTracks
-    } else {
+  /// 根據當前搜尋條件過濾曲目，若曲目無匹配但專輯匹配則顯示全部
+  private func filteredTracksForAlbumView(query: String) -> [Track] {
+    let filtered: [Track] = switch vm.searchFilterMode {
+    case .trackTitle:
+      album.sortedTracks.filter { track in
+        track.title.localizedCaseInsensitiveContains(query)
+      }
+    case .albumTitle:
+      // 在專輯內檢視時，如果搜尋模式是專輯名稱且該專輯符合條件，顯示所有曲目
+      album.title.localizedCaseInsensitiveContains(query) ? album.sortedTracks : []
+    case .artist:
+      album.sortedTracks.filter { track in
+        track.artist.localizedCaseInsensitiveContains(query)
+          || track.albumArtist.localizedCaseInsensitiveContains(query)
+      }
+    case .either:
       album.sortedTracks.filter { track in
         track.title.localizedCaseInsensitiveContains(query)
           || track.artist.localizedCaseInsensitiveContains(query)
-          || track.genre.localizedCaseInsensitiveContains(query)
           || track.albumArtist.localizedCaseInsensitiveContains(query)
-          || (track.year.map(String.init) ?? "").contains(query)
       }
     }
+    // 如果過濾後為空，但專輯本身符合搜尋條件（專輯名稱或藝人），則顯示所有曲目
+    if filtered.isEmpty {
+      let albumMatches = album.title.localizedCaseInsensitiveContains(query)
+        || album.artist.localizedCaseInsensitiveContains(query)
+      return albumMatches ? album.sortedTracks : filtered
+    }
+    return filtered
+  }
+
+  @ViewBuilder private var trackList: some View {
+    let query = vm.searchText.trimmingCharacters(in: .whitespaces)
+    let sorted: [Track] = query.isEmpty ? album.sortedTracks : filteredTracksForAlbumView(query: query)
 
     if !sorted.isEmpty {
       let hideArtist = album.allTrackArtistsSameAsAlbumArtist

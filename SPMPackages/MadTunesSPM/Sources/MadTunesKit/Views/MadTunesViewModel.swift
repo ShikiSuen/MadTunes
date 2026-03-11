@@ -67,10 +67,13 @@ final class MadTunesViewModel {
         let albumMatches: Bool = switch searchFilterMode {
         case .trackTitle:
           false // 專輯標題不屬於曲目名稱
+        case .albumTitle:
+          album.title.localizedCaseInsensitiveContains(query)
         case .artist:
           album.artist.localizedCaseInsensitiveContains(query)
         case .either:
-          album.artist.localizedCaseInsensitiveContains(query)
+          album.title.localizedCaseInsensitiveContains(query)
+            || album.artist.localizedCaseInsensitiveContains(query)
         }
 
         // 檢查曲目層級的欄位
@@ -78,6 +81,8 @@ final class MadTunesViewModel {
           switch searchFilterMode {
           case .trackTitle:
             track.title.localizedCaseInsensitiveContains(query)
+          case .albumTitle:
+            false // 專輯名稱模式不檢查曲目層級
           case .artist:
             track.artist.localizedCaseInsensitiveContains(query)
               || track.albumArtist.localizedCaseInsensitiveContains(query)
@@ -204,10 +209,17 @@ final class MadTunesViewModel {
       return allTracks
     }
 
+    // 專輯名稱模式：如果該專輯符合搜尋條件，返回所有曲目；否則返回空陣列
+    if searchFilterMode == .albumTitle {
+      return album.title.localizedCaseInsensitiveContains(query) ? allTracks : []
+    }
+
     return allTracks.filter { track in
       switch searchFilterMode {
       case .trackTitle:
         return track.title.localizedCaseInsensitiveContains(query)
+      case .albumTitle:
+        return true // 已由上方處理
       case .artist:
         return track.artist.localizedCaseInsensitiveContains(query)
           || track.albumArtist.localizedCaseInsensitiveContains(query)

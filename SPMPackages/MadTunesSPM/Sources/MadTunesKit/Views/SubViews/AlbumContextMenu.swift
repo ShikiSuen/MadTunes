@@ -15,6 +15,8 @@ struct AlbumContextMenu: View {
     library: MusicLibrary,
     audioPlayer: AudioPlayer,
     currentPlaylistID: UUID? = nil,
+    searchText: String = "",
+    searchFilterMode: SearchFilterMode = .either,
     onShowTrackInfo: @escaping () -> Void,
     onShowDeleteConfirmation: @escaping () -> Void,
     onNewPlaylistWithTracks: @escaping (Set<UUID>) -> Void = { _ in }
@@ -23,6 +25,8 @@ struct AlbumContextMenu: View {
     self.library = library
     self.audioPlayer = audioPlayer
     self.currentPlaylistID = currentPlaylistID
+    self.searchText = searchText
+    self.searchFilterMode = searchFilterMode
     self.onShowTrackInfo = onShowTrackInfo
     self.onShowDeleteConfirmation = onShowDeleteConfirmation
     self.onNewPlaylistWithTracks = onNewPlaylistWithTracks
@@ -34,6 +38,8 @@ struct AlbumContextMenu: View {
   let library: MusicLibrary
   let audioPlayer: AudioPlayer
   let currentPlaylistID: UUID?
+  let searchText: String
+  let searchFilterMode: SearchFilterMode
   let onShowTrackInfo: () -> Void
   let onShowDeleteConfirmation: () -> Void
   let onNewPlaylistWithTracks: (Set<UUID>) -> Void
@@ -145,9 +151,35 @@ struct AlbumContextMenu: View {
   }
 
   private var sortedTracks: [Track] {
-    allTracks.sorted {
+    let tracks = allTracks.sorted {
       ($0.albumTitle, $0.discNumber, $0.trackNumber, $0.title)
         < ($1.albumTitle, $1.discNumber, $1.trackNumber, $1.title)
+    }
+
+    let query = searchText.trimmingCharacters(in: .whitespaces)
+    guard !query.isEmpty else {
+      return tracks
+    }
+
+    // 專輯名稱模式：返回所有曲目（因為專輯本身已經被過濾顯示）
+    if searchFilterMode == .albumTitle {
+      return tracks
+    }
+
+    return tracks.filter { track in
+      switch searchFilterMode {
+      case .trackTitle:
+        return track.title.localizedCaseInsensitiveContains(query)
+      case .albumTitle:
+        return true // 已由上方處理
+      case .artist:
+        return track.artist.localizedCaseInsensitiveContains(query)
+          || track.albumArtist.localizedCaseInsensitiveContains(query)
+      case .either:
+        return track.title.localizedCaseInsensitiveContains(query)
+          || track.artist.localizedCaseInsensitiveContains(query)
+          || track.albumArtist.localizedCaseInsensitiveContains(query)
+      }
     }
   }
 

@@ -393,6 +393,8 @@ struct AlbumGridView: View {
       library: vm.library,
       audioPlayer: vm.player,
       currentPlaylistID: vm.selectedPlaylistID,
+      searchText: vm.searchText,
+      searchFilterMode: vm.searchFilterMode,
       onShowTrackInfo: {
         showTrackInfo(for: selectedAlbums)
       },

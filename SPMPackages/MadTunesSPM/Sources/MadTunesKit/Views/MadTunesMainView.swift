@@ -133,6 +133,27 @@ struct MadTunesMainView: View {
               }
             }
           }
+          ToolbarItem(placement: .primaryAction) {
+            if !viewModel.library.isImporting, !albums.isEmpty {
+              Menu {
+                Picker(
+                  String(localized: "i18n:Search.SearchFields", bundle: #bundle),
+                  selection: $vm.searchFilterMode
+                ) {
+                  ForEach(SearchFilterMode.allCases, id: \.self) { mode in
+                    Text(mode.localizedName).tag(mode)
+                  }
+                }
+                .pickerStyle(.inline)
+              } label: {
+                Label(
+                  String(localized: "i18n:Search.SearchFields", bundle: #bundle),
+                  systemImage: "line.3.horizontal.decrease.circle"
+                )
+                .tint(.primary)
+              }
+            }
+          }
         }
     }
     #if os(macOS) || targetEnvironment(macCatalyst)
