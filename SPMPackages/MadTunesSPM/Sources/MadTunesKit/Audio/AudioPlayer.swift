@@ -142,7 +142,8 @@ public final class AudioPlayer {
     guard !queue.isEmpty else { return }
     switch loopBehavior {
     case .repeatOne:
-      play(queue[currentIndex])
+      seek(to: 0)
+      avPlayer?.play()
     case .shuffle:
       currentIndex = Int.random(in: 0 ..< queue.count)
       play(queue[currentIndex])
