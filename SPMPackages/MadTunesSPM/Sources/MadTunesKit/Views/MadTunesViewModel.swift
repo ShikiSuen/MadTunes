@@ -5,6 +5,14 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+#if canImport(AppKit)
+import AppKit
+#endif
+
+#if canImport(UIKit)
+import UIKit
+#endif
+
 // MARK: - MadTunesViewModel
 
 @Observable
@@ -281,9 +289,92 @@ final class MadTunesViewModel {
     return found
   }
 
+  // MARK: - Select All & Copy
+
+  /// 選中所有肉眼可見的專輯（受 Column Browser 與搜尋篩選影響）
+  func selectAllVisibleAlbums() {
+    highlightedAlbumIDs = Set(currentAlbums.map(\.id))
+  }
+
+  /// 獲取指定專輯中經過篩選的曲目（與 ExpandedAlbumView 邏輯一致）
+  func filteredTracks(for album: Album) -> [Track] {
+    let query = searchText.trimmingCharacters(in: .whitespaces)
+    guard !query.isEmpty else { return album.sortedTracks }
+
+    let filtered: [Track] = switch searchFilterMode {
+    case .trackTitle:
+      album.sortedTracks.filter { track in
+        track.title.localizedCaseInsensitiveContains(query)
+      }
+    case .albumTitle:
+      album.title.localizedCaseInsensitiveContains(query) ? album.sortedTracks : []
+    case .artist:
+      album.sortedTracks.filter { track in
+        track.artist.localizedCaseInsensitiveContains(query)
+          || track.albumArtist.localizedCaseInsensitiveContains(query)
+      }
+    case .either:
+      album.sortedTracks.filter { track in
+        track.title.localizedCaseInsensitiveContains(query)
+          || track.artist.localizedCaseInsensitiveContains(query)
+          || track.albumArtist.localizedCaseInsensitiveContains(query)
+      }
+    }
+    // 如果過濾後為空，但專輯本身符合搜尋條件，則顯示所有曲目
+    if filtered.isEmpty {
+      let albumMatches = album.title.localizedCaseInsensitiveContains(query)
+        || album.artist.localizedCaseInsensitiveContains(query)
+      return albumMatches ? album.sortedTracks : filtered
+    }
+    return filtered
+  }
+
+  /// 選中指定專輯中所有肉眼可見的曲目
+  func selectAllVisibleTracks(in album: Album) {
+    let tracks = filteredTracks(for: album)
+    selectedTrackIDs = Set(tracks.map(\.id))
+  }
+
+  /// 複製選中曲目的中繼資料到剪貼簿
+  func copySelectedTracksMetadata() {
+    let tracks = selectedTrackIDs.compactMap { trackID in
+      library.tracks.first { $0.id == trackID }
+    }
+    guard !tracks.isEmpty else { return }
+
+    let tsv = tracksToTSV(tracks)
+    #if os(macOS)
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(tsv, forType: .string)
+    #else
+    UIPasteboard.general.string = tsv
+    #endif
+  }
+
   // MARK: - Keyboard Navigation
 
   func handleKeyPress(_ press: KeyPress, albums: [Album]) -> KeyPress.Result {
+    // CMD+A: Select All
+    if press.characters == "a", press.modifiers.contains(.command) {
+      if let expandedID = expandedAlbumID,
+         let album = albums.first(where: { $0.id == expandedID }) {
+        // 有專輯展開時，選中該專輯下所有可見曲目
+        selectAllVisibleTracks(in: album)
+      } else {
+        // 沒有專輯展開時，選中所有可見專輯
+        selectAllVisibleAlbums()
+      }
+      return .handled
+    }
+
+    // CMD+C: Copy selected tracks metadata (only when album expanded and tracks selected)
+    if press.characters == "c", press.modifiers.contains(.command) {
+      if expandedAlbumID != nil, !selectedTrackIDs.isEmpty {
+        copySelectedTracksMetadata()
+        return .handled
+      }
+    }
+
     // Spacebar: prioritise toggling play/pause when a track is loaded,
     // but only when an album is expanded.
     spaceTask: if press.characters == " " {
