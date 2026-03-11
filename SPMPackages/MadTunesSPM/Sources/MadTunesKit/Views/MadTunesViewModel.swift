@@ -349,6 +349,14 @@ final class MadTunesViewModel {
   )
     -> KeyPress.Result {
     let sorted = album.sortedTracks
+    guard !sorted.isEmpty else {
+      // 允許 Escape 鍵關閉空專輯
+      if press.key == .escape || (press.modifiers.contains(.command) && press.key == .upArrow) {
+        withAnimation(.easeInOut(duration: 0.3)) { expandedAlbumID = nil }
+        return .handled
+      }
+      return .ignored
+    }
 
     if press.key == .escape
       || (press.modifiers.contains(.command) && press.key == .upArrow) {
