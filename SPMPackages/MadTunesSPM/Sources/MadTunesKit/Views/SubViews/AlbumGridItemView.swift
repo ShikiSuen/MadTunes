@@ -37,7 +37,7 @@ struct AlbumGridItemView: View {
         .overlay(
           RoundedRectangle(cornerRadius: 8)
             .stroke(
-              angularColorGradient,
+              Gradient.angularColorGradient,
               lineWidth: showOverlayStroke ? 12 : 0
             )
             .shadow(radius: showOverlayStroke ? 6 : 3, y: 2)
@@ -63,23 +63,6 @@ struct AlbumGridItemView: View {
       }
       .padding([.horizontal, .bottom], 4)
     }
-  }
-
-  // MARK: Private
-
-  private var angularColorGradient: AngularGradient {
-    AngularGradient(
-      gradient: Gradient(stops: [
-        .init(color: Color(hue: 3 / 6, saturation: 1, brightness: 1), location: 0.0 / 6),
-        .init(color: Color(hue: 4 / 6, saturation: 1, brightness: 1), location: 1.0 / 6),
-        .init(color: Color(hue: 5 / 6, saturation: 1, brightness: 1), location: 2.0 / 6),
-        .init(color: Color(hue: 6 / 6, saturation: 1, brightness: 1), location: 3.0 / 6),
-        .init(color: Color(hue: 0 / 6, saturation: 1, brightness: 1), location: 4.0 / 6),
-        .init(color: Color(hue: 1 / 6, saturation: 1, brightness: 1), location: 5.0 / 6),
-        .init(color: Color(hue: 2 / 6, saturation: 1, brightness: 1), location: 1.0),
-      ]),
-      center: .center
-    )
   }
 }
 
