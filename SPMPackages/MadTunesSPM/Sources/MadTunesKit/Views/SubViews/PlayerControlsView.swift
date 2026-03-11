@@ -53,12 +53,9 @@ struct PlayerControlsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
           HStack(spacing: 4) {
-            columnBrowserToggleButton
             transportControls
             queueToggleButton
-          }
-
-          HStack(spacing: 4) {
+            columnBrowserToggleButton
             playLoopBehaviorButton
             volumeControls
           }
@@ -84,8 +81,9 @@ struct PlayerControlsView: View {
             .font(.caption.monospacedDigit())
             .frame(height: 6, alignment: .center)
         }
-        .frame(minWidth: 500)
+        .frame(maxWidth: .infinity)
       }
+      .frame(width: 480)
     }
     .fixedSize(horizontal: false, vertical: true)
     .frame(minHeight: 40, alignment: .center)
@@ -140,7 +138,7 @@ struct PlayerControlsView: View {
             .truncationMode(.tail)
         }
         .contentShape(.rect)
-        .frame(maxWidth: 200, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .help(accumulated)
       } else {
         Text(String(localized: "i18n:Player.NotPlaying", bundle: #bundle))
@@ -240,7 +238,7 @@ struct PlayerControlsView: View {
     HStack(spacing: 8) {
       Image(systemName: volumeIcon)
         .font(.caption)
-        .frame(width: 16)
+        .frame(width: 28, height: 28)
 
       Slider(
         value: Binding<Double>(
