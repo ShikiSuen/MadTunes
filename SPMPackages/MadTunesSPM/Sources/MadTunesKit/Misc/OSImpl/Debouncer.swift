@@ -36,6 +36,17 @@ public actor Debouncer {
     }
   }
 
+  nonisolated public func debounceOnMain(
+    keepFirstAttemptInstead: Bool = false,
+    _ action: @MainActor @escaping () async -> Void
+  ) {
+    Task {
+      await debounce(keepFirstAttemptInstead: keepFirstAttemptInstead) {
+        await action()
+      }
+    }
+  }
+
   // MARK: Private
 
   private var task: Task<Void, Error>?
