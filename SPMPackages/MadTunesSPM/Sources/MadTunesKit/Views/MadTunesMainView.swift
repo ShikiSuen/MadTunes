@@ -16,13 +16,24 @@ struct MadTunesMainView: View {
       preferredCompactColumn: $viewColumn
     ) {
       SidebarView(library: viewModel.library, selectedPlaylistID: $vm.selectedPlaylistID)
-        .navigationSplitViewColumnWidth(min: 210, ideal: 210, max: 210)
-        .trackCanvasSize(debounceDelay: 0.3) {
-          let existingWidth = vm.screenVM.actualSidebarWidthObserved
-          let newValue = $0.width.rounded(.up)
-          guard existingWidth != newValue else { return }
-          vm.screenVM.actualSidebarWidthObserved = newValue
+        .background {
+          Group {
+            if colorScheme == .dark {
+              Color.clear
+            } else {
+              Color.secondary.colorInvert()
+            }
+          }
+          .ignoresSafeArea(.all)
+          .trackCanvasSize(debounceDelay: 0.3) {
+            let existingWidth = vm.screenVM.actualSidebarWidthObserved
+            let newValue = $0.width.rounded(.up)
+            guard existingWidth != newValue else { return }
+            vm.screenVM.actualSidebarWidthObserved = newValue
+          }
         }
+        .environment(\.colorScheme, .dark)
+        .navigationSplitViewColumnWidth(min: 210, ideal: 210, max: 210)
     } detail: {
       let albums = viewModel.currentAlbums
       contentArea(albums: albums)
@@ -140,6 +151,7 @@ struct MadTunesMainView: View {
 
   @State private var viewModel = MadTunesViewModel.shared
   @State private var viewColumn: NavigationSplitViewColumn = .content
+  @Environment(\.colorScheme) private var colorScheme
   @FocusState private var isContentFocused: Bool
 
   // MARK: - Content Area

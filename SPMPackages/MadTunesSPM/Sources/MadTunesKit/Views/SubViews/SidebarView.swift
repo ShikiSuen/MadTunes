@@ -75,8 +75,14 @@ struct SidebarView: View {
           alertText = ""
           alertKind = .newPlaylist
         } label: {
-          Label(String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle), systemImage: "plus")
+          Label(
+            String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle),
+            systemImage: "plus"
+          )
+          .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .buttonBorderShape(.capsule)
+        .buttonStyle(.borderedProminent)
       }
     }
     .listStyle(.sidebar)
