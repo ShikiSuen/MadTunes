@@ -45,6 +45,11 @@ struct ExpandedAlbumView: View {
   @State private var showDeleteConfirmation = false
   @State private var tracksToDelete: [Track] = []
 
+  // New Playlist alert state
+  @State private var showNewPlaylistAlert = false
+  @State private var newPlaylistName = ""
+  @State private var trackIDsForNewPlaylist: Set<UUID> = []
+
   var body: some View {
     HStack(alignment: .top, spacing: 20) {
       // Track listing
@@ -97,6 +102,19 @@ struct ExpandedAlbumView: View {
         defaultValue: "This will remove \(tracksToDelete.count) track(s) from the library. The original files will not be deleted.",
         bundle: #bundle
       ))
+    }
+    .alert(
+      String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),
+      isPresented: $showNewPlaylistAlert
+    ) {
+      TextField(
+        String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle),
+        text: $newPlaylistName
+      )
+      Button(String(localized: "i18n:Common.Create", bundle: #bundle)) {
+        commitNewPlaylistAlert()
+      }
+      Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
     }
   }
 
@@ -229,6 +247,11 @@ struct ExpandedAlbumView: View {
                   onShowDeleteConfirmation: {
                     tracksToDelete = selectedTracks
                     showDeleteConfirmation = true
+                  },
+                  onNewPlaylistWithTracks: { trackIDs in
+                    trackIDsForNewPlaylist = trackIDs
+                    newPlaylistName = ""
+                    showNewPlaylistAlert = true
                   }
                 )
               }
@@ -301,6 +324,18 @@ struct ExpandedAlbumView: View {
     let maxPossibleColumns = max(1, Int(availableWidth / minColumnWidth))
     let desiredColumns = trackCount > maxRowsPerColumn ? maxPossibleColumns : 1
     return max(1, min(trackCount, desiredColumns))
+  }
+
+  private func commitNewPlaylistAlert() {
+    let name = newPlaylistName.trimmingCharacters(in: .whitespaces)
+    guard !name.isEmpty else { return }
+    let existingNames = Set(vm.library.playlists.dropFirst(2).map(\.name))
+    guard !existingNames.contains(name) else { return }
+    vm.library.addPlaylist(name: name)
+    if let newPlaylist = vm.library.playlists.last {
+      vm.library.addTracks(trackIDsForNewPlaylist, toPlaylist: newPlaylist.id)
+    }
+    trackIDsForNewPlaylist = []
   }
 
   private func handleTrackSelection(_ track: Track, in sortedTracks: [Track]) {

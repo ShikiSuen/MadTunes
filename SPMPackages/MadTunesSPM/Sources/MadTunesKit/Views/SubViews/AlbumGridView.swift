@@ -38,6 +38,11 @@ struct AlbumGridView: View {
   @State private var showDeleteConfirmation = false
   @State private var albumsToDelete: [Album] = []
 
+  // New Playlist alert state
+  @State private var showNewPlaylistAlert = false
+  @State private var newPlaylistName = ""
+  @State private var trackIDsForNewPlaylist: Set<UUID> = []
+
   private var canvasWidth: CGFloat {
     screenVM.mainColumnCanvasSizeObserved.width
   }
@@ -74,6 +79,19 @@ struct AlbumGridView: View {
           defaultValue: "This will remove \(albumsToDelete.count) album(s) from the library. The original files will not be deleted.",
           bundle: #bundle
         ))
+      }
+      .alert(
+        String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),
+        isPresented: $showNewPlaylistAlert
+      ) {
+        TextField(
+          String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle),
+          text: $newPlaylistName
+        )
+        Button(String(localized: "i18n:Common.Create", bundle: #bundle)) {
+          commitNewPlaylistAlert()
+        }
+        Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
       }
   }
 
@@ -351,6 +369,11 @@ struct AlbumGridView: View {
       onShowDeleteConfirmation: {
         albumsToDelete = selectedAlbums
         showDeleteConfirmation = true
+      },
+      onNewPlaylistWithTracks: { trackIDs in
+        trackIDsForNewPlaylist = trackIDs
+        newPlaylistName = ""
+        showNewPlaylistAlert = true
       }
     )
   }
@@ -366,6 +389,18 @@ struct AlbumGridView: View {
       detailedMetadataList = metadataList
       isTrackInfoPresented = true
     }
+  }
+
+  private func commitNewPlaylistAlert() {
+    let name = newPlaylistName.trimmingCharacters(in: .whitespaces)
+    guard !name.isEmpty else { return }
+    let existingNames = Set(vm.library.playlists.dropFirst(2).map(\.name))
+    guard !existingNames.contains(name) else { return }
+    vm.library.addPlaylist(name: name)
+    if let newPlaylist = vm.library.playlists.last {
+      vm.library.addTracks(trackIDsForNewPlaylist, toPlaylist: newPlaylist.id)
+    }
+    trackIDsForNewPlaylist = []
   }
 }
 

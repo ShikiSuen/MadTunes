@@ -16,7 +16,8 @@ struct AlbumContextMenu: View {
     audioPlayer: AudioPlayer,
     currentPlaylistID: UUID? = nil,
     onShowTrackInfo: @escaping () -> Void,
-    onShowDeleteConfirmation: @escaping () -> Void
+    onShowDeleteConfirmation: @escaping () -> Void,
+    onNewPlaylistWithTracks: @escaping (Set<UUID>) -> Void = { _ in }
   ) {
     self.albums = albums
     self.library = library
@@ -24,6 +25,7 @@ struct AlbumContextMenu: View {
     self.currentPlaylistID = currentPlaylistID
     self.onShowTrackInfo = onShowTrackInfo
     self.onShowDeleteConfirmation = onShowDeleteConfirmation
+    self.onNewPlaylistWithTracks = onNewPlaylistWithTracks
   }
 
   // MARK: Internal
@@ -34,10 +36,18 @@ struct AlbumContextMenu: View {
   let currentPlaylistID: UUID?
   let onShowTrackInfo: () -> Void
   let onShowDeleteConfirmation: () -> Void
+  let onNewPlaylistWithTracks: (Set<UUID>) -> Void
 
   var body: some View {
     // 加入到播放清單（子選單）
     Menu {
+      // 常駐項：新增播放清單
+      Button {
+        onNewPlaylistWithTracks(trackIDs)
+      } label: {
+        Label(String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle), systemImage: "plus")
+      }
+      Divider()
       ForEach(Array(library.playlists.dropFirst(2))) { playlist in
         Button {
           library.addTracks(trackIDs, toPlaylist: playlist.id)
