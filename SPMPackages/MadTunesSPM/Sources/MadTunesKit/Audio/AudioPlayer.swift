@@ -48,7 +48,24 @@ public final class AudioPlayer {
   public var volume: Float = 1.0
   public private(set) var queue: [Track] = []
   public private(set) var currentIndex: Int = 0
-  public var loopBehavior: PlayLoopBehavior = .sequential
+  public private(set) var loopBehavior: PlayLoopBehavior = .sequential
+
+  /// 切換迴圈模式。若正在播放且 duration 已知，會立即安裝／拆除 boundary observer。
+  public func setLoopBehavior(_ newValue: PlayLoopBehavior) {
+    loopBehavior = newValue
+    let currentDuration = CMTime(seconds: duration, preferredTimescale: 600)
+    if newValue == .repeatOne,
+       isPlaying,
+       duration > 0,
+       CMTimeGetSeconds(currentDuration).isFinite {
+      setupRepeatOneLoopObserver(duration: currentDuration, generation: avPlayerGeneration)
+    } else if newValue != .repeatOne {
+      if let obs = loopBoundaryObserver {
+        avPlayer?.removeTimeObserver(obs)
+        loopBoundaryObserver = nil
+      }
+    }
+  }
 
   // MARK: - Queue Management
 
@@ -189,6 +206,7 @@ public final class AudioPlayer {
   private var avPlayerEndObserver: Any?
   private var avPlayerGeneration: UInt = 0
   private var timeObserver: Any?
+  private var loopBoundaryObserver: Any?
   private var itemStatusObservation: NSKeyValueObservation?
   private var activeSecurityScopedURL: URL?
   private var savedHALBufferFrameSize: UInt32?
@@ -315,7 +333,15 @@ public final class AudioPlayer {
         case .readyToPlay:
           self.avPlayer?.play()
           let dur = CMTimeGetSeconds(observedItem.duration)
-          if dur.isFinite, dur > 0 { self.duration = dur }
+          if dur.isFinite, dur > 0 {
+            self.duration = dur
+            if self.loopBehavior == .repeatOne {
+              self.setupRepeatOneLoopObserver(
+                duration: observedItem.duration,
+                generation: expectedGeneration
+              )
+            }
+          }
         case .failed:
           print("[AudioPlayer] itemStatusObservation AVPlayerGeneration Status Failure.")
           Self.playErrorBeep()
@@ -352,6 +378,9 @@ public final class AudioPlayer {
     if let oldObserver = avPlayerEndObserver {
       NotificationCenter.default.removeObserver(oldObserver)
     }
+    // For .repeatOne the boundary observer handles looping;
+    // this notification fires only if seek latency causes us to miss the boundary
+    // (unlikely for local files), so next() still handles it correctly.
     avPlayerEndObserver = NotificationCenter.default.addObserver(
       forName: .AVPlayerItemDidPlayToEndTime,
       object: item,
@@ -367,12 +396,46 @@ public final class AudioPlayer {
     }
   }
 
+  /// Sets up a boundary-time observer that seeks to the beginning ~0.17 s before
+  /// the item's natural end, keeping the AVPlayer pipeline active and achieving
+  /// a near-gapless loop without AVPlayerLooper's decoder-teardown overhead.
+  private func setupRepeatOneLoopObserver(duration: CMTime, generation: UInt) {
+    if let obs = loopBoundaryObserver {
+      avPlayer?.removeTimeObserver(obs)
+      loopBoundaryObserver = nil
+    }
+    // 0.17 s head-start gives the decoder enough time to re-prime from the
+    // beginning before the last audio buffer drains — enough even for AAC.
+    let offset = CMTime(value: 17, timescale: 100)
+    let loopPoint = CMTimeSubtract(duration, offset)
+    guard CMTimeGetSeconds(loopPoint) > 0 else { return }
+
+    loopBoundaryObserver = avPlayer?.addBoundaryTimeObserver(
+      forTimes: [NSValue(time: loopPoint)],
+      queue: .main
+    ) { [weak self] in
+      Task { @MainActor [weak self] in
+        guard let self,
+              self.loopBehavior == .repeatOne,
+              self.avPlayerGeneration == generation
+        else { return }
+        // Player is still in the "playing" state here — seek repositions
+        // it without tearing down the pipeline, so it auto-resumes.
+        self.avPlayer?.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+      }
+    }
+  }
+
   private func cleanupObservers() {
     itemStatusObservation?.invalidate()
     itemStatusObservation = nil
     if let obs = timeObserver {
       avPlayer?.removeTimeObserver(obs)
       timeObserver = nil
+    }
+    if let obs = loopBoundaryObserver {
+      avPlayer?.removeTimeObserver(obs)
+      loopBoundaryObserver = nil
     }
     if let obs = avPlayerEndObserver {
       NotificationCenter.default.removeObserver(obs)

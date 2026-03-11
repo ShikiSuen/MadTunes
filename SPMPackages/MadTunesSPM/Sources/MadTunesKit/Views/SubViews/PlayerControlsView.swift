@@ -202,9 +202,9 @@ struct PlayerControlsView: View {
     let isActive = player.loopBehavior != .sequential
     Button {
       switch player.loopBehavior {
-      case .sequential: player.loopBehavior = .repeatOne
-      case .repeatOne: player.loopBehavior = .shuffle
-      case .shuffle: player.loopBehavior = .sequential
+      case .sequential: player.setLoopBehavior(.repeatOne)
+      case .repeatOne: player.setLoopBehavior(.shuffle)
+      case .shuffle: player.setLoopBehavior(.sequential)
       }
     } label: {
       Image(systemName: loopBehaviorIcon)
