@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 public enum SupportedFormats {
   /// File extensions supported for audio playback, matching r128x's format list.
   public static let fileExtensions: Set<String> = [
-    "mp3", "mp2", "m4a", "aac",
+    "mp3", "mp2", "m4a", "aac", "opus",
     "wav", "aif", "ogg", "aiff", "caf",
     "sd2", "ac3", "flac",
   ]
