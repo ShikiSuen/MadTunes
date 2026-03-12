@@ -85,6 +85,34 @@
         }
       }
     },
+    "i18n:ColumnBrowser.AlbumArtists" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Album Artists"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アルバムアーティスト"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专辑艺人"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "專輯藝人"
+          }
+        }
+      }
+    },
     "i18n:ColumnBrowser.Albums" : {
       "localizations" : {
         "en" : {
@@ -109,6 +137,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "專輯"
+          }
+        }
+      }
+    },
+    "i18n:ColumnBrowser.AllAlbumArtists" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Album Artists"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのアルバムアーティスト"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有专辑艺人"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有專輯藝人"
           }
         }
       }
@@ -141,34 +197,6 @@
         }
       }
     },
-    "i18n:ColumnBrowser.AllArtists" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All Artists"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "すべてのアーティスト"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "所有艺人"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "所有藝人"
-          }
-        }
-      }
-    },
     "i18n:ColumnBrowser.AllGenres" : {
       "localizations" : {
         "en" : {
@@ -197,30 +225,30 @@
         }
       }
     },
-    "i18n:ColumnBrowser.Artists" : {
+    "i18n:ColumnBrowser.AllSongArtists" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Artists"
+            "value" : "All Song Artists"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アーティスト"
+            "value" : "すべての曲アーティスト"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "艺人"
+            "value" : "所有歌曲艺人"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "藝人"
+            "value" : "所有歌曲藝人"
           }
         }
       }
@@ -277,6 +305,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "類型"
+          }
+        }
+      }
+    },
+    "i18n:ColumnBrowser.SongArtists" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Song Artists"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "曲アーティスト"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "歌曲艺人"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "歌曲藝人"
           }
         }
       }

@@ -41,7 +41,8 @@ struct ColumnBrowserView: View {
         GridRow {
           Group {
             Text(String(localized: "i18n:ColumnBrowser.Genres", bundle: #bundle))
-            Text(String(localized: "i18n:ColumnBrowser.Artists", bundle: #bundle))
+            Text(String(localized: "i18n:ColumnBrowser.AlbumArtists", bundle: #bundle))
+            Text(String(localized: "i18n:ColumnBrowser.SongArtists", bundle: #bundle))
             Text(String(localized: "i18n:ColumnBrowser.Albums", bundle: #bundle))
           }
           .font(.caption)
@@ -62,18 +63,31 @@ struct ColumnBrowserView: View {
             items: vm.columnBrowserGenres,
             selection: $vm.columnBrowserSelectedGenres,
             onSelectionChange: {
-              // Cascade: if genre selection changed, update available artists/albums
-              vm.columnBrowserSelectedArtists.formIntersection(Set(vm.columnBrowserArtists))
+              // Cascade: if genre selection changed, update available album and song artists + albums
+              vm.columnBrowserSelectedAlbumArtists.formIntersection(Set(vm.columnBrowserAlbumArtists))
+              vm.columnBrowserSelectedSongArtists.formIntersection(Set(vm.columnBrowserSongArtists))
               vm.columnBrowserSelectedAlbumTitles.formIntersection(Set(vm.columnBrowserAlbumTitles))
             }
           )
           filterColumnTable(
-            title: String(localized: "i18n:ColumnBrowser.Artists", bundle: #bundle),
-            allLabel: String(localized: "i18n:ColumnBrowser.AllArtists", bundle: #bundle),
-            items: vm.columnBrowserArtists,
-            selection: $vm.columnBrowserSelectedArtists,
+            title: String(localized: "i18n:ColumnBrowser.AlbumArtists", bundle: #bundle),
+            allLabel: String(localized: "i18n:ColumnBrowser.AllAlbumArtists", bundle: #bundle),
+            items: vm.columnBrowserAlbumArtists,
+            selection: $vm.columnBrowserSelectedAlbumArtists,
             onSelectionChange: {
-              // Cascade: if artist selection changed, update available albums
+              // Cascade: if album‑artist selection changed, update song artists and albums
+              vm.columnBrowserSelectedSongArtists.formIntersection(Set(vm.columnBrowserSongArtists))
+              vm.columnBrowserSelectedAlbumTitles.formIntersection(Set(vm.columnBrowserAlbumTitles))
+            }
+          )
+          filterColumnTable(
+            title: String(localized: "i18n:ColumnBrowser.SongArtists", bundle: #bundle),
+            allLabel: String(localized: "i18n:ColumnBrowser.AllSongArtists", bundle: #bundle),
+            items: vm.columnBrowserSongArtists,
+            selection: $vm.columnBrowserSelectedSongArtists,
+            onSelectionChange: {
+              // Cascade: if song‑artist selection changed, update album artists & titles
+              vm.columnBrowserSelectedAlbumArtists.formIntersection(Set(vm.columnBrowserAlbumArtists))
               vm.columnBrowserSelectedAlbumTitles.formIntersection(Set(vm.columnBrowserAlbumTitles))
             }
           )
@@ -87,7 +101,7 @@ struct ColumnBrowserView: View {
         }
       }
     }
-    .frame(width: 640, height: 300)
+    .frame(width: 854, height: 300)
   }
 
   // MARK: Private

@@ -47,7 +47,10 @@ final class MadTunesViewModel {
 
   // Column Browser filter state (empty set = "All")
   var columnBrowserSelectedGenres: Set<String> = []
-  var columnBrowserSelectedArtists: Set<String> = []
+  /// Newly split from previous `Artists`; refers to the album-level artist.
+  var columnBrowserSelectedAlbumArtists: Set<String> = []
+  /// Separate song-artist filter (tracks' artist field).
+  var columnBrowserSelectedSongArtists: Set<String> = []
   var columnBrowserSelectedAlbumTitles: Set<String> = []
 
   var gridColumnCount: Int {
@@ -72,8 +75,13 @@ final class MadTunesViewModel {
         album.tracks.contains { columnBrowserSelectedGenres.contains($0.genre) }
       }
     }
-    if !columnBrowserSelectedArtists.isEmpty {
-      result = result.filter { columnBrowserSelectedArtists.contains($0.artist) }
+    if !columnBrowserSelectedAlbumArtists.isEmpty {
+      result = result.filter { columnBrowserSelectedAlbumArtists.contains($0.artist) }
+    }
+    if !columnBrowserSelectedSongArtists.isEmpty {
+      result = result.filter { album in
+        album.tracks.contains { columnBrowserSelectedSongArtists.contains($0.artist) }
+      }
     }
     if !columnBrowserSelectedAlbumTitles.isEmpty {
       result = result.filter { columnBrowserSelectedAlbumTitles.contains($0.title) }
@@ -120,7 +128,8 @@ final class MadTunesViewModel {
   /// Whether any column browser filter is active.
   var isColumnBrowserFiltering: Bool {
     !columnBrowserSelectedGenres.isEmpty
-      || !columnBrowserSelectedArtists.isEmpty
+      || !columnBrowserSelectedAlbumArtists.isEmpty
+      || !columnBrowserSelectedSongArtists.isEmpty
       || !columnBrowserSelectedAlbumTitles.isEmpty
   }
 
@@ -131,14 +140,36 @@ final class MadTunesViewModel {
   }
 
   /// Unique artists available given the current genre filter.
-  var columnBrowserArtists: [String] {
+  /// Album–level artists available given current genre filter.
+  var columnBrowserAlbumArtists: [String] {
     var source = unfilteredAlbums
     if !columnBrowserSelectedGenres.isEmpty {
       source = source.filter { album in
         album.tracks.contains { columnBrowserSelectedGenres.contains($0.genre) }
       }
     }
+    if !columnBrowserSelectedSongArtists.isEmpty {
+      source = source.filter { album in
+        album.tracks.contains { columnBrowserSelectedSongArtists.contains($0.artist) }
+      }
+    }
     let artists = Set(source.map(\.artist))
+    return artists.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+  }
+
+  /// Track-level artists (song artists) given current genre + album artist filters.
+  var columnBrowserSongArtists: [String] {
+    var source = unfilteredAlbums
+    if !columnBrowserSelectedGenres.isEmpty {
+      source = source.filter { album in
+        album.tracks.contains { columnBrowserSelectedGenres.contains($0.genre) }
+      }
+    }
+    if !columnBrowserSelectedAlbumArtists.isEmpty {
+      source = source.filter { columnBrowserSelectedAlbumArtists.contains($0.artist) }
+    }
+    // gather artists from tracks only
+    let artists = Set(source.flatMap { $0.tracks.map(\.artist) })
     return artists.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
   }
 
@@ -150,8 +181,13 @@ final class MadTunesViewModel {
         album.tracks.contains { columnBrowserSelectedGenres.contains($0.genre) }
       }
     }
-    if !columnBrowserSelectedArtists.isEmpty {
-      source = source.filter { columnBrowserSelectedArtists.contains($0.artist) }
+    if !columnBrowserSelectedAlbumArtists.isEmpty {
+      source = source.filter { columnBrowserSelectedAlbumArtists.contains($0.artist) }
+    }
+    if !columnBrowserSelectedSongArtists.isEmpty {
+      source = source.filter { album in
+        album.tracks.contains { columnBrowserSelectedSongArtists.contains($0.artist) }
+      }
     }
     let titles = Set(source.map(\.title))
     return titles.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
@@ -166,7 +202,8 @@ final class MadTunesViewModel {
   /// Resets column browser filters.
   func resetColumnBrowserFilters() {
     columnBrowserSelectedGenres = []
-    columnBrowserSelectedArtists = []
+    columnBrowserSelectedAlbumArtists = []
+    columnBrowserSelectedSongArtists = []
     columnBrowserSelectedAlbumTitles = []
   }
 
