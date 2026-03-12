@@ -35,7 +35,14 @@ public final class AudioPlayer {
 
   // MARK: - Init
 
-  nonisolated public init() {}
+  nonisolated public init() {
+    // actor work including library access must occur on main actor.
+    Task { @MainActor in
+      // take a snapshot so we know what IDs existed prior to any change.
+      self.previousLibraryTrackIDs = Set(MadTunesViewModel.shared.library.tracks.map(\.id))
+      observeLibraryChanges()
+    }
+  }
 
   // MARK: Public
 
@@ -66,8 +73,6 @@ public final class AudioPlayer {
       }
     }
   }
-
-  // MARK: - Queue Management
 
   /// Replace the queue and start playing from the given index.
   public func setQueue(_ tracks: [Track], startingAt index: Int = 0) {
@@ -211,6 +216,10 @@ public final class AudioPlayer {
   private var activeSecurityScopedURL: URL?
   private var savedHALBufferFrameSize: UInt32?
 
+  // MARK: - Queue Management
+
+  private var previousLibraryTrackIDs: Set<UUID> = []
+
   // MARK: - Utilities
 
   private nonisolated static func resolveBookmark(_ data: Data) -> URL? {
@@ -236,6 +245,49 @@ public final class AudioPlayer {
     #if os(macOS)
     NSSound.beep()
     #endif
+  }
+
+  @MainActor
+  private func observeLibraryChanges() {
+    // Use the Observable macro helper to track changeID.
+    // We re-register on each callback to keep the observation alive.
+    withObservationTracking {
+      _ = MadTunesViewModel.shared.library.changeID
+    } onChange: { [weak self] in
+      guard let self = self else { return }
+      Task { @MainActor in
+        let library = MadTunesViewModel.shared.library
+        let currentIDs = Set(library.tracks.map(\.id))
+        let removed = self.previousLibraryTrackIDs.subtracting(currentIDs)
+        self.previousLibraryTrackIDs = currentIDs
+        if !removed.isEmpty {
+          self.handleLibraryTracksRemoval(removed)
+        }
+        // keep observing future changes
+        self.observeLibraryChanges()
+      }
+    }
+  }
+
+  // Called when the library announces that tracks have been deleted.  We
+  // must purge any occurrences from our queue and stop playback if the
+  // currently playing item is among them.
+  private func handleLibraryTracksRemoval(_ ids: Set<UUID>) {
+    // remove from queue
+    queue.removeAll { ids.contains($0.id) }
+    if let curr = currentTrack, ids.contains(curr.id) {
+      // track was playing -> stop entirely
+      stop()
+    } else if let curr = currentTrack, let newIdx = queue.firstIndex(where: { $0.id == curr.id }) {
+      currentIndex = newIdx
+    } else {
+      // queue no longer contains current track (could have been removed indirectly)
+      if !queue.isEmpty {
+        // pick first remaining track as a fallback? but we expect stop() earlier
+      } else {
+        currentIndex = 0
+      }
+    }
   }
 
   // MARK: - HAL Buffer Management

@@ -63,6 +63,11 @@ public final class MusicLibrary {
   public private(set) var importProgress = ImportProgress()
   public private(set) var hasLoadedPersistence = false
 
+  /// Mutation token for observers.  Clients may track `library.$changeID` or
+  /// use `withObservationTracking` to get callbacks when any noteworthy
+  /// library update occurs (e.g. removal of tracks).
+  public var changeID: UUID = .init()
+
   // MARK: - Favorites
 
   /// 喜好項目播放清單（系統預設，不可刪除）
@@ -383,6 +388,9 @@ public final class MusicLibrary {
 
   /// 從資料庫中移除指定曲目（包含 SwiftData 持久層），並從所有播放清單中清理其引用
   public func removeTracks(ids: Set<UUID>) {
+    // bump observable token so anyone watching knows something changed
+    changeID = UUID()
+
     // 從曲目列表移除
     tracks.removeAll { ids.contains($0.id) }
     // 從所有播放清單中移除引用
