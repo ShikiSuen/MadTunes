@@ -476,18 +476,38 @@ final class MadTunesViewModel {
       }
 
       if isShift {
-        // Establish fixed anchor on first Shift press if not yet set.
-        if albumSelectionFixedAnchorID == nil {
-          albumSelectionFixedAnchorID = hID
-        }
-        guard let anchorID = albumSelectionFixedAnchorID,
-              let anchorIdx = albums.firstIndex(where: { $0.id == anchorID }) else {
+        // Windows Explorer-style Shift+arrow selection.
+        // Selection is always the range between fixed anchor and moving cursor.
+        let anchorID: UUID
+        if let existing = albumSelectionFixedAnchorID {
+          anchorID = existing
+        } else if let first = highlightedAlbumIDs.first {
+          anchorID = first
+          albumSelectionFixedAnchorID = anchorID
+        } else {
+          // No existing selection: start fresh
+          let newID = albums[newIdx].id
+          highlightedAlbumIDs = [newID]
+          albumSelectionFixedAnchorID = newID
+          albumSelectionCursorID = newID
+          expandedAlbumID = nil
+          if newIdx != idx {
+            scrollToAlbumID = newID
+          }
           return .handled
         }
-        let lo = min(anchorIdx, newIdx)
-        let hi = max(anchorIdx, newIdx)
+
+        guard let anchorIdx = albums.firstIndex(where: { $0.id == anchorID }) else {
+          return .handled
+        }
+
+        // Update cursor and compute selection range
+        let cursorIdx = newIdx
+        albumSelectionCursorID = albums[cursorIdx].id
+
+        let lo = min(anchorIdx, cursorIdx)
+        let hi = max(anchorIdx, cursorIdx)
         highlightedAlbumIDs = Set(albums[lo ... hi].map(\.id))
-        albumSelectionCursorID = albums[newIdx].id
         expandedAlbumID = nil
       } else {
         let newID = albums[newIdx].id
@@ -496,14 +516,9 @@ final class MadTunesViewModel {
         albumSelectionCursorID = newID
       }
 
-      // when only a single album is highlighted (plain arrow or collapsed
-      // shift range) we want to ensure the grid scrolls to make it visible.
-      // only perform scrolling if the index actually changed (boundary
-      // presses should be no-ops).
-      if newIdx != idx,
-         highlightedAlbumIDs.count == 1,
-         let only = highlightedAlbumIDs.first {
-        scrollToAlbumID = only
+      // scroll regardless of selection count when the index actually moved
+      if newIdx != idx {
+        scrollToAlbumID = albums[newIdx].id
       }
 
       return .handled
