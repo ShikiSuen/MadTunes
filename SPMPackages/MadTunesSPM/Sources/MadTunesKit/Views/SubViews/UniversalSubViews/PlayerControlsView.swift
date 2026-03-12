@@ -34,6 +34,12 @@ struct PlayerControlsView: View {
     HStack(spacing: 16) {
       let artWorkViewHeight: Double = sansBezel ? 28 : 40
       ArtworkView(data: artworkData, alwaysGlossy: true)
+        .background {
+          ZStack {
+            Color.gray
+            Color.secondary.colorInvert()
+          }
+        }
         .frame(width: artWorkViewHeight, height: artWorkViewHeight)
         .contentShape(Rectangle())
         .simultaneousGesture(
@@ -339,15 +345,24 @@ struct ProgressScrubber: View {
 
 private struct GlassEffectModifier: ViewModifier {
   func body(content: Content) -> some View {
-    if #available(macOS 26.0, iOS 26.0, *), OS.liquidGlassThemeSuspected {
-      content
-        .glassEffect(.regular, in: .capsule)
-        .shadow(radius: 2)
-    } else {
-      content
-        .background(.ultraThinMaterial)
-        .clipShape(.capsule)
-        .shadow(radius: 2)
+    Group {
+      if #available(macOS 26.0, iOS 26.0, *), OS.liquidGlassThemeSuspected {
+        content
+          .background {
+            GlassyAlbumOverlay().opacity(0.1)
+          }
+          .clipShape(.capsule)
+          .glassEffect(.regular, in: .capsule)
+          .shadow(radius: 2)
+      } else {
+        content
+          .background {
+            GlassyAlbumOverlay().opacity(0.1)
+          }
+          .background(.ultraThinMaterial)
+          .clipShape(.capsule)
+          .shadow(radius: 2)
+      }
     }
   }
 }
