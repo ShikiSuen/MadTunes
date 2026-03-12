@@ -19,14 +19,50 @@ struct PlayerControlsView: View {
   // MARK: Internal
 
   var body: some View {
-    if sansBezel {
-      coreComponent
-        .padding(.horizontal, 24)
-    } else {
-      coreComponent
-        .padding(.horizontal, 32)
-        .padding(.vertical, 8)
-        .modifier(GlassEffectModifier())
+    Group {
+      if sansBezel {
+        coreComponent
+          .padding(.horizontal, 24)
+      } else {
+        coreComponent
+          .padding(.horizontal, 32)
+          .padding(.vertical, 8)
+          .modifier(GlassEffectModifier())
+      }
+    }
+    .sheet(isPresented: $isTrackInfoPresented) {
+      trackInfoSheetContent
+    }
+    .alert(
+      String(localized: "i18n:Alert.RemoveFromLibraryTitle", bundle: #bundle),
+      isPresented: $showDeleteConfirmation
+    ) {
+      Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
+      Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
+        if let id = player.currentTrack?.id {
+          vm.library.removeTracks(ids: [id])
+        }
+      }
+    } message: {
+      let tracksToDeleteCount = 1
+      Text(String(
+        localized: "i18n:Alert.RemoveTracksMessage",
+        defaultValue: "This will remove \(tracksToDeleteCount) track(s) from the library. The original files will not be deleted.",
+        bundle: #bundle
+      ))
+    }
+    .alert(
+      String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),
+      isPresented: $showNewPlaylistAlert
+    ) {
+      TextField(
+        String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle),
+        text: $newPlaylistName
+      )
+      Button(String(localized: "i18n:Common.Create", bundle: #bundle)) {
+        commitNewPlaylistAlert()
+      }
+      Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
     }
   }
 
@@ -65,6 +101,32 @@ struct PlayerControlsView: View {
               }
             }
         )
+        .contextMenu {
+          // only show menu when a track is active
+          if let track = player.currentTrack {
+            TrackContextMenu(
+              tracks: [track],
+              library: vm.library,
+              audioPlayer: player,
+              currentPlaylistID: vm.selectedPlaylistID,
+              isCurrentTrack: true,
+              onShowTrackInfo: {
+                Task {
+                  detailedMetadataForTrack = await MetadataReader.readDetailedMetadata(from: track.fileURL)
+                  isTrackInfoPresented = true
+                }
+              },
+              onShowDeleteConfirmation: {
+                showDeleteConfirmation = true
+              },
+              onNewPlaylistWithTracks: { ids in
+                trackIDsForNewPlaylist = ids
+                newPlaylistName = ""
+                showNewPlaylistAlert = true
+              }
+            )
+          }
+        }
       VStack(spacing: 0) {
         // Progress scrubber
         let scrubber = ProgressScrubber(
@@ -121,6 +183,16 @@ struct PlayerControlsView: View {
   @State private var isQueuePopoverPresented = false
   @State private var showRemainingTime = false
 
+  // MARK: track info / playlist & delete state (for context menu on artwork)
+
+  @State private var isTrackInfoPresented = false
+  @State private var detailedMetadataForTrack: DetailedTrackMetadata?
+  @State private var showDeleteConfirmation = false
+
+  @State private var showNewPlaylistAlert = false
+  @State private var newPlaylistName = ""
+  @State private var trackIDsForNewPlaylist: Set<UUID> = []
+
   private var player: AudioPlayer
   private var artworkData: Data?
   private var sansBezel = false
@@ -145,6 +217,14 @@ struct PlayerControlsView: View {
     case .sequential: String(localized: "i18n:Player.LoopSequential", bundle: #bundle)
     case .repeatOne: String(localized: "i18n:Player.LoopRepeatOne", bundle: #bundle)
     case .shuffle: String(localized: "i18n:Player.LoopShuffle", bundle: #bundle)
+    }
+  }
+
+  // MARK: - Sheet / Alerts
+
+  @ViewBuilder private var trackInfoSheetContent: some View {
+    if let track = player.currentTrack {
+      TrackInfoView(track: track, detailedMetadata: detailedMetadataForTrack)
     }
   }
 
@@ -279,6 +359,18 @@ struct PlayerControlsView: View {
       .frame(width: 80)
       .controlSize(.mini)
     }
+  }
+
+  private func commitNewPlaylistAlert() {
+    let name = newPlaylistName.trimmingCharacters(in: .whitespaces)
+    guard !name.isEmpty else { return }
+    let existingNames = Set(vm.library.playlists.dropFirst(2).map(\.name))
+    guard !existingNames.contains(name) else { return }
+    vm.library.addPlaylist(name: name)
+    if let newPlaylist = vm.library.playlists.last {
+      vm.library.addTracks(trackIDsForNewPlaylist, toPlaylist: newPlaylist.id)
+    }
+    trackIDsForNewPlaylist = []
   }
 }
 

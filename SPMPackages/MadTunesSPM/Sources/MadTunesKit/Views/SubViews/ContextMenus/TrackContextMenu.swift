@@ -10,11 +10,15 @@ import SwiftUI
 struct TrackContextMenu: View {
   // MARK: Lifecycle
 
+  /// - parameter isCurrentTrack: when true the menu is being shown from a context
+  ///   where the track is already playing (e.g. the player controls artwork).
+  ///   The "play next"/"insert" buttons become redundant, so we hide them.
   init(
     tracks: [Track],
     library: MusicLibrary,
     audioPlayer: AudioPlayer,
     currentPlaylistID: UUID? = nil,
+    isCurrentTrack: Bool = false,
     onShowTrackInfo: @escaping () -> Void,
     onShowDeleteConfirmation: @escaping () -> Void,
     onNewPlaylistWithTracks: @escaping (Set<UUID>) -> Void = { _ in }
@@ -23,6 +27,7 @@ struct TrackContextMenu: View {
     self.library = library
     self.audioPlayer = audioPlayer
     self.currentPlaylistID = currentPlaylistID
+    self.isCurrentTrack = isCurrentTrack
     self.onShowTrackInfo = onShowTrackInfo
     self.onShowDeleteConfirmation = onShowDeleteConfirmation
     self.onNewPlaylistWithTracks = onNewPlaylistWithTracks
@@ -34,6 +39,7 @@ struct TrackContextMenu: View {
   let library: MusicLibrary
   let audioPlayer: AudioPlayer
   let currentPlaylistID: UUID?
+  let isCurrentTrack: Bool
   let onShowTrackInfo: () -> Void
   let onShowDeleteConfirmation: () -> Void
   let onNewPlaylistWithTracks: (Set<UUID>) -> Void
@@ -59,19 +65,21 @@ struct TrackContextMenu: View {
       Label(String(localized: "i18n:ContextMenu.AddToPlaylist", bundle: #bundle), systemImage: "text.badge.plus")
     }
 
-    Divider()
+    if !isCurrentTrack {
+      Divider()
 
-    // 插播
-    Button {
-      audioPlayer.insertAndPlay(tracks)
-    } label: {
-      Label(
-        String(localized: "i18n:ContextMenu.PlayNext", bundle: #bundle),
-        systemImage: "text.line.first.and.arrowtriangle.forward"
-      )
+      // 插播
+      Button {
+        audioPlayer.insertAndPlay(tracks)
+      } label: {
+        Label(
+          String(localized: "i18n:ContextMenu.PlayNext", bundle: #bundle),
+          systemImage: "text.line.first.and.arrowtriangle.forward"
+        )
+      }
+
+      Divider()
     }
-
-    Divider()
 
     // 取得資訊
     Button {
