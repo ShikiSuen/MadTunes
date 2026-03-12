@@ -495,6 +495,17 @@ final class MadTunesViewModel {
         albumSelectionFixedAnchorID = newID
         albumSelectionCursorID = newID
       }
+
+      // when only a single album is highlighted (plain arrow or collapsed
+      // shift range) we want to ensure the grid scrolls to make it visible.
+      // only perform scrolling if the index actually changed (boundary
+      // presses should be no-ops).
+      if newIdx != idx,
+         highlightedAlbumIDs.count == 1,
+         let only = highlightedAlbumIDs.first {
+        scrollToAlbumID = only
+      }
+
       return .handled
     }
 
