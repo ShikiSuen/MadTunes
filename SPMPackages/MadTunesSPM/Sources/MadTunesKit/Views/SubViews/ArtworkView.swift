@@ -10,35 +10,57 @@ import SwiftUI
 struct ArtworkView: View {
   // MARK: Lifecycle
 
-  init(data: Data?) {
+  init(data: Data?, alwaysGlossy: Bool = false) {
     self.data = data
+    self.alwaysGlossy = alwaysGlossy
   }
 
   // MARK: Internal
 
   var body: some View {
-    Group {
+    // ZStack 更快一些。
+    ZStack {
+      let glass = GlassyAlbumOverlay()
       if let data, let image = Self.makeImage(from: data) {
-        ZStack {
-          Self.dominantColor(from: data) ?? Color.gray.opacity(0.3)
-          image
-            .resizable()
-            .aspectRatio(contentMode: .fit)
+        Self.dominantColor(from: data) ?? Color.gray.opacity(0.3)
+        image
+          .resizable()
+          .aspectRatio(contentMode: .fit)
+        if alwaysGlossy {
+          glass
+            .opacity(0.1)
         }
       } else {
-        ZStack {
-          LinearGradient(
-            colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.12)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-          Image(systemName: "music.note")
-            .font(.title)
-            .foregroundStyle(.secondary)
+        LinearGradient(
+          colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.12)],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+        GeometryReader { geo in
+          glass
+            .opacity(colorScheme == .dark ? 0.1 : 0.3)
+            .background {
+              Image(systemName: "music.note")
+                .resizable()
+                .aspectRatio(0.8, contentMode: .fit)
+                .frame(
+                  width: geo.size.width * 0.5,
+                  height: geo.size.height * 0.5
+                )
+                .foregroundStyle(.secondary)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
     }
-    .clipShape(RoundedRectangle(cornerRadius: 8))
+    .aspectRatio(1, contentMode: .fit)
+    .overlay {
+      Rectangle()
+        .stroke(
+          Color.black,
+          lineWidth: 1
+        )
+    }
   }
 
   /// Extract the dominant color from image data, avoiding black, white,
@@ -133,7 +155,10 @@ struct ArtworkView: View {
 
   // MARK: Private
 
+  @Environment(\.colorScheme) private var colorScheme
+
   private let data: Data?
+  private let alwaysGlossy: Bool
 
   // MARK: - Platform Image Conversion
 

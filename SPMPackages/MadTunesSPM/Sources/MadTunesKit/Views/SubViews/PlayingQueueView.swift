@@ -245,7 +245,7 @@ struct PlayingQueueRow: View {
 
   var body: some View {
     HStack(spacing: 10) {
-      ArtworkView(data: artworkData)
+      ArtworkView(data: artworkData, alwaysGlossy: true)
         .frame(width: 36, height: 36)
 
       VStack(alignment: .leading, spacing: 1) {

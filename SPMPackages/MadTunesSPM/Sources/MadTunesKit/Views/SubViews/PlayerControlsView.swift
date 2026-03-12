@@ -33,7 +33,7 @@ struct PlayerControlsView: View {
   @ViewBuilder var coreComponent: some View {
     HStack(spacing: 16) {
       let artWorkViewHeight: Double = sansBezel ? 28 : 40
-      ArtworkView(data: artworkData)
+      ArtworkView(data: artworkData, alwaysGlossy: true)
         .frame(width: artWorkViewHeight, height: artWorkViewHeight)
         .contentShape(Rectangle())
         .simultaneousGesture(
@@ -342,12 +342,12 @@ private struct GlassEffectModifier: ViewModifier {
     if #available(macOS 26.0, iOS 26.0, *), OS.liquidGlassThemeSuspected {
       content
         .glassEffect(.regular, in: .capsule)
-        .shadow(radius: 6)
+        .shadow(radius: 2)
     } else {
       content
         .background(.ultraThinMaterial)
         .clipShape(.capsule)
-        .shadow(radius: 6)
+        .shadow(radius: 2)
     }
   }
 }

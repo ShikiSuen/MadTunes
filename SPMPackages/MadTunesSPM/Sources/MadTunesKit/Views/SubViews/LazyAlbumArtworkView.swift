@@ -10,8 +10,9 @@ import SwiftUI
 struct LazyAlbumArtworkView: View {
   // MARK: Lifecycle
 
-  init(album: Album) {
+  init(album: Album, alwaysGlossy: Bool = false) {
     self.album = album
+    self.alwaysGlossy = alwaysGlossy
   }
 
   // MARK: Internal
@@ -19,30 +20,13 @@ struct LazyAlbumArtworkView: View {
   var body: some View {
     let key = viewModel.library.albumKey(title: album.title, artist: album.artist)
     let cachedArtwork = viewModel.library.artworkCache[key]
-    let isLoading = viewModel.library.artworkLoadingKeys.contains(key)
+    // let isLoading = viewModel.library.artworkLoadingKeys.contains(key)
 
-    Group {
-      if let cachedArtwork {
-        ArtworkView(data: cachedArtwork)
-      } else if isLoading {
-        ZStack {
-          LinearGradient(
-            colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.12)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-          WinUI3ProgressRing(size: 48, lineWidth: 6)
-            .tint(.secondary)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-      } else {
-        ArtworkView(data: nil)
+    ArtworkView(data: cachedArtwork, alwaysGlossy: alwaysGlossy)
+      .task {
+        guard cachedArtwork == nil, let trackURL = album.tracks.first?.fileURL else { return }
+        viewModel.library.requestArtworkLoad(forAlbumKey: key, sampleTrackURL: trackURL)
       }
-    }
-    .task {
-      guard cachedArtwork == nil, let trackURL = album.tracks.first?.fileURL else { return }
-      viewModel.library.requestArtworkLoad(forAlbumKey: key, sampleTrackURL: trackURL)
-    }
   }
 
   // MARK: Private
@@ -50,4 +34,5 @@ struct LazyAlbumArtworkView: View {
   @Environment(MadTunesViewModel.self) private var viewModel
 
   private let album: Album
+  private let alwaysGlossy: Bool
 }

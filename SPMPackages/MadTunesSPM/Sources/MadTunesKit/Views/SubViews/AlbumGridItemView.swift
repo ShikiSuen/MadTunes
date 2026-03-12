@@ -25,38 +25,56 @@ struct AlbumGridItemView: View {
   // MARK: Internal
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      let showOverlayStroke = isMultipleSelection || isExpanded || isSelected
-      LazyAlbumArtworkView(album: album)
+    let showSelectedStatus = isSelected && !isExpanded
+    VStack(alignment: .leading, spacing: isExpanded ? 6 : 0) {
+      Rectangle()
+        .fill(Color.clear)
         .aspectRatio(1, contentMode: .fit)
-        .overlay(
-          RoundedRectangle(cornerRadius: 8)
-            .stroke(
-              Gradient.angularColorGradient,
-              lineWidth: showOverlayStroke ? 12 : 0
-            )
-            .shadow(radius: showOverlayStroke ? 6 : 3, y: 2)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .shadow(radius: isExpanded ? 6 : 3, y: 2)
-        .overlay(alignment: .topLeading) {
-          if isMultipleSelection, !isExpanded {
-            MultiSelectionBadge()
-          }
+        .overlay {
+          LazyAlbumArtworkView(album: album, alwaysGlossy: true)
+            .compositingGroup()
+            .aspectRatio(1, contentMode: .fit)
+            .clipShape(.rect)
+            .shadow(radius: isExpanded ? 6 : 3, y: 2)
+            .overlay(alignment: .topLeading) {
+              if isMultipleSelection, !isExpanded {
+                MultiSelectionBadge()
+              }
+            }
+            // shrink slightly when not expanded, keeping centered
+            .scaleEffect(isExpanded ? 1 : 0.92, anchor: .center)
         }
 
       VStack(alignment: .leading, spacing: 3) {
         Text(album.title)
-          .font(.subheadline)
-          .fontWeight(.medium)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .font(isExpanded ? .headline : .subheadline)
+          .fontWeight(.semibold)
           .lineLimit(1)
 
-        Text(album.artist)
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
+        if !isExpanded {
+          Text(album.artist)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
       }
-      .padding([.horizontal, .bottom], 4)
+      .drawingGroup()
+      .padding(.horizontal, isExpanded ? 4 : 8)
+      .padding(.bottom, 4)
+    }
+    .animation(.easeInOut(duration: 0.2), value: isExpanded)
+    .background {
+      if showSelectedStatus {
+        Rectangle()
+          .fill(Color.madTunesAccent.opacity(0.1))
+          .stroke(
+            Color.madTunesAccent.opacity(0.15),
+            lineWidth: 1
+          )
+          .allowsHitTesting(false)
+      }
     }
   }
 
