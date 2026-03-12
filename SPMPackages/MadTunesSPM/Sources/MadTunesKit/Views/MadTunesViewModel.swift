@@ -55,6 +55,16 @@ final class MadTunesViewModel {
     return max(1, Int((width - gridSpacing) / (minItemWidth + gridSpacing)))
   }
 
+  /// Number of albums to scroll per page (PgUp/PgDown).
+  /// Estimates visible rows based on screen height and item dimensions.
+  var gridPageSize: Int {
+    let canvasHeight = screenVM.mainColumnCanvasSizeObserved.height
+    // Approximate item height: scaled artwork (160 * 0.92) + text area (~50) + padding
+    let approximateRowHeight: CGFloat = 160 + 50 + gridSpacing
+    let visibleRows = max(1, Int((canvasHeight - 100) / approximateRowHeight)) // 100 for player controls
+    return visibleRows * gridColumnCount
+  }
+
   var currentAlbums: [Album] {
     var result = unfilteredAlbums
     if !columnBrowserSelectedGenres.isEmpty {
@@ -524,6 +534,75 @@ final class MadTunesViewModel {
       return .handled
     }
 
+    handlePageKey: if press.isPageKey {
+      let isShift = press.modifiers.contains(.shift)
+      let pageDelta = gridPageSize
+      guard pageDelta > 0 else { break handlePageKey }
+
+      // Determine reference point: cursor if available, otherwise first selected
+      let referenceID: UUID? = albumSelectionCursorID ?? highlightedAlbumIDs.first
+
+      guard let hID = referenceID,
+            let idx = albums.firstIndex(where: { $0.id == hID }) else {
+        // No selection: start from beginning or end based on direction
+        let isPageDown = press.key == .pageDown
+        let targetIdx = isPageDown ? min(pageDelta, albums.count - 1) : 0
+        let targetID = albums[targetIdx].id
+        highlightedAlbumIDs = [targetID]
+        albumSelectionFixedAnchorID = targetID
+        albumSelectionCursorID = targetID
+        scrollToAlbumID = targetID
+        return .handled
+      }
+
+      // Calculate new index after page scroll
+      let isPageDown = press.key == .pageDown
+      let newIdx: Int
+      if isPageDown {
+        newIdx = min(idx + pageDelta, albums.count - 1)
+      } else {
+        newIdx = max(idx - pageDelta, 0)
+      }
+
+      if isShift {
+        // Shift+PgUp/PgDn: range selection
+        // Phase 37: If paging reveals a new anchor (first item on new page becomes anchor)
+        let anchorID: UUID
+        if let existing = albumSelectionFixedAnchorID {
+          anchorID = existing
+        } else if let first = highlightedAlbumIDs.first {
+          anchorID = first
+          albumSelectionFixedAnchorID = anchorID
+        } else {
+          // No anchor: start fresh with current position as anchor
+          anchorID = albums[idx].id
+          albumSelectionFixedAnchorID = anchorID
+        }
+
+        guard let anchorIdx = albums.firstIndex(where: { $0.id == anchorID }) else {
+          return .handled
+        }
+
+        // Update cursor to new page position
+        albumSelectionCursorID = albums[newIdx].id
+
+        // Compute selection range
+        let lo = min(anchorIdx, newIdx)
+        let hi = max(anchorIdx, newIdx)
+        highlightedAlbumIDs = Set(albums[lo ... hi].map(\.id))
+        expandedAlbumID = nil
+      } else {
+        // Plain PgUp/PgDn: move cursor and reset selection
+        let newID = albums[newIdx].id
+        highlightedAlbumIDs = [newID]
+        albumSelectionFixedAnchorID = newID
+        albumSelectionCursorID = newID
+      }
+
+      scrollToAlbumID = albums[newIdx].id
+      return .handled
+    }
+
     if press.isAlbumExpansionAssignmentKey {
       if highlightedAlbumIDs.count == 1 {
         withAnimation(.easeInOut(duration: 0.3)) {
@@ -666,6 +745,10 @@ final class MadTunesViewModel {
 extension KeyPress {
   public var isArrowKey: Bool {
     [.upArrow, .downArrow, .leftArrow, .rightArrow].contains(key)
+  }
+
+  public var isPageKey: Bool {
+    key == .pageUp || key == .pageDown
   }
 
   public var isAlbumExpansionAssignmentKey: Bool {
