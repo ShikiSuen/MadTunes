@@ -18,11 +18,6 @@ struct PlayerControlsView: View {
 
   // MARK: Internal
 
-  var player: AudioPlayer
-  var artworkData: Data?
-
-  var sansBezel = false
-
   var body: some View {
     if sansBezel {
       coreComponent
@@ -119,6 +114,10 @@ struct PlayerControlsView: View {
   @State private var isColumnBrowserPopoverPresented = false
   @State private var isQueuePopoverPresented = false
   @State private var showRemainingTime = false
+
+  private var player: AudioPlayer
+  private var artworkData: Data?
+  private var sansBezel = false
 
   private var volumeIcon: String {
     if player.volume <= 0 { return "speaker.slash.fill" }
@@ -280,11 +279,17 @@ struct PlayerControlsView: View {
 // MARK: - ProgressScrubber
 
 struct ProgressScrubber: View {
-  // MARK: Internal
+  // MARK: Lifecycle
 
-  let currentTime: TimeInterval
-  let duration: TimeInterval
-  let onSeek: (TimeInterval) -> Void
+  init(currentTime: TimeInterval, duration: TimeInterval, onSeek: @escaping (TimeInterval) -> Void) {
+    self.currentTime = currentTime
+    self.duration = duration
+    self.onSeek = onSeek
+    self.isDragging = isDragging
+    self.dragValue = dragValue
+  }
+
+  // MARK: Internal
 
   var body: some View {
     GeometryReader { geometry in
@@ -324,15 +329,17 @@ struct ProgressScrubber: View {
 
   @State private var isDragging = false
   @State private var dragValue: TimeInterval = 0
+
+  private let currentTime: TimeInterval
+  private let duration: TimeInterval
+  private let onSeek: (TimeInterval) -> Void
 }
 
 // MARK: - GlassEffectModifier
 
 private struct GlassEffectModifier: ViewModifier {
-  // MARK: Internal
-
   func body(content: Content) -> some View {
-    if #available(macOS 26.0, iOS 26.0, *), isLiquidGlass {
+    if #available(macOS 26.0, iOS 26.0, *), OS.liquidGlassThemeSuspected {
       content
         .glassEffect(.regular, in: .capsule)
         .shadow(radius: 6)
@@ -343,22 +350,4 @@ private struct GlassEffectModifier: ViewModifier {
         .shadow(radius: 6)
     }
   }
-
-  // MARK: Private
-
-  private let isLiquidGlass: Bool = {
-    if #available(macOS 26, iOS 26, macCatalyst 26, *) {
-      if let infoDict = Bundle.main.infoDictionary {
-        let verStr = (infoDict["DTPlatformVersion"] as? String)?.prefix(4) ?? "_"
-        if let verDouble = Double(verStr) {
-          if verDouble < 26 { return false }
-          let uiCompat = infoDict["UIDesignRequiresCompatibility"] as? Bool
-          if uiCompat == true { return false }
-        }
-      }
-      return true
-    } else {
-      return false
-    }
-  }()
 }

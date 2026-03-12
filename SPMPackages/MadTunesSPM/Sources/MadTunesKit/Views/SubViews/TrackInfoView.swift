@@ -8,10 +8,17 @@ import SwiftUI
 
 /// 單一曲目的「取得資訊」視圖，顯示詳盡的 ID3 和音訊格式資訊。
 struct TrackInfoView: View {
-  // MARK: Internal
+  // MARK: Lifecycle
 
-  let track: Track
-  let detailedMetadata: DetailedTrackMetadata?
+  init(
+    track: Track,
+    detailedMetadata: DetailedTrackMetadata?
+  ) {
+    self.track = track
+    self.detailedMetadata = detailedMetadata
+  }
+
+  // MARK: Internal
 
   var body: some View {
     NavigationStack {
@@ -142,16 +149,26 @@ struct TrackInfoView: View {
   // MARK: Private
 
   @Environment(\.dismiss) private var dismiss
+
+  private let track: Track
+  private let detailedMetadata: DetailedTrackMetadata?
 }
 
 // MARK: - MultiTrackInfoView
 
 /// 多曲目的「取得資訊」視圖，顯示聚合統計資訊。
 struct MultiTrackInfoView: View {
-  // MARK: Internal
+  // MARK: Lifecycle
 
-  let tracks: [Track]
-  let detailedMetadataList: [DetailedTrackMetadata?]
+  init(
+    tracks: [Track],
+    detailedMetadataList: [DetailedTrackMetadata?]
+  ) {
+    self.tracks = tracks
+    self.detailedMetadataList = detailedMetadataList
+  }
+
+  // MARK: Internal
 
   var body: some View {
     NavigationStack {
@@ -217,6 +234,9 @@ struct MultiTrackInfoView: View {
 
   @Environment(\.dismiss) private var dismiss
 
+  private let tracks: [Track]
+  private let detailedMetadataList: [DetailedTrackMetadata?]
+
   private var totalDuration: TimeInterval {
     tracks.reduce(0) { $0 + $1.duration }
   }
@@ -267,9 +287,15 @@ struct MultiTrackInfoView: View {
 // MARK: - InfoRow
 
 private struct InfoRow: View {
-  let label: String
-  let value: String
-  var isFallback: Bool = false
+  // MARK: Lifecycle
+
+  init(label: String, value: String, isFallback: Bool = false) {
+    self.label = label
+    self.value = value
+    self.isFallback = isFallback
+  }
+
+  // MARK: Internal
 
   var body: some View {
     LabeledContent {
@@ -281,6 +307,12 @@ private struct InfoRow: View {
       Text(label)
     }
   }
+
+  // MARK: Private
+
+  private let label: String
+  private let value: String
+  private var isFallback: Bool = false
 }
 
 // MARK: - Helper Functions

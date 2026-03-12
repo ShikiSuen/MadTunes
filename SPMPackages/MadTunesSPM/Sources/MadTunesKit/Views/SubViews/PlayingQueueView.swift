@@ -9,9 +9,13 @@ import SwiftUI
 /// Popover content displaying the current playback queue.
 /// Supports drag-to-reorder and highlights the currently-playing track.
 struct PlayingQueueView: View {
-  // MARK: Internal
+  // MARK: Lifecycle
 
-  var player: AudioPlayer
+  init(player: AudioPlayer) {
+    self.player = player
+  }
+
+  // MARK: Internal
 
   var body: some View {
     VStack(spacing: 0) {
@@ -92,6 +96,8 @@ struct PlayingQueueView: View {
   }
 
   // MARK: Private
+
+  @State private var player: AudioPlayer
 
   @Environment(MadTunesViewModel.self) private var viewModel
   @State private var highlightedIndex: Int?
@@ -201,6 +207,32 @@ struct PlayingQueueView: View {
 // MARK: - PlayingQueueRow
 
 struct PlayingQueueRow: View {
+  // MARK: Lifecycle
+
+  init(
+    index: Int,
+    track: Track,
+    queueCount: Int,
+    isCurrent: Bool,
+    isHighlighted: Bool,
+    artworkData: Data?,
+    onRemove: @escaping () -> Void,
+    onMoveUp: @escaping () -> Void,
+    onMoveDown: @escaping () -> Void
+  ) {
+    self.index = index
+    self.track = track
+    self.queueCount = queueCount
+    self.isCurrent = isCurrent
+    self.isHighlighted = isHighlighted
+    self.artworkData = artworkData
+    self.onRemove = onRemove
+    self.onMoveUp = onMoveUp
+    self.onMoveDown = onMoveDown
+  }
+
+  // MARK: Internal
+
   let index: Int
   let track: Track
   let queueCount: Int

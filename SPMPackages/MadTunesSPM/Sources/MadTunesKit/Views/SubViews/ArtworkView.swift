@@ -8,9 +8,13 @@ import SwiftUI
 
 /// Displays album artwork from raw `Data`, falling back to a music-note placeholder.
 struct ArtworkView: View {
-  // MARK: Internal
+  // MARK: Lifecycle
 
-  let data: Data?
+  init(data: Data?) {
+    self.data = data
+  }
+
+  // MARK: Internal
 
   var body: some View {
     Group {
@@ -128,6 +132,8 @@ struct ArtworkView: View {
   }
 
   // MARK: Private
+
+  private let data: Data?
 
   // MARK: - Platform Image Conversion
 

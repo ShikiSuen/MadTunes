@@ -10,6 +10,10 @@ import SwiftUI
 /// iTunes' Column Browser but using a modern popover interaction with native Tables.
 /// Each column supports multiple selection; selecting "All" clears the column.
 struct ColumnBrowserView: View {
+  // MARK: Lifecycle
+
+  init() {}
+
   // MARK: Internal
 
   var body: some View {
@@ -138,10 +142,19 @@ struct ColumnBrowserView: View {
 
 /// Custom modifier to handle "All" row logic and cascade filtering.
 private struct TableSelectionHandler: ViewModifier {
-  @Binding var selection: Set<String>
+  // MARK: Lifecycle
 
-  let allItems: [String]
-  let onSelectionChange: () -> Void
+  init(
+    selection: Binding<Set<String>>,
+    allItems: [String],
+    onSelectionChange: @escaping () -> Void
+  ) {
+    self._selection = selection
+    self.allItems = allItems
+    self.onSelectionChange = onSelectionChange
+  }
+
+  // MARK: Internal
 
   func body(content: Content) -> some View {
     content
@@ -167,6 +180,13 @@ private struct TableSelectionHandler: ViewModifier {
         }
       }
   }
+
+  // MARK: Private
+
+  @Binding private var selection: Set<String>
+
+  private let allItems: [String]
+  private let onSelectionChange: () -> Void
 }
 
 // MARK: - FilterTableItem

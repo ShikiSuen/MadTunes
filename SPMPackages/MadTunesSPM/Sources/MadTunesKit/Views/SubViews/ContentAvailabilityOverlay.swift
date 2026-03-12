@@ -8,10 +8,17 @@ import SwiftUI
 /// Overlay that shows an importing spinner (with real-time filename) or an
 /// empty-library placeholder when no albums are present.
 struct ContentAvailabilityOverlay: View {
-  // MARK: Internal
+  // MARK: Lifecycle
 
-  let displayAlbums: [Album]
-  let selectedPlaylist: Playlist?
+  init(
+    displayAlbums: [Album],
+    selectedPlaylist: Playlist?
+  ) {
+    self.displayAlbums = displayAlbums
+    self.selectedPlaylist = selectedPlaylist
+  }
+
+  // MARK: Internal
 
   var body: some View {
     Group {
@@ -103,6 +110,9 @@ struct ContentAvailabilityOverlay: View {
   @Environment(MadTunesViewModel.self) private var viewModel
   @State private var currentProcessingFileName: String = ""
   @State private var currentProcessingFileCount: Int = 0
+
+  private let displayAlbums: [Album]
+  private let selectedPlaylist: Playlist?
 
   /// 是否為「All Music」頁面（playlists[0]）。
   private var isAllMusicPage: Bool {

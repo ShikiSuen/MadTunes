@@ -8,55 +8,27 @@ import SwiftUI
 
 /// iTunes 11-style album grid. Clicking an album expands a detail pane below that row.
 struct AlbumGridView: View {
-  let albums: [Album]
-  @Binding var expandedAlbumID: UUID?
-  @Binding var highlightedAlbumIDs: Set<UUID>
-  @Binding var selectedTrackIDs: Set<UUID>
-  var currentTrackID: UUID?
-  let onTrackSelected: (Track, [Track]) -> Void
-  var onAlbumDoubleClicked: ((Album) -> Void)?
+  // MARK: Lifecycle
 
-  private let minItemWidth: CGFloat = 160
-  private let spacing: CGFloat = 16
-
-  @State private var vm: MadTunesViewModel = .shared
-  @State private var screenVM: ScreenVM = .shared
-  @State private var expandedAlbumWasInView = false
-
-  // Rubber-band drag selection state (macOS only).
-  @State private var dragOrigin: CGPoint?
-  @State private var dragCurrent: CGPoint?
-  @State private var albumFrames: [UUID: CGRect] = [:]
-  @State private var preDragHighlighted: Set<UUID> = []
-
-  // Track Info Sheet state
-  @State private var isTrackInfoPresented = false
-  @State private var tracksForTrackInfo: [Track] = []
-  @State private var detailedMetadataList: [DetailedTrackMetadata?] = []
-
-  // Delete Confirmation state
-  @State private var showDeleteConfirmation = false
-  @State private var albumsToDelete: [Album] = []
-
-  // New Playlist alert state
-  @State private var showNewPlaylistAlert = false
-  @State private var newPlaylistName = ""
-  @State private var trackIDsForNewPlaylist: Set<UUID> = []
-
-  @State private var expansionDebouncer: Debouncer = .init(delay: 0.3)
-
-  private var canvasWidth: CGFloat {
-    screenVM.mainColumnCanvasSizeObserved.width
+  init(
+    albums: [Album],
+    expandedAlbumID: Binding<UUID?>,
+    highlightedAlbumIDs: Binding<Set<UUID>>,
+    selectedTrackIDs: Binding<Set<UUID>>,
+    currentTrackID: UUID? = nil,
+    onTrackSelected: @escaping (Track, [Track]) -> Void,
+    onAlbumDoubleClicked: ((Album) -> Void)? = nil
+  ) {
+    self.albums = albums
+    self._expandedAlbumID = expandedAlbumID
+    self._highlightedAlbumIDs = highlightedAlbumIDs
+    self._selectedTrackIDs = selectedTrackIDs
+    self.currentTrackID = currentTrackID
+    self.onTrackSelected = onTrackSelected
+    self.onAlbumDoubleClicked = onAlbumDoubleClicked
   }
 
-  private var columnCount: Int {
-    max(1, Int((canvasWidth - spacing) / (minItemWidth + spacing)))
-  }
-
-  /// Whether rubber-band drag selection is allowed (no expanded album).
-  private var isDragSelectionEnabled: Bool {
-    expandedAlbumID == nil
-  }
+  // MARK: Internal
 
   var body: some View {
     mainContent
@@ -97,12 +69,79 @@ struct AlbumGridView: View {
       }
   }
 
+  // MARK: Private
+
+  @Binding private var expandedAlbumID: UUID?
+  @Binding private var highlightedAlbumIDs: Set<UUID>
+  @Binding private var selectedTrackIDs: Set<UUID>
+  @State private var vm: MadTunesViewModel = .shared
+  @State private var screenVM: ScreenVM = .shared
+  @State private var expandedAlbumWasInView = false
+
+  // Rubber-band drag selection state (macOS only).
+  @State private var dragOrigin: CGPoint?
+  @State private var dragCurrent: CGPoint?
+  @State private var albumFrames: [UUID: CGRect] = [:]
+  @State private var preDragHighlighted: Set<UUID> = []
+
+  // Track Info Sheet state
+  @State private var isTrackInfoPresented = false
+  @State private var tracksForTrackInfo: [Track] = []
+  @State private var detailedMetadataList: [DetailedTrackMetadata?] = []
+
+  // Delete Confirmation state
+  @State private var showDeleteConfirmation = false
+  @State private var albumsToDelete: [Album] = []
+
+  // New Playlist alert state
+  @State private var showNewPlaylistAlert = false
+  @State private var newPlaylistName = ""
+  @State private var trackIDsForNewPlaylist: Set<UUID> = []
+
+  @State private var expansionDebouncer: Debouncer = .init(delay: 0.3)
+
+  private let albums: [Album]
+  private var currentTrackID: UUID?
+  private let onTrackSelected: (Track, [Track]) -> Void
+  private var onAlbumDoubleClicked: ((Album) -> Void)?
+
+  private let minItemWidth: CGFloat = 160
+  private let spacing: CGFloat = 16
+
+  private var canvasWidth: CGFloat {
+    screenVM.mainColumnCanvasSizeObserved.width
+  }
+
+  private var columnCount: Int {
+    max(1, Int((canvasWidth - spacing) / (minItemWidth + spacing)))
+  }
+
+  /// Whether rubber-band drag selection is allowed (no expanded album).
+  private var isDragSelectionEnabled: Bool {
+    expandedAlbumID == nil
+  }
+
+  private var canvasAnimation: Animation {
+    let duration: TimeInterval = screenVM.windowSizeEverObserved ? 0.12 : 0
+    return .easeOut(duration: duration)
+  }
+
+  /// The normalised selection rectangle from drag origin to current position.
+  private var selectionRect: CGRect? {
+    guard let origin = dragOrigin, let current = dragCurrent else { return nil }
+    return CGRect(
+      x: min(origin.x, current.x),
+      y: min(origin.y, current.y),
+      width: abs(current.x - origin.x),
+      height: abs(current.y - origin.y)
+    )
+  }
+
   // MARK: - Content Views
 
-  private var mainContent: some View {
-    let rows = albums.chunked(into: columnCount)
-
-    return ScrollViewReader { proxy in
+  @ViewBuilder private var mainContent: some View {
+    ScrollViewReader { proxy in
+      let rows = albums.chunked(into: columnCount)
       ScrollView {
         LazyVStack(alignment: .leading, spacing: spacing) {
           ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
@@ -193,11 +232,6 @@ struct AlbumGridView: View {
     }
   }
 
-  private var canvasAnimation: Animation {
-    let duration: TimeInterval = screenVM.windowSizeEverObserved ? 0.12 : 0
-    return .easeOut(duration: duration)
-  }
-
   // MARK: - Rubber-Band Drag Layer (background — does not block taps on album items)
 
   @ViewBuilder private var rubberBandDragLayer: some View {
@@ -248,33 +282,6 @@ struct AlbumGridView: View {
         .allowsHitTesting(false)
     }
     #endif
-  }
-
-  /// The normalised selection rectangle from drag origin to current position.
-  private var selectionRect: CGRect? {
-    guard let origin = dragOrigin, let current = dragCurrent else { return nil }
-    return CGRect(
-      x: min(origin.x, current.x),
-      y: min(origin.y, current.y),
-      width: abs(current.x - origin.x),
-      height: abs(current.y - origin.y)
-    )
-  }
-
-  private func updateDragSelection() {
-    guard let rect = selectionRect else { return }
-    var selected = preDragHighlighted
-    for (id, frame) in albumFrames {
-      if rect.intersects(frame) {
-        selected.insert(id)
-      }
-    }
-    highlightedAlbumIDs = selected
-    expandedAlbumID = nil
-    if let first = albums.first(where: { selected.contains($0.id) }) {
-      vm.albumSelectionFixedAnchorID = first.id
-      vm.albumSelectionCursorID = first.id
-    }
   }
 
   // MARK: - Row
@@ -356,31 +363,6 @@ struct AlbumGridView: View {
     }
   }
 
-  private func handleTrackRowSelection(album: Album) {
-    #if canImport(AppKit) && !canImport(UIKit)
-    if NSEvent.modifierFlags.contains(.command) {
-      if highlightedAlbumIDs.contains(album.id) {
-        highlightedAlbumIDs.remove(album.id)
-      } else {
-        highlightedAlbumIDs.insert(album.id)
-      }
-      if highlightedAlbumIDs.count != 1 {
-        expandedAlbumID = nil
-      } else if let only = highlightedAlbumIDs.first {
-        expandedAlbumID = expandedAlbumID == only ? nil : only
-      }
-    } else {
-      highlightedAlbumIDs = [album.id]
-      expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
-    }
-    vm.albumSelectionFixedAnchorID = album.id
-    vm.albumSelectionCursorID = album.id
-    #else
-    highlightedAlbumIDs = [album.id]
-    expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
-    #endif
-  }
-
   // MARK: - Context Menu
 
   @ViewBuilder
@@ -408,6 +390,47 @@ struct AlbumGridView: View {
         showNewPlaylistAlert = true
       }
     )
+  }
+
+  private func updateDragSelection() {
+    guard let rect = selectionRect else { return }
+    var selected = preDragHighlighted
+    for (id, frame) in albumFrames {
+      if rect.intersects(frame) {
+        selected.insert(id)
+      }
+    }
+    highlightedAlbumIDs = selected
+    expandedAlbumID = nil
+    if let first = albums.first(where: { selected.contains($0.id) }) {
+      vm.albumSelectionFixedAnchorID = first.id
+      vm.albumSelectionCursorID = first.id
+    }
+  }
+
+  private func handleTrackRowSelection(album: Album) {
+    #if canImport(AppKit) && !canImport(UIKit)
+    if NSEvent.modifierFlags.contains(.command) {
+      if highlightedAlbumIDs.contains(album.id) {
+        highlightedAlbumIDs.remove(album.id)
+      } else {
+        highlightedAlbumIDs.insert(album.id)
+      }
+      if highlightedAlbumIDs.count != 1 {
+        expandedAlbumID = nil
+      } else if let only = highlightedAlbumIDs.first {
+        expandedAlbumID = expandedAlbumID == only ? nil : only
+      }
+    } else {
+      highlightedAlbumIDs = [album.id]
+      expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
+    }
+    vm.albumSelectionFixedAnchorID = album.id
+    vm.albumSelectionCursorID = album.id
+    #else
+    highlightedAlbumIDs = [album.id]
+    expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
+    #endif
   }
 
   private func showTrackInfo(for selectedAlbums: [Album]) {

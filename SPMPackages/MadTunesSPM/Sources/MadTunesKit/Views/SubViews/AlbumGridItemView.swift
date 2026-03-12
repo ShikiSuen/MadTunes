@@ -24,11 +24,6 @@ struct AlbumGridItemView: View {
 
   // MARK: Internal
 
-  let album: Album
-  let isExpanded: Bool
-  let isSelected: Bool
-  let isMultipleSelection: Bool
-
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
       let showOverlayStroke = isMultipleSelection || isExpanded || isSelected
@@ -64,12 +59,23 @@ struct AlbumGridItemView: View {
       .padding([.horizontal, .bottom], 4)
     }
   }
+
+  // MARK: Private
+
+  private let album: Album
+  private let isExpanded: Bool
+  private let isSelected: Bool
+  private let isMultipleSelection: Bool
 }
 
 // MARK: - MultiSelectionBadge
 
 /// A triangle corner badge indicating multi-selected album.
 private struct MultiSelectionBadge: View {
+  // MARK: Lifecycle
+
+  init() {}
+
   // MARK: Internal
 
   var body: some View {

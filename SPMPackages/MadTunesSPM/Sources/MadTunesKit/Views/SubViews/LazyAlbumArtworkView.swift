@@ -8,9 +8,13 @@ import SwiftUI
 /// while artwork is being loaded, then transitions to the actual artwork
 /// or a music-note fallback.
 struct LazyAlbumArtworkView: View {
-  // MARK: Internal
+  // MARK: Lifecycle
 
-  let album: Album
+  init(album: Album) {
+    self.album = album
+  }
+
+  // MARK: Internal
 
   var body: some View {
     let key = viewModel.library.albumKey(title: album.title, artist: album.artist)
@@ -44,4 +48,6 @@ struct LazyAlbumArtworkView: View {
   // MARK: Private
 
   @Environment(MadTunesViewModel.self) private var viewModel
+
+  private let album: Album
 }

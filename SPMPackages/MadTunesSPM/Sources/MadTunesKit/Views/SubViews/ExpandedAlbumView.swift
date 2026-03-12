@@ -23,32 +23,25 @@ private struct TrackFramePreferenceKey: PreferenceKey {
 /// The detail pane shown when an album is expanded in the grid.
 /// Displays album art on the left, track listing on the right.
 struct ExpandedAlbumView: View {
+  // MARK: Lifecycle
+
+  init(
+    album: Album,
+    currentTrackID: UUID? = nil,
+    containerWidth: CGFloat,
+    selectedTrackIDs: Binding<Set<UUID>>,
+    onTrackSelected: @escaping (Track, [Track]) -> Void,
+    onClose: @escaping () -> Void
+  ) {
+    self.album = album
+    self.currentTrackID = currentTrackID
+    self.containerWidth = containerWidth
+    self._selectedTrackIDs = selectedTrackIDs
+    self.onTrackSelected = onTrackSelected
+    self.onClose = onClose
+  }
+
   // MARK: Internal
-
-  let album: Album
-  var currentTrackID: UUID?
-  let containerWidth: CGFloat
-  @Binding var selectedTrackIDs: Set<UUID>
-  let onTrackSelected: (Track, [Track]) -> Void
-  let onClose: () -> Void
-
-  // MARK: Private
-
-  @State private var vm: MadTunesViewModel = .shared
-
-  // Track Info Sheet state
-  @State private var isTrackInfoPresented = false
-  @State private var tracksForTrackInfo: [Track] = []
-  @State private var detailedMetadataList: [DetailedTrackMetadata?] = []
-
-  // Delete Confirmation state
-  @State private var showDeleteConfirmation = false
-  @State private var tracksToDelete: [Track] = []
-
-  // New Playlist alert state
-  @State private var showNewPlaylistAlert = false
-  @State private var newPlaylistName = ""
-  @State private var trackIDsForNewPlaylist: Set<UUID> = []
 
   var body: some View {
     HStack(alignment: .top, spacing: 20) {
@@ -120,11 +113,34 @@ struct ExpandedAlbumView: View {
 
   // MARK: Private
 
+  @Binding private var selectedTrackIDs: Set<UUID>
+  @State private var vm: MadTunesViewModel = .shared
+
+  // Track Info Sheet state
+  @State private var isTrackInfoPresented = false
+  @State private var tracksForTrackInfo: [Track] = []
+  @State private var detailedMetadataList: [DetailedTrackMetadata?] = []
+
+  // Delete Confirmation state
+  @State private var showDeleteConfirmation = false
+  @State private var tracksToDelete: [Track] = []
+
+  // New Playlist alert state
+  @State private var showNewPlaylistAlert = false
+  @State private var newPlaylistName = ""
+  @State private var trackIDsForNewPlaylist: Set<UUID> = []
+
   @State private var lastClickedTrackID: UUID?
   @State private var trackFrames: [UUID: CGRect] = [:]
   @State private var dragAnchorTrackID: UUID?
   @State private var preDragSelection: Set<UUID> = []
   @State private var isDragSelecting = false
+
+  private let album: Album
+  private var currentTrackID: UUID?
+  private let containerWidth: CGFloat
+  private let onTrackSelected: (Track, [Track]) -> Void
+  private let onClose: () -> Void
 
   /// Track list width computed deterministically from the parent container width.
   /// Subtracts: LazyVStack padding (2×16=32), .padding(.horizontal,4) (2×4=8),
@@ -167,37 +183,6 @@ struct ExpandedAlbumView: View {
       .buttonStyle(.plain)
     }
     .padding(.bottom, 8)
-  }
-
-  /// 根據當前搜尋條件過濾曲目，若曲目無匹配但專輯匹配則顯示全部
-  private func filteredTracksForAlbumView(query: String) -> [Track] {
-    let filtered: [Track] = switch vm.searchFilterMode {
-    case .trackTitle:
-      album.sortedTracks.filter { track in
-        track.title.localizedCaseInsensitiveContains(query)
-      }
-    case .albumTitle:
-      // 在專輯內檢視時，如果搜尋模式是專輯名稱且該專輯符合條件，顯示所有曲目
-      album.title.localizedCaseInsensitiveContains(query) ? album.sortedTracks : []
-    case .artist:
-      album.sortedTracks.filter { track in
-        track.artist.localizedCaseInsensitiveContains(query)
-          || track.albumArtist.localizedCaseInsensitiveContains(query)
-      }
-    case .either:
-      album.sortedTracks.filter { track in
-        track.title.localizedCaseInsensitiveContains(query)
-          || track.artist.localizedCaseInsensitiveContains(query)
-          || track.albumArtist.localizedCaseInsensitiveContains(query)
-      }
-    }
-    // 如果過濾後為空，但專輯本身符合搜尋條件（專輯名稱或藝人），則顯示所有曲目
-    if filtered.isEmpty {
-      let albumMatches = album.title.localizedCaseInsensitiveContains(query)
-        || album.artist.localizedCaseInsensitiveContains(query)
-      return albumMatches ? album.sortedTracks : filtered
-    }
-    return filtered
   }
 
   @ViewBuilder private var trackList: some View {
@@ -351,6 +336,37 @@ struct ExpandedAlbumView: View {
     .frame(height: 1)
   }
 
+  /// 根據當前搜尋條件過濾曲目，若曲目無匹配但專輯匹配則顯示全部
+  private func filteredTracksForAlbumView(query: String) -> [Track] {
+    let filtered: [Track] = switch vm.searchFilterMode {
+    case .trackTitle:
+      album.sortedTracks.filter { track in
+        track.title.localizedCaseInsensitiveContains(query)
+      }
+    case .albumTitle:
+      // 在專輯內檢視時，如果搜尋模式是專輯名稱且該專輯符合條件，顯示所有曲目
+      album.title.localizedCaseInsensitiveContains(query) ? album.sortedTracks : []
+    case .artist:
+      album.sortedTracks.filter { track in
+        track.artist.localizedCaseInsensitiveContains(query)
+          || track.albumArtist.localizedCaseInsensitiveContains(query)
+      }
+    case .either:
+      album.sortedTracks.filter { track in
+        track.title.localizedCaseInsensitiveContains(query)
+          || track.artist.localizedCaseInsensitiveContains(query)
+          || track.albumArtist.localizedCaseInsensitiveContains(query)
+      }
+    }
+    // 如果過濾後為空，但專輯本身符合搜尋條件（專輯名稱或藝人），則顯示所有曲目
+    if filtered.isEmpty {
+      let albumMatches = album.title.localizedCaseInsensitiveContains(query)
+        || album.artist.localizedCaseInsensitiveContains(query)
+      return albumMatches ? album.sortedTracks : filtered
+    }
+    return filtered
+  }
+
   private func trackListColumnCount(
     trackCount: Int, availableWidth: CGFloat, maxRowsPerColumn: Int
   )
@@ -440,6 +456,22 @@ struct ExpandedAlbumView: View {
 // MARK: - TrackRow
 
 struct TrackRow: View {
+  // MARK: Lifecycle
+
+  init(
+    track: Track,
+    hideArtist: Bool = false,
+    showDiscNumber: Bool = false,
+    isPlaying: Bool = false,
+    isSelected: Bool = false
+  ) {
+    self.track = track
+    self.hideArtist = hideArtist
+    self.showDiscNumber = showDiscNumber
+    self.isPlaying = isPlaying
+    self.isSelected = isSelected
+  }
+
   // MARK: Internal
 
   let track: Track

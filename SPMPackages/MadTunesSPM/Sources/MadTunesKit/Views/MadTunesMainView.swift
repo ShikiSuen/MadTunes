@@ -7,6 +7,10 @@ import SwiftUI
 // MARK: - MadTunesMainView
 
 struct MadTunesMainView: View {
+  // MARK: Lifecycle
+
+  init() {}
+
   // MARK: Internal
 
   var body: some View {

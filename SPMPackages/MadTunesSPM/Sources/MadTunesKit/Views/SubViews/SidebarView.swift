@@ -6,26 +6,17 @@ import SwiftUI
 
 /// Sidebar listing the Library (All Music) and user-created playlists.
 struct SidebarView: View {
-  var library: MusicLibrary
-  @Binding var selectedPlaylistID: UUID?
+  // MARK: Lifecycle
 
-  // Alert state — shared across both "New Playlist" and "Rename"
-  @State private var alertKind: AlertKind?
-  @State private var alertText = ""
-
-  private enum AlertKind: Identifiable {
-    case newPlaylist
-    case rename(UUID)
-
-    // MARK: Internal
-
-    var id: String {
-      switch self {
-      case .newPlaylist: return "new"
-      case let .rename(id): return id.uuidString
-      }
-    }
+  init(
+    library: MusicLibrary,
+    selectedPlaylistID: Binding<UUID?>
+  ) {
+    self.library = library
+    self._selectedPlaylistID = selectedPlaylistID
   }
+
+  // MARK: Internal
 
   var body: some View {
     List(selection: $selectedPlaylistID) {
@@ -95,6 +86,29 @@ struct SidebarView: View {
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
     }
   }
+
+  // MARK: Private
+
+  private enum AlertKind: Identifiable {
+    case newPlaylist
+    case rename(UUID)
+
+    // MARK: Internal
+
+    var id: String {
+      switch self {
+      case .newPlaylist: return "new"
+      case let .rename(id): return id.uuidString
+      }
+    }
+  }
+
+  @Binding private var selectedPlaylistID: UUID?
+  // Alert state — shared across both "New Playlist" and "Rename"
+  @State private var alertKind: AlertKind?
+  @State private var alertText = ""
+
+  private var library: MusicLibrary
 
   // MARK: - Alert helpers
 

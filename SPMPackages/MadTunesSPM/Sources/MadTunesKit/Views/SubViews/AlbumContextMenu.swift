@@ -34,16 +34,6 @@ struct AlbumContextMenu: View {
 
   // MARK: Internal
 
-  let albums: [Album]
-  let library: MusicLibrary
-  let audioPlayer: AudioPlayer
-  let currentPlaylistID: UUID?
-  let searchText: String
-  let searchFilterMode: SearchFilterMode
-  let onShowTrackInfo: () -> Void
-  let onShowDeleteConfirmation: () -> Void
-  let onNewPlaylistWithTracks: (Set<UUID>) -> Void
-
   var body: some View {
     // 加入到播放清單（子選單）
     Menu {
@@ -145,6 +135,16 @@ struct AlbumContextMenu: View {
   }
 
   // MARK: Private
+
+  private let albums: [Album]
+  private let library: MusicLibrary
+  private let audioPlayer: AudioPlayer
+  private let currentPlaylistID: UUID?
+  private let searchText: String
+  private let searchFilterMode: SearchFilterMode
+  private let onShowTrackInfo: () -> Void
+  private let onShowDeleteConfirmation: () -> Void
+  private let onNewPlaylistWithTracks: (Set<UUID>) -> Void
 
   private var allTracks: [Track] {
     albums.flatMap(\.tracks)
