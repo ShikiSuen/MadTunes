@@ -445,7 +445,13 @@ struct AlbumGridView: View {
 
   private func handleTrackRowSelection(album: Album) {
     #if canImport(AppKit) && !canImport(UIKit)
-    if NSEvent.modifierFlags.contains(.command) {
+    let flags = NSEvent.modifierFlags
+
+    if flags.contains(.shift) {
+      // Phase 36: Shift+click range selection
+      handleShiftClick(album: album)
+    } else if flags.contains(.command) {
+      // Cmd+click: toggle single selection
       if highlightedAlbumIDs.contains(album.id) {
         highlightedAlbumIDs.remove(album.id)
       } else {
@@ -456,16 +462,63 @@ struct AlbumGridView: View {
       } else if let only = highlightedAlbumIDs.first {
         expandedAlbumID = expandedAlbumID == only ? nil : only
       }
+      // Reset anchor and cursor to the clicked album
+      vm.albumSelectionFixedAnchorID = album.id
+      vm.albumSelectionCursorID = album.id
     } else {
+      // Plain click: single select and toggle expansion
       highlightedAlbumIDs = [album.id]
       expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
+      vm.albumSelectionFixedAnchorID = album.id
+      vm.albumSelectionCursorID = album.id
     }
-    vm.albumSelectionFixedAnchorID = album.id
-    vm.albumSelectionCursorID = album.id
     #else
     highlightedAlbumIDs = [album.id]
     expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
     #endif
+  }
+
+  /// Phase 36: Shift+click range selection (Windows Explorer style)
+  private func handleShiftClick(album: Album) {
+    let currentAlbums = albums
+
+    // Determine the anchor: existing anchor, or first selected item, or none
+    let anchorID: UUID
+    if let existingAnchor = vm.albumSelectionFixedAnchorID {
+      anchorID = existingAnchor
+    } else if let first = highlightedAlbumIDs.first {
+      anchorID = first
+      vm.albumSelectionFixedAnchorID = anchorID
+    } else {
+      // No existing selection: treat as single select
+      highlightedAlbumIDs = [album.id]
+      vm.albumSelectionFixedAnchorID = album.id
+      vm.albumSelectionCursorID = album.id
+      // Do not expand on Shift+click
+      expandedAlbumID = nil
+      return
+    }
+
+    guard let anchorIdx = currentAlbums.firstIndex(where: { $0.id == anchorID }),
+          let clickIdx = currentAlbums.firstIndex(where: { $0.id == album.id }) else {
+      // Anchor or clicked album not in current view: fallback to single select
+      highlightedAlbumIDs = [album.id]
+      vm.albumSelectionFixedAnchorID = album.id
+      vm.albumSelectionCursorID = album.id
+      expandedAlbumID = nil
+      return
+    }
+
+    // Calculate range between anchor and clicked position (inclusive)
+    let lo = min(anchorIdx, clickIdx)
+    let hi = max(anchorIdx, clickIdx)
+    highlightedAlbumIDs = Set(currentAlbums[lo ... hi].map(\.id))
+
+    // Update cursor to the clicked position, keep anchor unchanged
+    vm.albumSelectionCursorID = album.id
+
+    // Shift+click does not expand the album
+    expandedAlbumID = nil
   }
 
   private func showTrackInfo(for selectedAlbums: [Album]) {
