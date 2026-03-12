@@ -83,7 +83,7 @@ struct MadTunesMainView: View {
           }
           .ignoresSafeArea(.all)
         }
-        .safeAreaInset(edge: .bottom) {
+        .safeAreaInset(edge: .bottom, spacing: 0) {
           ZStack {
             BottomBarBackground()
             PlayerControlsView(player: viewModel.player, artworkData: viewModel.currentTrackArtwork)
