@@ -28,10 +28,36 @@ final class MadTunesViewModel {
   var expandedAlbumID: UUID?
   var highlightedAlbumIDs: Set<UUID> = []
   var selectedTrackIDs: Set<UUID> = []
+  /// When true the main content area shows AlbumTableView instead of AlbumGridView.
+  /// Persisted via UserDefaults.
+  var useTableView: Bool = UserDefaults.standard.bool(forKey: "MadTunes.useTableView")
+
+  /// Table view column visibility settings (key: column identifier, value: isVisible).
+  /// Persisted via UserDefaults as JSON.
+  var tableColumnVisibility: [String: Bool] = {
+    guard let data = UserDefaults.standard.data(forKey: "MadTunes.tableColumnVisibility"),
+          let dict = try? JSONDecoder().decode([String: Bool].self, from: data) else {
+      return [:]
+    }
+    return dict
+  }()
+
   /// The fixed anchor for Shift+Arrow range selection. Set on click / plain arrow.
   var albumSelectionFixedAnchorID: UUID?
   /// The moving cursor for Shift+Arrow range selection.
   var albumSelectionCursorID: UUID?
+
+  /// Table view: anchor for Shift+Click/Arrow range selection.
+  var tableSelectionAnchorID: UUID?
+  /// Table view: moving cursor (highlighted row).
+  var tableSelectionCursorID: UUID?
+  /// Phase 43: Set during keyboard navigation to auto-scroll the table.
+  /// Not set on mouse click; reset to nil after the scroll completes.
+  var tableScrollTargetID: UUID?
+
+  /// Phase 45: Table view column sorting (column type, ascending?)
+  var tableSortCriteria: (column: TableColumnType, ascending: Bool)?
+
   var isFileImporterPresented = false // Only for non-AppKit targets.
   var isFolderImporterPresented = false // Also used on macOS AppKit as File Importer.
   var isDropTargeted = false
@@ -197,6 +223,56 @@ final class MadTunesViewModel {
     guard let track = player.currentTrack else { return nil }
     let key = library.albumKey(title: track.albumTitle, artist: track.albumArtist)
     return library.artworkCache[key]
+  }
+
+  /// A flat list of every track contained within `currentAlbums`.
+  var currentTracks: [Track] {
+    let tracks = currentAlbums.flatMap(\.tracks)
+    // Phase 45: Apply table sorting if active
+    guard let criteria = tableSortCriteria else { return tracks }
+    return tracks.sorted {
+      let ascending = criteria.ascending
+      switch criteria.column {
+      case .name:
+        return ascending ? $0.title < $1.title : $0.title > $1.title
+      case .length:
+        return ascending ? $0.duration < $1.duration : $0.duration > $1.duration
+      case .artist:
+        return ascending ? $0.artist < $1.artist : $0.artist > $1.artist
+      case .albumTitle:
+        return ascending ? $0.albumTitle < $1.albumTitle : $0.albumTitle > $1.albumTitle
+      case .albumArtist:
+        return ascending ? $0.albumArtist < $1.albumArtist : $0.albumArtist > $1.albumArtist
+      case .trackNumber:
+        // Sort by disc number first, then track number
+        let disc0 = $0.discNumber, disc1 = $1.discNumber
+        let track0 = $0.trackNumber, track1 = $1.trackNumber
+        if disc0 != disc1 {
+          return ascending ? disc0 < disc1 : disc0 > disc1
+        }
+        return ascending ? track0 < track1 : track0 > track1
+      case .genre:
+        return ascending ? $0.genre < $1.genre : $0.genre > $1.genre
+      case .year:
+        let y0 = $0.year ?? Int.min, y1 = $1.year ?? Int.min
+        return ascending ? y0 < y1 : y0 > y1
+      case .folder:
+        // Phase 46: Sort by full folder path, not just folder name
+        let path0 = $0.fileURL.deletingLastPathComponent().path
+        let path1 = $1.fileURL.deletingLastPathComponent().path
+        return ascending ? path0 < path1 : path0 > path1
+      case .playingIndicator:
+        // Phase 46: Not sortable, fallback to title sort
+        return ascending ? $0.title < $1.title : $0.title > $1.title
+      }
+    }
+  }
+
+  /// Estimated number of tracks visible per "page" in the table view.
+  var tablePageSize: Int {
+    let canvasHeight = screenVM.mainColumnCanvasSizeObserved.height
+    let rowHeight: CGFloat = 28 // approximate single row height
+    return max(1, Int((canvasHeight - 60) / rowHeight))
   }
 
   /// Resets column browser filters.
@@ -422,6 +498,10 @@ final class MadTunesViewModel {
   // MARK: - Keyboard Navigation
 
   func handleKeyPress(_ press: KeyPress, albums: [Album]) -> KeyPress.Result {
+    // When table view is active, delegate to table-specific handler.
+    if useTableView {
+      return handleTableKeyPress(press)
+    }
     // CMD+A: Select All
     if press.characters == "a", press.modifiers.contains(.command) {
       if let expandedID = expandedAlbumID,
@@ -468,6 +548,81 @@ final class MadTunesViewModel {
     }
 
     return .ignored
+  }
+
+  // MARK: - Table Keyboard Navigation
+
+  /// Handles keyboard input when the table view is active.
+  /// Phase 48: Arrow keys, Shift+Arrow, PgUp/PgDn, and Cmd+A are now handled
+  /// natively by SwiftUI Table. This handler only intercepts action keys:
+  /// Cmd+C copy, Cmd+↓/Return/Space to play.
+  func handleTableKeyPress(_ press: KeyPress) -> KeyPress.Result {
+    let tracks = currentTracks
+    guard !tracks.isEmpty else { return .ignored }
+
+    // CMD+C: Copy selected tracks metadata.
+    if press.characters == "c", press.modifiers.contains(.command) {
+      if !selectedTrackIDs.isEmpty {
+        copySelectedTracksMetadata()
+        return .handled
+      }
+    }
+
+    // Phase 43: CMD+↓: Play selected tracks immediately.
+    if press.key == .downArrow, press.modifiers.contains(.command) {
+      let selected = tracks.filter { selectedTrackIDs.contains($0.id) }
+      if !selected.isEmpty {
+        player.setQueue(selected, startingAt: 0)
+        return .handled
+      }
+      return .handled
+    }
+
+    // Return / Space: play selected tracks (or track at cursor).
+    if press.key == .return || press.characters == " " {
+      if press.characters == " ", player.currentTrack != nil {
+        player.togglePlayPause()
+        return .handled
+      }
+      let selected = tracks.filter { selectedTrackIDs.contains($0.id) }
+      if !selected.isEmpty {
+        player.setQueue(selected, startingAt: 0)
+        return .handled
+      }
+      return .ignored
+    }
+
+    // Phase 48: All other keys (arrows, page, etc.) fall through to Table.
+    return .ignored
+  }
+
+  // MARK: - Phase 45: Table Sorting
+
+  // Phase 45: Clear sorting (switch back to album order)
+  func clearTableSorting() {
+    tableSortCriteria = nil
+  }
+
+  // Phase 45: Set or toggle column sort
+  func setTableSort(column: TableColumnType) {
+    if let current = tableSortCriteria, current.column == column {
+      // Toggle direction
+      let newAscending = !current.ascending
+      if newAscending {
+        // Third click: clear sort
+        tableSortCriteria = nil
+      } else {
+        tableSortCriteria = (column: column, ascending: newAscending)
+      }
+    } else {
+      tableSortCriteria = (column: column, ascending: true)
+    }
+  }
+
+  // Phase 45: Get sort indicator for column header
+  func sortIndicator(for column: TableColumnType) -> String? {
+    guard let criteria = tableSortCriteria, criteria.column == column else { return nil }
+    return criteria.ascending ? " ▲" : " ▼"
   }
 
   // MARK: Private

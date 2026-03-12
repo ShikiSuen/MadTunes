@@ -82,6 +82,14 @@ struct PlayerControlsView: View {
           TapGesture(count: 2)
             .onEnded { _ in
               guard let track = player.currentTrack else { return }
+
+              if vm.useTableView {
+                // Phase 47: When table view is visible, double-clicking the artwork
+                // should scroll the table to the currently playing track.
+                vm.tableScrollTargetID = track.id
+                return
+              }
+
               if let album = vm.currentAlbums.first(
                 where: { $0.allTrackIDsSet.contains(track.id) }
               ) {

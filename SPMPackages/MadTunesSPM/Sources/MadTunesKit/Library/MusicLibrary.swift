@@ -148,7 +148,10 @@ public final class MusicLibrary {
 
         currentProcessingFileName = track.fileURL.lastPathComponent
         if existingURLs.contains(track.fileURL) {
-          // Duplicate: update existing track's metadata in-place.
+          // Duplicate: update existing track's metadata in-place.  Do **not** touch
+          // `totalPlayCount` here – the user’s accumulated play count should survive
+          // repeated imports.  The new `track` object has a fresh default count of 0,
+          // so assigning `tracks[idx] = track` would reset the counter.
           if let idx = tracks.firstIndex(where: { $0.fileURL == track.fileURL }) {
             tracks[idx].title = track.title
             tracks[idx].artist = track.artist
@@ -160,6 +163,7 @@ public final class MusicLibrary {
             tracks[idx].genre = track.genre
             tracks[idx].year = track.year
             tracks[idx].fallbackFields = track.fallbackFields
+            // totalPlayCount intentionally not modified
           }
         } else {
           existingURLs.insert(track.fileURL)

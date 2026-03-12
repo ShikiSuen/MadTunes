@@ -94,6 +94,31 @@ struct MadTunesMainView: View {
           .fixedSize(horizontal: false, vertical: true)
         }
         .toolbar {
+          // Phase 42: view mode toggle should come first
+          ToolbarItem(placement: .primaryAction) {
+            Picker(selection: $vm.useTableView) {
+              Label(String(localized: "i18n:Toolbar.ViewGrid", bundle: #bundle), systemImage: "square.grid.2x2")
+                .tag(false)
+              Label(String(localized: "i18n:Toolbar.ViewTable", bundle: #bundle), systemImage: "tablecells")
+                .tag(true)
+            } label: {
+              Text(String(localized: "i18n:Toolbar.ToggleViewLayout", bundle: #bundle))
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: viewModel.useTableView) { _, newValue in
+              UserDefaults.standard.set(newValue, forKey: "MadTunes.useTableView")
+              Task {
+                if newValue {
+                  // when entering table mode we no longer need an expanded album
+                  viewModel.expandedAlbumID = nil
+                  viewModel.highlightedAlbumIDs.removeAll()
+                  viewModel.selectedTrackIDs.removeAll()
+                }
+              }
+            }
+          }
+          .removeSharedBackgroundVisibility(bypassWhen: OS.isAppKit)
+
           ToolbarItem(placement: .primaryAction) {
             if !viewModel.library.isImporting, !albums.isEmpty {
               switch OS.isAppKit {
@@ -188,23 +213,48 @@ struct MadTunesMainView: View {
   private func contentArea(albums displayAlbums: [Album]) -> some View {
     @Bindable var vm = viewModel
     Color.clear
-      .overlay {
-        AlbumGridView(
-          albums: displayAlbums,
-          expandedAlbumID: $vm.expandedAlbumID,
-          highlightedAlbumIDs: $vm.highlightedAlbumIDs,
-          selectedTrackIDs: $vm.selectedTrackIDs,
-          currentTrackID: viewModel.player.currentTrack?.id,
-          onTrackSelected: { track, albumTracks in
-            viewModel.onTrackSelected(track, albumTracks)
-          },
-          onAlbumDoubleClicked: { album in
-            viewModel.onAlbumDoubleClicked(album)
-          }
-        )
-        .focusable()
-        .focused($isContentFocused)
-        .focusEffectDisabled()
+      .overlay(alignment: .leading) {
+        if vm.useTableView {
+          AlbumTableView(
+            tracks: vm.currentTracks,
+            selectedTrackIDs: $vm.selectedTrackIDs,
+            currentTrackID: viewModel.player.currentTrack?.id,
+            onTrackSingleClicked: { _, _ in
+              // No-op (selection handled internally)
+            },
+            onTrackDoubleClicked: { track, tracks in
+              // when a user double-clicks in the table we treat it as playing
+              // the full filtered list beginning at that track
+              let startIndex = tracks.firstIndex(where: { $0.id == track.id }) ?? 0
+              vm.player.setQueue(tracks, startingAt: startIndex)
+            }
+          )
+          // Use selectedPlaylistID as stable identity so SwiftUI fully
+          // recreates the List when switching playlists (avoids an expensive
+          // 5k-item diff) while keeping the view stable for other changes
+          // like selection or playback updates.
+          .id(vm.selectedPlaylistID)
+          .focusable()
+          .focused($isContentFocused)
+          .focusEffectDisabled()
+        } else {
+          AlbumGridView(
+            albums: displayAlbums,
+            expandedAlbumID: $vm.expandedAlbumID,
+            highlightedAlbumIDs: $vm.highlightedAlbumIDs,
+            selectedTrackIDs: $vm.selectedTrackIDs,
+            currentTrackID: viewModel.player.currentTrack?.id,
+            onTrackSelected: { track, albumTracks in
+              viewModel.onTrackSelected(track, albumTracks)
+            },
+            onAlbumDoubleClicked: { album in
+              viewModel.onAlbumDoubleClicked(album)
+            }
+          )
+          .focusable()
+          .focused($isContentFocused)
+          .focusEffectDisabled()
+        }
       }
       .searchable(
         text: $vm.searchText,
@@ -222,8 +272,15 @@ struct MadTunesMainView: View {
         isContentFocused = true
       }
       .onChange(of: viewModel.selectedPlaylistID) { _, _ in
+        if !viewModel.selectedTrackIDs.isEmpty { viewModel.selectedTrackIDs.removeAll() }
         viewModel.resetColumnBrowserFilters()
-        viewModel.searchText = ""
+        if !viewModel.searchText.isEmpty { viewModel.searchText = "" }
+      }
+      // Phase 44: Ensure artwork is loaded when playing from table view.
+      .onChange(of: viewModel.player.currentTrack?.id) { _, _ in
+        guard let track = viewModel.player.currentTrack else { return }
+        let key = viewModel.library.albumKey(title: track.albumTitle, artist: track.albumArtist)
+        viewModel.library.requestArtworkLoad(forAlbumKey: key, sampleTrackURL: track.fileURL)
       }
       .overlay {
         ContentAvailabilityOverlay(
