@@ -327,11 +327,13 @@ struct AlbumGridView: View {
         let isSelected = highlightedAlbumIDs.contains(
           album.id
         )
+        let isCursor = vm.albumSelectionCursorID == album.id
         let isMultiSelection = isSelected && highlightedAlbumIDs.count > 1
         AlbumGridItemView(
           album: album,
           isExpanded: isExpanded,
           isSelected: isSelected,
+          isCursor: isCursor,
           isMultipleSelection: isMultiSelection
         )
         .background(

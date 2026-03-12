@@ -14,11 +14,13 @@ struct AlbumGridItemView: View {
     album: Album,
     isExpanded: Bool,
     isSelected: Bool,
+    isCursor: Bool,
     isMultipleSelection: Bool
   ) {
     self.album = album
     self.isExpanded = isExpanded
     self.isSelected = isSelected
+    self.isCursor = isCursor
     self.isMultipleSelection = isMultipleSelection
   }
 
@@ -67,13 +69,7 @@ struct AlbumGridItemView: View {
     .animation(.easeInOut(duration: 0.2), value: isExpanded)
     .background {
       if showSelectedStatus {
-        Rectangle()
-          .fill(Color.madTunesAccent.opacity(0.1))
-          .stroke(
-            Color.madTunesAccent.opacity(0.15),
-            lineWidth: 1
-          )
-          .allowsHitTesting(false)
+        selectionBackground
       }
     }
   }
@@ -83,7 +79,30 @@ struct AlbumGridItemView: View {
   private let album: Album
   private let isExpanded: Bool
   private let isSelected: Bool
+  private let isCursor: Bool
   private let isMultipleSelection: Bool
+
+  @ViewBuilder private var selectionBackground: some View {
+    if isCursor {
+      // Cursor item: thicker border, lower opacity
+      Rectangle()
+        .fill(Color.madTunesAccent.opacity(0.15))
+        .stroke(
+          Color.madTunesAccent.opacity(0.5),
+          lineWidth: 2.5
+        )
+        .allowsHitTesting(false)
+    } else {
+      // Regular selected item
+      Rectangle()
+        .fill(Color.madTunesAccent.opacity(0.2))
+        .stroke(
+          Color.madTunesAccent.opacity(0.25),
+          lineWidth: 1
+        )
+        .allowsHitTesting(false)
+    }
+  }
 }
 
 // MARK: - MultiSelectionBadge
