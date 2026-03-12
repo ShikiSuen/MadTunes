@@ -6,8 +6,8 @@ let package = Package(
   name: "MadTunesSPM",
   defaultLocalization: "en",
   platforms: [
-    .iOS(.v17),
-    .macOS(.v14),
+    .iOS(.v18),
+    .macOS(.v15),
   ],
   products: [
     .library(
