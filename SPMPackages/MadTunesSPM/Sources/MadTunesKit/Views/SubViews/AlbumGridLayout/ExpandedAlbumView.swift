@@ -59,6 +59,45 @@ struct ExpandedAlbumView: View {
           .frame(width: 200, height: 200)
       }
       .fixedSize()
+      .onTapGesture(count: 2) {
+        // Phase 38: Double-click to play album
+        let sorted = album.sortedTracks
+        if let first = sorted.first {
+          onTrackSelected(first, sorted)
+        }
+      }
+      .contextMenu {
+        // Phase 38: Right-click context menu for album artwork
+        AlbumContextMenu(
+          albums: [album],
+          library: vm.library,
+          audioPlayer: vm.player,
+          currentPlaylistID: vm.selectedPlaylistID,
+          searchText: vm.searchText,
+          searchFilterMode: vm.searchFilterMode,
+          onShowTrackInfo: {
+            tracksForTrackInfo = album.sortedTracks
+            Task {
+              var metadataList: [DetailedTrackMetadata?] = []
+              for tr in tracksForTrackInfo {
+                let metadata = await MetadataReader.readDetailedMetadata(from: tr.fileURL)
+                metadataList.append(metadata)
+              }
+              detailedMetadataList = metadataList
+              isTrackInfoPresented = true
+            }
+          },
+          onShowDeleteConfirmation: {
+            tracksToDelete = album.sortedTracks
+            showDeleteConfirmation = true
+          },
+          onNewPlaylistWithTracks: { trackIDs in
+            trackIDsForNewPlaylist = trackIDs
+            newPlaylistName = ""
+            showNewPlaylistAlert = true
+          }
+        )
+      }
     }
     .padding(16)
     .background(
