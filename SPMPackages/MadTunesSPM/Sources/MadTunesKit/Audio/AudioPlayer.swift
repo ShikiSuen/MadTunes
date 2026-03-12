@@ -83,13 +83,13 @@ public final class AudioPlayer {
     }
   }
 
-  /// 在當前播放位置的下一首之前插入曲目，並立刻開始播放第一首插入的曲目。
-  public func insertAndPlay(_ tracks: [Track]) {
+  /// 在當前播放位置的下一首之前插入曲目，不中斷當前播放。
+  /// Phase 39: 插播不應結束當前曲目，僅將曲目插入佇列中。
+  public func insertNext(_ tracks: [Track]) {
     guard !tracks.isEmpty else { return }
     let insertAt = min(currentIndex + 1, queue.count)
     queue.insert(contentsOf: tracks, at: insertAt)
-    currentIndex = insertAt
-    play(queue[currentIndex])
+    // 不修改 currentIndex，不中斷當前播放
   }
 
   /// Move a track within the queue (for drag-to-reorder).
