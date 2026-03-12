@@ -240,8 +240,29 @@ final class MadTunesViewModel {
   }
 
   func importURLs(_ urls: [URL]) {
+    // Capture the playlist that was active when the import started.
+    let targetPlaylistID = selectedPlaylistID
     Task {
       await library.importFiles(urls: urls)
+
+      // After the import finishes, if the user was viewing anything other than
+      // "All Music" we should also add the imported items to that playlist.
+      // This covers the Favorites page (index 1) and any user-defined static
+      // playlist. The operation is performed even if some of the files were
+      // duplicates (the helper will simply skip entries that already exist in
+      // the playlist).
+      if let pid = targetPlaylistID,
+         pid != library.playlists.first?.id {
+        // Determine which track IDs correspond to the imported URLs. We
+        // compare file paths since URLs may not be identical objects.
+        let importedPaths = Set(urls.map { $0.standardizedFileURL.path })
+        let idsToAdd = library.tracks
+          .filter { importedPaths.contains($0.fileURL.standardizedFileURL.path) }
+          .map(\.id)
+        if !idsToAdd.isEmpty {
+          library.addTracks(Set(idsToAdd), toPlaylist: pid)
+        }
+      }
     }
   }
 
@@ -276,12 +297,12 @@ final class MadTunesViewModel {
                 bookmarkDataIsStale: &stale
               ) {
                 _ = scopedURL.startAccessingSecurityScopedResource()
-                await self.library.importFiles(urls: [scopedURL])
+                self.importURLs([scopedURL])
                 return
               }
               #endif
             }
-            await self.library.importFiles(urls: [url])
+            self.importURLs([url])
           }
         }
       }
