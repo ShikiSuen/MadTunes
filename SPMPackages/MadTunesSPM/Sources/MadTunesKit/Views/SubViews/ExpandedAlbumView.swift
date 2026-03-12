@@ -66,6 +66,14 @@ struct ExpandedAlbumView: View {
         .fill(.secondary.opacity(0.1))
     )
     .padding(.horizontal, 4)
+    .background(
+      GeometryReader { geo in
+        Color.clear.preference(
+          key: ExpandedAlbumFramePreferenceKey.self,
+          value: geo.frame(in: .named("albumGrid"))
+        )
+      }
+    )
     .sheet(isPresented: $isTrackInfoPresented) {
       if tracksForTrackInfo.count == 1, let track = tracksForTrackInfo.first {
         TrackInfoView(

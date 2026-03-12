@@ -82,6 +82,7 @@ struct AlbumGridView: View {
   @State private var dragOrigin: CGPoint?
   @State private var dragCurrent: CGPoint?
   @State private var albumFrames: [UUID: CGRect] = [:]
+  @State private var expandedAlbumFrame: CGRect?
   @State private var preDragHighlighted: Set<UUID> = []
 
   // Track Info Sheet state
@@ -170,6 +171,9 @@ struct AlbumGridView: View {
         .onPreferenceChange(AlbumFramePreferenceKey.self) { frames in
           albumFrames = frames
         }
+        .onPreferenceChange(ExpandedAlbumFramePreferenceKey.self) { frame in
+          expandedAlbumFrame = frame
+        }
         .background {
           rubberBandDragLayer
         }
@@ -235,6 +239,35 @@ struct AlbumGridView: View {
   // MARK: - Rubber-Band Drag Layer (background — does not block taps on album items)
 
   @ViewBuilder private var rubberBandDragLayer: some View {
+    // layer responsible for closing the expanded album when user clicks an empty
+    // portion of the grid. Uses a drag gesture with zero minimum distance so that we
+    // can inspect the final location and ignore true drags by checking translation.
+    Color.clear
+      .contentShape(Rectangle())
+      .gesture(
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("albumGrid"))
+          .onEnded { value in
+            // only treat as a tap if the user didn't actually drag
+            let dx = abs(value.translation.width)
+            let dy = abs(value.translation.height)
+            guard dx < 5, dy < 5 else { return }
+
+            guard let _ = expandedAlbumID else { return }
+            // if the tap is inside album artwork item or inside the expanded view,
+            // ignore it rather than closing.
+            if albumFrames.values.contains(where: { $0.contains(value.location) }) {
+              return
+            }
+            if let extFrame = expandedAlbumFrame, extFrame.contains(value.location) {
+              return
+            }
+
+            withAnimation(.easeInOut(duration: 0.3)) {
+              expandedAlbumID = nil
+            }
+          }
+      )
+
     #if canImport(AppKit) && !canImport(UIKit)
     if isDragSelectionEnabled {
       Color.clear
@@ -469,5 +502,21 @@ private struct AlbumFramePreferenceKey: PreferenceKey {
     nextValue: () -> [UUID: CGRect]
   ) {
     value.merge(nextValue(), uniquingKeysWith: { $1 })
+  }
+}
+
+// MARK: - ExpandedAlbumFramePreferenceKey
+
+// Frame of the expanded album detail pane. Used by the blank-area tap
+// recogniser in the background layer so that clicking inside the pane itself
+// does not close it.
+struct ExpandedAlbumFramePreferenceKey: PreferenceKey {
+  nonisolated static var defaultValue: CGRect? { nil }
+
+  nonisolated static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+    // always take the latest non-nil value
+    if let next = nextValue() {
+      value = next
+    }
   }
 }
