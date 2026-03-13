@@ -32,6 +32,8 @@ struct AlbumGridView: View {
 
   var body: some View {
     mainContent
+      // Phase 50: Removed .animation(albumAnimation, value: expandedAlbumID).
+      // Use explicit withAnimation instead to prevent animation conflicts.
       .animation(canvasAnimation, value: canvasWidth)
       .opacity(screenVM.windowSizeEverObserved ? 1 : 0)
       .sheet(isPresented: $isTrackInfoPresented) {
@@ -99,7 +101,10 @@ struct AlbumGridView: View {
   @State private var newPlaylistName = ""
   @State private var trackIDsForNewPlaylist: Set<UUID> = []
 
-  @State private var expansionDebouncer: Debouncer = .init(delay: 0.3)
+  // Phase 50: Single debouncer for album click handling.
+  // Delay single-click to allow double-click recognition (0.25s matches system double-tap timeout).
+  // Double-click cancels pending single-click to prevent toggle-then-reopen issue.
+  @State private var albumClickDebouncer: Debouncer = .init(delay: 0.25)
 
   private let albums: [Album]
   private var currentTrackID: UUID?
@@ -156,7 +161,7 @@ struct AlbumGridView: View {
                 containerWidth: canvasWidth,
                 selectedTrackIDs: $selectedTrackIDs,
                 onTrackSelected: onTrackSelected,
-                onClose: { withAnimation { expandedAlbumID = nil } }
+                onClose: { withAnimation(.easeInOut(duration: 0.3)) { expandedAlbumID = nil } }
               )
               .drawingGroup()
               .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
@@ -262,9 +267,7 @@ struct AlbumGridView: View {
               return
             }
 
-            withAnimation(.easeInOut(duration: 0.3)) {
-              expandedAlbumID = nil
-            }
+            expandedAlbumID = nil
           }
       )
 
@@ -351,36 +354,33 @@ struct AlbumGridView: View {
             vm.library.albumKey(title: album.title, artist: album.artist)
           )
         )
-        // 外置 simultaneousGesture 可以徹底消滅單擊時的延遲。
-        // 但這樣在執行內層雙擊任務時會連帶觸發單擊的操作，所以需要「首發准許型 Debounce」處理。
-        .onTapGesture(count: 1) {
-          Task { @MainActor in
-            expansionDebouncer.debounceOnMain(keepFirstAttemptInstead: true) {
-              withAnimation(.easeInOut(duration: 0.3)) {
-                handleTrackRowSelection(album: album)
-              }
-            }
-          }
-        }
+        // Phase 50: Combined gesture with debounced single-click and priority double-click.
+        // Single-click delays 0.25s to allow double-click recognition.
+        // Double-click cancels pending single-click to prevent toggle-then-reopen.
         .simultaneousGesture(
           TapGesture(count: 2)
             .onEnded { _ in
-              Task { @MainActor in
-                // Double-clicking an already-expanded album should NOT collapse it.
-                if expandedAlbumID != album.id {
-                  expansionDebouncer.debounceOnMain(keepFirstAttemptInstead: true) {
+              onAlbumDoubleClicked?(album)
+              albumClickDebouncer.cancelOnMain()
+              withAnimation(.easeInOut(duration: 0.3)) {
+                expandedAlbumID = album.id
+              }
+              highlightedAlbumIDs = [album.id]
+              vm.albumSelectionFixedAnchorID = album.id
+              vm.albumSelectionCursorID = album.id
+            }
+            .simultaneously(
+              with: TapGesture(count: 1)
+                .onEnded {
+                  albumClickDebouncer.debounceOnMain(
+                    keepFirstAttemptInstead: expandedAlbumID != album.id
+                  ) {
                     withAnimation(.easeInOut(duration: 0.3)) {
                       handleTrackRowSelection(album: album)
                     }
                   }
-                } else {
-                  highlightedAlbumIDs = [album.id]
                 }
-              }
-              Task { @MainActor in
-                onAlbumDoubleClicked?(album)
-              }
-            }
+            )
         )
         .contextMenu {
           albumContextMenu(for: album)
@@ -545,6 +545,9 @@ struct AlbumGridView: View {
     }
     trackIDsForNewPlaylist = []
   }
+
+  // Phase 50: Only assign expandedAlbumID if the value is different.
+  // Prevents redundant layout animations when the value hasn't changed.
 }
 
 // MARK: - AlbumFramePreferenceKey
