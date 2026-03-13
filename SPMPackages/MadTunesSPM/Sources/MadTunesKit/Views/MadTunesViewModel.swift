@@ -201,10 +201,10 @@ final class MadTunesViewModel {
 
   /// Resets column browser filters.
   func resetColumnBrowserFilters() {
-    columnBrowserSelectedGenres = []
-    columnBrowserSelectedAlbumArtists = []
-    columnBrowserSelectedSongArtists = []
-    columnBrowserSelectedAlbumTitles = []
+    if !columnBrowserSelectedGenres.isEmpty { columnBrowserSelectedGenres = [] }
+    if !columnBrowserSelectedAlbumArtists.isEmpty { columnBrowserSelectedAlbumArtists = [] }
+    if !columnBrowserSelectedSongArtists.isEmpty { columnBrowserSelectedSongArtists = [] }
+    if !columnBrowserSelectedAlbumTitles.isEmpty { columnBrowserSelectedAlbumTitles = [] }
   }
 
   /// Plays all tracks matching the current column browser filter state.
