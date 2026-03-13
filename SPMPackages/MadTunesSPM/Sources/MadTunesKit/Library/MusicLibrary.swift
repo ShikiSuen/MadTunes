@@ -390,6 +390,40 @@ public final class MusicLibrary {
     persistAllPlaylists()
   }
 
+  /// 重新排序播放清單內的曲目（拖放功能）。
+  ///
+  /// - Parameters:
+  ///   - trackIDs: 欲移動的曲目 ID（若為空則無操作）。
+  ///   - playlistID: 目標播放清單 ID。
+  ///   - toIndex: 希望插入到的索引位置（針對移除掉同樣曲目後的結果）。
+  public func moveTracks(_ trackIDs: [UUID], inPlaylist playlistID: UUID, toIndex: Int) {
+    guard !trackIDs.isEmpty else { return }
+    guard let playlistIndex = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+
+    // Only allow reordering for Favorites (system playlist index 1) and user-defined static playlists.
+    // Do not allow reordering for All Music or dynamic playlists.
+    let playlist = playlists[playlistIndex]
+    guard playlist.kind == .staticList
+      || (playlist.kind == .system && playlistIndex == 1) else {
+      return
+    }
+
+    let existingIDs = playlists[playlistIndex].trackIDs
+    let dragSet = Set(trackIDs)
+    let draggedIDsInOrder = existingIDs.filter { dragSet.contains($0) }
+    guard !draggedIDsInOrder.isEmpty else { return }
+
+    // Determine insertion index after removing the dragged items.
+    let beforeDraggedCount = existingIDs.prefix(min(toIndex, existingIDs.count)).filter { dragSet.contains($0) }.count
+    let insertionIndex = max(0, min(existingIDs.count - draggedIDsInOrder.count, toIndex - beforeDraggedCount))
+
+    var newOrder = existingIDs.filter { !dragSet.contains($0) }
+    newOrder.insert(contentsOf: draggedIDsInOrder, at: insertionIndex)
+
+    playlists[playlistIndex].trackIDs = newOrder
+    persistAllPlaylists()
+  }
+
   /// 從資料庫中移除指定曲目（包含 SwiftData 持久層），並從所有播放清單中清理其引用
   public func removeTracks(ids: Set<UUID>) {
     // bump observable token so anyone watching knows something changed
@@ -407,8 +441,11 @@ public final class MusicLibrary {
   }
 
   public func tracks(for playlist: Playlist) -> [Track] {
-    let idSet = Set(playlist.trackIDs)
-    return tracks.filter { idSet.contains($0.id) }
+    // Preserve the order defined by the playlist (trackIDs array).
+    // This allows playlist-specific ordering (e.g. drag-reorder) to be reflected
+    // in views that display a flat track list.
+    let trackMap = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
+    return playlist.trackIDs.compactMap { trackMap[$0] }
   }
 
   /// Build an album list filtered to only the tracks in a given playlist.

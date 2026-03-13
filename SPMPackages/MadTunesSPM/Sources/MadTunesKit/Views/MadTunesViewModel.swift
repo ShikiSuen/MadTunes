@@ -225,8 +225,79 @@ final class MadTunesViewModel {
     return library.artworkCache[key]
   }
 
-  /// A flat list of every track contained within `currentAlbums`.
+  /// A flat list of every track that should be displayed in the table view.
+  ///
+  /// When viewing a user playlist (static playlists and Favorites), we preserve
+  /// the playlist's own ordering, allowing drag-reorder to work as expected.
+  /// When viewing All Music or a dynamic playlist, we fall back to the album-based
+  /// ordering used by the grid view.
   var currentTracks: [Track] {
+    // If we're viewing a playlist other than All Music, use the playlist's own order.
+    if let playlistID = selectedPlaylistID,
+       let playlist = library.playlists.first(where: { $0.id == playlistID }),
+       playlist.id != library.playlists.first?.id {
+      var tracks = library.tracks(for: playlist)
+
+      // Apply keyword search filtering (only affects the visible subset).
+      let query = searchText.trimmingCharacters(in: .whitespaces)
+      if !query.isEmpty {
+        tracks = tracks.filter { track in
+          switch searchFilterMode {
+          case .trackTitle:
+            return track.title.localizedCaseInsensitiveContains(query)
+          case .albumTitle:
+            return track.albumTitle.localizedCaseInsensitiveContains(query)
+          case .artist:
+            return track.artist.localizedCaseInsensitiveContains(query)
+              || track.albumArtist.localizedCaseInsensitiveContains(query)
+          case .either:
+            return track.title.localizedCaseInsensitiveContains(query)
+              || track.artist.localizedCaseInsensitiveContains(query)
+              || track.albumArtist.localizedCaseInsensitiveContains(query)
+          }
+        }
+      }
+
+      // Phase 45: Apply table sorting if active
+      guard let criteria = tableSortCriteria else { return tracks }
+      return tracks.sorted {
+        let ascending = criteria.ascending
+        switch criteria.column {
+        case .name:
+          return ascending ? $0.title < $1.title : $0.title > $1.title
+        case .length:
+          return ascending ? $0.duration < $1.duration : $0.duration > $1.duration
+        case .artist:
+          return ascending ? $0.artist < $1.artist : $0.artist > $1.artist
+        case .albumTitle:
+          return ascending ? $0.albumTitle < $1.albumTitle : $0.albumTitle > $1.albumTitle
+        case .albumArtist:
+          return ascending ? $0.albumArtist < $1.albumArtist : $0.albumArtist > $1.albumArtist
+        case .trackNumber:
+          // Sort by disc number first, then track number
+          let disc0 = $0.discNumber, disc1 = $1.discNumber
+          let track0 = $0.trackNumber, track1 = $1.trackNumber
+          if disc0 != disc1 {
+            return ascending ? disc0 < disc1 : disc0 > disc1
+          }
+          return ascending ? track0 < track1 : track0 > track1
+        case .genre:
+          return ascending ? $0.genre < $1.genre : $0.genre > $1.genre
+        case .year:
+          let y0 = $0.year ?? Int.min, y1 = $1.year ?? Int.min
+          return ascending ? y0 < y1 : y0 > y1
+        case .folder:
+          // Phase 46: Sort by full folder path, not just folder name
+          let path0 = $0.fileURL.deletingLastPathComponent().path
+          let path1 = $1.fileURL.deletingLastPathComponent().path
+          return ascending ? path0 < path1 : path0 > path1
+        case .playingIndicator:
+          // Phase 46: Not sortable, fallback to title sort
+          return ascending ? $0.title < $1.title : $0.title > $1.title
+        }
+      }
+    }
+
     let tracks = currentAlbums.flatMap(\.tracks)
     // Phase 45: Apply table sorting if active
     guard let criteria = tableSortCriteria else { return tracks }
@@ -268,11 +339,42 @@ final class MadTunesViewModel {
     }
   }
 
+  /// Whether the currently selected playlist supports drag‑reordering.
+  ///
+  /// Enabled for user static playlists and Favorites, disabled for All Music and
+  /// any dynamic playlists. Also disabled when table sorting is active to avoid
+  /// reordering a sorted view.
+  var canReorderCurrentPlaylist: Bool {
+    guard let playlistID = selectedPlaylistID,
+          let index = library.playlists.firstIndex(where: { $0.id == playlistID })
+    else {
+      return false
+    }
+    // All Music (index 0) should never be reorderable.
+    if index == 0 { return false }
+
+    let playlist = library.playlists[index]
+    let isFavorites = playlist.kind == .system && index == 1
+    let isStatic = playlist.kind == .staticList
+    // Don't allow reordering while the table is sorted or filtered, since the
+    // visible order would not map cleanly back to the playlist order.
+    let canReorder = (isFavorites || isStatic)
+      && tableSortCriteria == nil
+      && searchText.trimmingCharacters(in: .whitespaces).isEmpty
+      && !isColumnBrowserFiltering
+    return canReorder
+  }
+
   /// Estimated number of tracks visible per "page" in the table view.
   var tablePageSize: Int {
     let canvasHeight = screenVM.mainColumnCanvasSizeObserved.height
     let rowHeight: CGFloat = 28 // approximate single row height
     return max(1, Int((canvasHeight - 60) / rowHeight))
+  }
+
+  func moveTracksInCurrentPlaylist(trackIDs: [UUID], toIndex: Int) {
+    guard canReorderCurrentPlaylist, let playlistID = selectedPlaylistID else { return }
+    library.moveTracks(trackIDs, inPlaylist: playlistID, toIndex: toIndex)
   }
 
   /// Resets column browser filters.
