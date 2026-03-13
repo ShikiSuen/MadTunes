@@ -19,17 +19,29 @@ public actor Debouncer {
   ) async {
     if keepFirstAttemptInstead {
       guard !isInExclusiveState else { return }
+      // Phase 50: Set exclusive state synchronously within the actor's
+      // serial execution so subsequent calls see it before this method returns.
+      isInExclusiveState = true
     }
     task?.cancel()
     task = Task { @MainActor [weak self] in
       guard let self else { return }
-      await setExclusiveState(true)
+      if !keepFirstAttemptInstead {
+        await self.setExclusiveState(true)
+      }
       if keepFirstAttemptInstead {
         await action()
       }
-      try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-      await setExclusiveState(false)
-      try Task.checkCancellation()
+      let sleepSucceeded: Bool
+      do {
+        try await Task.sleep(nanoseconds: UInt64(self.delay * 1_000_000_000))
+        sleepSucceeded = true
+      } catch {
+        sleepSucceeded = false
+      }
+      // Always reset exclusive state, even on cancellation.
+      await self.setExclusiveState(false)
+      guard sleepSucceeded, !Task.isCancelled else { return }
       if !keepFirstAttemptInstead {
         await action()
       }
@@ -44,6 +56,19 @@ public actor Debouncer {
       await debounce(keepFirstAttemptInstead: keepFirstAttemptInstead) {
         await action()
       }
+    }
+  }
+
+  // Cancel any pending debounced task.
+  // Used by double-click to prevent single-click from executing.
+  public func cancel() async {
+    task?.cancel()
+    isInExclusiveState = false
+  }
+
+  nonisolated public func cancelOnMain() {
+    Task {
+      await cancel()
     }
   }
 
