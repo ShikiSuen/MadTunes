@@ -65,7 +65,18 @@ struct ContentAvailabilityOverlay: View {
         Gradient.ColorMeshGradient
           .ignoresSafeArea()
           .overlay {
-            if isAllMusicPage {
+            if hasActiveFilters {
+              ContentUnavailableView {
+                Label(
+                  String(localized: "i18n:EmptyState.NoFilterResults", bundle: #bundle),
+                  systemImage: "music.note"
+                )
+              } description: {
+                Text(
+                  String(localized: "i18n:EmptyState.PleaseChangeFilter", bundle: #bundle)
+                )
+              }
+            } else if isAllMusicPage {
               ContentUnavailableView {
                 Label(String(localized: "i18n:EmptyState.NoMusic", bundle: #bundle), systemImage: "music.note")
               } description: {
@@ -103,6 +114,7 @@ struct ContentAvailabilityOverlay: View {
       }
     }
     .animation(.easeOut(duration: 0.12), value: viewModel.library.isImporting)
+    .animation(.easeOut(duration: 0.12), value: hasActiveFilters)
   }
 
   // MARK: Private
@@ -125,6 +137,13 @@ struct ContentAvailabilityOverlay: View {
     guard let playlist = selectedPlaylist,
           viewModel.library.playlists.count > 1 else { return false }
     return playlist.id == viewModel.library.playlists[1].id
+  }
+
+  /// Phase 52: 是否有活動的篩選條件（搜尋文字或 Column Browser 篩選）。
+  private var hasActiveFilters: Bool {
+    let hasSearchText = !viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    let hasColumnBrowserFilter = viewModel.isColumnBrowserFiltering
+    return hasSearchText || hasColumnBrowserFilter
   }
 
   private var playlistEmptyTitle: String {

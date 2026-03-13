@@ -1009,6 +1009,34 @@
         }
       }
     },
+    "i18n:EmptyState.NoFilterResults" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Matching Music"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "該当するミュージックがありません"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有符合筛选条件的音乐"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "找不到符合篩選條件的音樂"
+          }
+        }
+      }
+    },
     "i18n:EmptyState.NoMusic" : {
       "localizations" : {
         "en" : {
@@ -1089,6 +1117,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此播放清單尚無曲目。"
+          }
+        }
+      }
+    },
+    "i18n:EmptyState.PleaseChangeFilter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try adjusting your search or filters"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検索条件またはフィルタを調整してください"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请尝试调整搜索条件或筛选设定"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請嘗試調整搜尋條件或篩選設定"
           }
         }
       }

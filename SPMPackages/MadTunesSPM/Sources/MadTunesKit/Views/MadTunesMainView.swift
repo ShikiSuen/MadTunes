@@ -138,7 +138,7 @@ struct MadTunesMainView: View {
             }
           }
           ToolbarItem(placement: .primaryAction) {
-            if !viewModel.library.isImporting, !albums.isEmpty {
+            if (!viewModel.library.isImporting && !albums.isEmpty) || !vm.searchText.isEmpty {
               Menu {
                 Picker(
                   String(localized: "i18n:Search.SearchFields", bundle: #bundle),
