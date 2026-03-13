@@ -451,7 +451,7 @@ struct AlbumTableView: View {
         .monospacedDigit()
         .help(Text(verbatim: track.year.map(String.init) ?? ""))
     case .folder:
-      Text(verbatim: track.fileURL.deletingLastPathComponent().lastPathComponent)
+      Text(verbatim: (track.folderPath as NSString).lastPathComponent)
         .help(Text(verbatim: track.fileURL.path(percentEncoded: false)))
     }
   }

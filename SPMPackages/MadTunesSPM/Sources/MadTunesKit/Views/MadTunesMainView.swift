@@ -216,7 +216,7 @@ struct MadTunesMainView: View {
       .overlay(alignment: .leading) {
         if vm.useTableView {
           AlbumTableView(
-            tracks: vm.currentTracks,
+            tracks: vm.currentTracks(fromAlbums: displayAlbums),
             selectedTrackIDs: $vm.selectedTrackIDs,
             currentTrackID: viewModel.player.currentTrack?.id,
             onTrackDoubleClicked: { track, tracks in
