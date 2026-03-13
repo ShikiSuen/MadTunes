@@ -209,7 +209,7 @@ final class MadTunesViewModel {
 
   /// Plays all tracks matching the current column browser filter state.
   func playFilteredTracks() {
-    let tracks = currentAlbums.flatMap(\.sortedTracks)
+    let tracks = currentAlbums.flatMap(\.tracks)
     guard !tracks.isEmpty else { return }
     player.setQueue(tracks, startingAt: 0)
   }
@@ -258,7 +258,7 @@ final class MadTunesViewModel {
   /// 如果沒有搜尋條件，返回該專輯所有曲目。
   func filteredTracksForPlayback(from album: Album) -> [Track] {
     let query = searchText.trimmingCharacters(in: .whitespaces)
-    let allTracks = album.sortedTracks
+    let allTracks = album.tracks
 
     guard !query.isEmpty else {
       return allTracks
@@ -367,22 +367,22 @@ final class MadTunesViewModel {
   /// 獲取指定專輯中經過篩選的曲目（與 ExpandedAlbumView 邏輯一致）
   func filteredTracks(for album: Album) -> [Track] {
     let query = searchText.trimmingCharacters(in: .whitespaces)
-    guard !query.isEmpty else { return album.sortedTracks }
+    guard !query.isEmpty else { return album.tracks }
 
     let filtered: [Track] = switch searchFilterMode {
     case .trackTitle:
-      album.sortedTracks.filter { track in
+      album.tracks.filter { track in
         track.title.localizedCaseInsensitiveContains(query)
       }
     case .albumTitle:
-      album.title.localizedCaseInsensitiveContains(query) ? album.sortedTracks : []
+      album.title.localizedCaseInsensitiveContains(query) ? album.tracks : []
     case .artist:
-      album.sortedTracks.filter { track in
+      album.tracks.filter { track in
         track.artist.localizedCaseInsensitiveContains(query)
           || track.albumArtist.localizedCaseInsensitiveContains(query)
       }
     case .either:
-      album.sortedTracks.filter { track in
+      album.tracks.filter { track in
         track.title.localizedCaseInsensitiveContains(query)
           || track.artist.localizedCaseInsensitiveContains(query)
           || track.albumArtist.localizedCaseInsensitiveContains(query)
@@ -392,7 +392,7 @@ final class MadTunesViewModel {
     if filtered.isEmpty {
       let albumMatches = album.title.localizedCaseInsensitiveContains(query)
         || album.artist.localizedCaseInsensitiveContains(query)
-      return albumMatches ? album.sortedTracks : filtered
+      return albumMatches ? album.tracks : filtered
     }
     return filtered
   }
@@ -658,7 +658,7 @@ final class MadTunesViewModel {
     _ press: KeyPress, album: Album, albums: [Album]
   )
     -> KeyPress.Result {
-    let sorted = album.sortedTracks
+    let sorted = album.tracks
     guard !sorted.isEmpty else {
       // 允許 Escape 鍵關閉空專輯
       if press.key == .escape || (press.modifiers.contains(.command) && press.key == .upArrow) {

@@ -19,7 +19,11 @@ public struct Album: Identifiable, Sendable {
     self.id = id
     self.title = title
     self.artist = artist
-    self.tracks = tracks
+    /// Tracks pre-sorted by (disc, track#, title). Computed once at init.
+    self.tracks = tracks.sorted {
+      ($0.discNumber, $0.trackNumber, $0.title)
+        < ($1.discNumber, $1.trackNumber, $1.title)
+    }
     self.allTrackIDsSet = .init(tracks.map(\.id))
     self.artworkData = artworkData
   }
@@ -32,13 +36,6 @@ public struct Album: Identifiable, Sendable {
   public let tracks: [Track]
   public let allTrackIDsSet: Set<UUID>
   public var artworkData: Data?
-
-  public var sortedTracks: [Track] {
-    tracks.sorted {
-      ($0.discNumber, $0.trackNumber, $0.title)
-        < ($1.discNumber, $1.trackNumber, $1.title)
-    }
-  }
 
   public var totalDuration: TimeInterval {
     tracks.reduce(0) { $0 + $1.duration }

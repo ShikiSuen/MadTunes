@@ -61,7 +61,7 @@ struct ExpandedAlbumView: View {
       .fixedSize()
       .onTapGesture(count: 2) {
         // Phase 38: Double-click to play album
-        let sorted = album.sortedTracks
+        let sorted = album.tracks
         if let first = sorted.first {
           onTrackSelected(first, sorted)
         }
@@ -76,7 +76,7 @@ struct ExpandedAlbumView: View {
           searchText: vm.searchText,
           searchFilterMode: vm.searchFilterMode,
           onShowTrackInfo: {
-            tracksForTrackInfo = album.sortedTracks
+            tracksForTrackInfo = album.tracks
             Task {
               var metadataList: [DetailedTrackMetadata?] = []
               for tr in tracksForTrackInfo {
@@ -88,7 +88,7 @@ struct ExpandedAlbumView: View {
             }
           },
           onShowDeleteConfirmation: {
-            tracksToDelete = album.sortedTracks
+            tracksToDelete = album.tracks
             showDeleteConfirmation = true
           },
           onNewPlaylistWithTracks: { trackIDs in
@@ -211,7 +211,7 @@ struct ExpandedAlbumView: View {
       Spacer()
       // Play-all badge
       Button {
-        let sorted = album.sortedTracks
+        let sorted = album.tracks
         if let first = sorted.first {
           onTrackSelected(first, sorted)
         }
@@ -234,7 +234,7 @@ struct ExpandedAlbumView: View {
 
   @ViewBuilder private var trackList: some View {
     let query = vm.searchText.trimmingCharacters(in: .whitespaces)
-    let sorted: [Track] = query.isEmpty ? album.sortedTracks : filteredTracksForAlbumView(query: query)
+    let sorted: [Track] = query.isEmpty ? album.tracks : filteredTracksForAlbumView(query: query)
 
     if !sorted.isEmpty {
       let hideArtist = album.allTrackArtistsSameAsAlbumArtist
@@ -387,19 +387,19 @@ struct ExpandedAlbumView: View {
   private func filteredTracksForAlbumView(query: String) -> [Track] {
     let filtered: [Track] = switch vm.searchFilterMode {
     case .trackTitle:
-      album.sortedTracks.filter { track in
+      album.tracks.filter { track in
         track.title.localizedCaseInsensitiveContains(query)
       }
     case .albumTitle:
       // 在專輯內檢視時，如果搜尋模式是專輯名稱且該專輯符合條件，顯示所有曲目
-      album.title.localizedCaseInsensitiveContains(query) ? album.sortedTracks : []
+      album.title.localizedCaseInsensitiveContains(query) ? album.tracks : []
     case .artist:
-      album.sortedTracks.filter { track in
+      album.tracks.filter { track in
         track.artist.localizedCaseInsensitiveContains(query)
           || track.albumArtist.localizedCaseInsensitiveContains(query)
       }
     case .either:
-      album.sortedTracks.filter { track in
+      album.tracks.filter { track in
         track.title.localizedCaseInsensitiveContains(query)
           || track.artist.localizedCaseInsensitiveContains(query)
           || track.albumArtist.localizedCaseInsensitiveContains(query)
@@ -409,7 +409,7 @@ struct ExpandedAlbumView: View {
     if filtered.isEmpty {
       let albumMatches = album.title.localizedCaseInsensitiveContains(query)
         || album.artist.localizedCaseInsensitiveContains(query)
-      return albumMatches ? album.sortedTracks : filtered
+      return albumMatches ? album.tracks : filtered
     }
     return filtered
   }

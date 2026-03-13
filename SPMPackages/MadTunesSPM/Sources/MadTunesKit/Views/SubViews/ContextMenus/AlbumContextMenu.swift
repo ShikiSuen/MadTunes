@@ -203,7 +203,7 @@ struct AlbumContextMenu: View {
 
   #if os(macOS)
   private func showInFinder() {
-    guard let url = albums.first?.sortedTracks.first?.fileURL else { return }
+    guard let url = albums.first?.tracks.first?.fileURL else { return }
     NSWorkspace.shared.activateFileViewerSelecting([url])
   }
   #endif
