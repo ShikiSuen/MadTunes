@@ -170,6 +170,7 @@ struct PlayerControlsView: View {
               .frame(height: 6, alignment: .center)
           }
           .buttonStyle(.plain)
+          .contentShape(.rect)
           scrubber
           Text(formatDuration(player.duration))
             .fontWidth(.standard)
