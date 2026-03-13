@@ -218,7 +218,8 @@ struct MadTunesMainView: View {
           AlbumTableView(
             tracks: vm.currentTracks(fromAlbums: displayAlbums),
             selectedTrackIDs: $vm.selectedTrackIDs,
-            currentTrackID: viewModel.player.currentTrack?.id,
+            // Phase 54: Only show playing indicator when actively playing.
+            currentTrackID: viewModel.player.isPlaying ? viewModel.player.currentTrack?.id : nil,
             onTrackDoubleClicked: { track, tracks in
               // when a user double-clicks in the table we treat it as playing
               // the full filtered list beginning at that track
@@ -240,7 +241,8 @@ struct MadTunesMainView: View {
             expandedAlbumID: $vm.expandedAlbumID,
             highlightedAlbumIDs: $vm.highlightedAlbumIDs,
             selectedTrackIDs: $vm.selectedTrackIDs,
-            currentTrackID: viewModel.player.currentTrack?.id,
+            // Phase 54: Only show playing indicator when actively playing.
+            currentTrackID: viewModel.player.isPlaying ? viewModel.player.currentTrack?.id : nil,
             onTrackSelected: { track, albumTracks in
               viewModel.onTrackSelected(track, albumTracks)
             },
