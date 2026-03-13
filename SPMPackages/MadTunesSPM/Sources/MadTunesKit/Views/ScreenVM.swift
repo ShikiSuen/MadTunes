@@ -3,6 +3,7 @@
 // This code is released under the SPDX-License-Identifier: `MIT License`.
 
 // Author: Shiki Suen, licensed the use in MadTunes.
+// This file contains modifications dedicated for MadTunes.
 
 import SwiftUI
 #if canImport(UIKit)
@@ -29,9 +30,12 @@ public final class ScreenVM {
     UIDevice.current.beginGeneratingDeviceOrientationNotifications()
     let orientationNow = Self.getInitialOrientation()
     self.orientation = orientationNow
-    self.splitViewVisibility = Self.initialSplitViewVisibility(
-      orientation: orientationNow,
-      horizontalSizeClass: Self.getInitialHorizontalSizeClass()
+    // Phase 51: Load persisted splitViewVisibility from UserDefaults.
+    self.splitViewVisibility = Self.loadPersistedSplitViewVisibility(
+      defaultValue: Self.initialSplitViewVisibility(
+        orientation: orientationNow,
+        horizontalSizeClass: Self.getInitialHorizontalSizeClass()
+      )
     )
     Task { @MainActor in
       for await notification in NotificationCenter.default.notifications(
@@ -52,10 +56,12 @@ public final class ScreenVM {
     }
     #else
     self.orientation = .landscape
-    self.splitViewVisibility = .detailOnly
+    // Phase 51: Load persisted splitViewVisibility from UserDefaults.
+    self.splitViewVisibility = Self.loadPersistedSplitViewVisibility(defaultValue: .all)
     #endif
     updateHash4Tracking()
     registerObservation()
+    registerSplitViewVisibilityObservation()
   }
 
   deinit {
@@ -115,6 +121,8 @@ public final class ScreenVM {
 
   // MARK: Private
 
+  private static let splitViewVisibilityKey = "MadTunes.splitViewVisibility"
+
   private static func getInitialOrientation() -> Orientation {
     #if os(iOS) && !targetEnvironment(macCatalyst)
     if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
@@ -162,6 +170,38 @@ public final class ScreenVM {
     #endif
   }
 
+  private static func loadPersistedSplitViewVisibility(
+    defaultValue: NavigationSplitViewVisibility
+  )
+    -> NavigationSplitViewVisibility {
+    guard let stringValue = UserDefaults.standard.string(forKey: splitViewVisibilityKey) else {
+      return defaultValue
+    }
+    return Self.splitViewVisibilityFromString(stringValue) ?? defaultValue
+  }
+
+  private static func splitViewVisibilityToString(_ visibility: NavigationSplitViewVisibility) -> String {
+    // NavigationSplitViewVisibility has three cases: .all, .doubleColumn, .detailOnly
+    // We use string representation for persistence.
+    if visibility == .all {
+      return "all"
+    } else if visibility == .doubleColumn {
+      return "doubleColumn"
+    } else if visibility == .detailOnly {
+      return "detailOnly"
+    }
+    return "all"
+  }
+
+  private static func splitViewVisibilityFromString(_ string: String) -> NavigationSplitViewVisibility? {
+    switch string {
+    case "all": return .all
+    case "doubleColumn": return .doubleColumn
+    case "detailOnly": return .detailOnly
+    default: return nil
+    }
+  }
+
   private func updateHash4Tracking() {
     var hasher = Hasher()
     hasher.combine(orientation)
@@ -184,6 +224,24 @@ public final class ScreenVM {
         this.registerObservation()
       }
     }
+  }
+
+  // Phase 51: Persist splitViewVisibility to UserDefaults.
+  private func registerSplitViewVisibilityObservation() {
+    withObservationTracking {
+      _ = splitViewVisibility
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let this = self else { return }
+        this.persistSplitViewVisibility()
+        this.registerSplitViewVisibilityObservation()
+      }
+    }
+  }
+
+  private func persistSplitViewVisibility() {
+    let stringValue = Self.splitViewVisibilityToString(splitViewVisibility)
+    UserDefaults.standard.set(stringValue, forKey: Self.splitViewVisibilityKey)
   }
 }
 
