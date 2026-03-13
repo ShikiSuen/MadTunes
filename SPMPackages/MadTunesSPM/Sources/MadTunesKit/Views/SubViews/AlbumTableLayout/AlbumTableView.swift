@@ -79,13 +79,18 @@ enum TableColumnType: String, CaseIterable, Identifiable {
 
 // MARK: - AlbumTableView
 
-/// Custom table view using a single-column headerless SwiftUI `Table`.
+/// Custom table view using a SwiftUI `List` with manual column layout.
 ///
 /// Each track is rendered as a single row (HStack of cells) via the custom
-/// `trackRow` builder. Selection, drag-selection, and basic keyboard
-/// navigation are delegated to the system `Table`. Double-click fires
-/// `onTrackDoubleClicked`; right-click shows a context menu. The column
-/// header row at the bottom is independently managed.
+/// `trackRow` builder. Selection and basic keyboard navigation are delegated
+/// to the system `List`. Double-click fires `onTrackDoubleClicked`; right-click
+/// shows a context menu. The column header row at the bottom is independently
+/// managed.
+///
+/// Phase 53: Migrated from `Table` to `List` + `ForEach` so that `.onMove`
+/// can provide native drag-reorder for playlist tracks. `Table` intercepted
+/// both row-level drag gestures and Option+Arrow key events, making both
+/// drag-reorder and keyboard-reorder impossible to implement.
 struct AlbumTableView: View {
   // MARK: Lifecycle
 
@@ -93,51 +98,22 @@ struct AlbumTableView: View {
     tracks: [Track],
     selectedTrackIDs: Binding<Set<UUID>>,
     currentTrackID: UUID? = nil,
-    onTrackSingleClicked: @escaping (Track, [Track]) -> Void = { _, _ in },
     onTrackDoubleClicked: @escaping (Track, [Track]) -> Void = { _, _ in }
   ) {
     self.tracks = tracks
     self._selectedTrackIDs = selectedTrackIDs
     self.currentTrackID = currentTrackID
-    self.onTrackSingleClicked = onTrackSingleClicked
     self.onTrackDoubleClicked = onTrackDoubleClicked
   }
 
   // MARK: Internal
 
   var body: some View {
-    // Phase 48: Single-column headerless SwiftUI Table delegates
-    // selection, drag-selection, and keyboard arrow navigation to the system.
+    // Phase 53: List + ForEach replaces the single-column headerless Table.
+    // This enables native .onMove drag-reorder and avoids Table's interception
+    // of row-level gestures and Option+Arrow key events.
     ScrollViewReader { proxy in
-      Table(tracks, selection: $selectedTrackIDs) {
-        TableColumn("Track".description) { track in
-          trackRow(track)
-            .id(track.id)
-        }
-      }
-      .tableColumnHeaders(.hidden)
-      .tableStyle(.inset)
-      .contextMenu(forSelectionType: UUID.self, menu: { ids in
-        let selected = tracks.filter { ids.contains($0.id) }
-        if !selected.isEmpty {
-          trackContextMenu(forTracks: selected)
-        }
-      }, primaryAction: { ids in
-        // Double-click: play starting from the first selected track.
-        guard let firstID = ids.first,
-              let track = tracks.first(where: { $0.id == firstID }) else { return }
-        onTrackDoubleClicked(track, tracks)
-      })
-      .onChange(of: vm.tableScrollTargetID) { _, newID in
-        if let id = newID {
-          Task {
-            withAnimation(.easeInOut(duration: 0.3)) {
-              proxy.scrollTo(id, anchor: .center)
-            }
-          }
-          vm.tableScrollTargetID = nil
-        }
-      }
+      trackList(scrollProxy: proxy)
     }
     .safeAreaInset(edge: .bottom) {
       columnNameRow
@@ -209,7 +185,6 @@ struct AlbumTableView: View {
 
   private let tracks: [Track]
   private let currentTrackID: UUID?
-  private let onTrackSingleClicked: (Track, [Track]) -> Void
   private let onTrackDoubleClicked: (Track, [Track]) -> Void
 
   private var canvasWidth: CGFloat {
@@ -345,12 +320,64 @@ struct AlbumTableView: View {
       }
   }
 
+  // MARK: - List
+
+  @ViewBuilder
+  private func trackList(scrollProxy proxy: ScrollViewProxy) -> some View {
+    let canReorder = vm.canReorderCurrentPlaylist
+    List(selection: $selectedTrackIDs) {
+      // Phase 53: Conditionally apply .onMove — only for playlists that
+      // support reordering. This prevents List from showing drag affordances
+      // on All Music, dynamic playlists, or when sorting/filtering is active.
+      if canReorder {
+        ForEach(tracks) { track in
+          trackRow(track)
+            .id(track.id)
+            .tag(track.id)
+            .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+        }
+        .onMove { from, to in
+          handleOnMove(from: from, to: to)
+        }
+      } else {
+        ForEach(tracks) { track in
+          trackRow(track)
+            .id(track.id)
+            .tag(track.id)
+            .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+        }
+      }
+    }
+    .listStyle(.inset(alternatesRowBackgrounds: true))
+    .contextMenu(forSelectionType: UUID.self, menu: { ids in
+      let selected = tracks.filter { ids.contains($0.id) }
+      if !selected.isEmpty {
+        trackContextMenu(forTracks: selected)
+      }
+    }, primaryAction: { ids in
+      // Double-click: play starting from the first selected track.
+      guard let firstID = ids.first,
+            let track = tracks.first(where: { $0.id == firstID }) else { return }
+      onTrackDoubleClicked(track, tracks)
+    })
+    .onChange(of: vm.tableScrollTargetID) { _, newID in
+      if let id = newID {
+        Task {
+          withAnimation(.easeInOut(duration: 0.3)) {
+            proxy.scrollTo(id, anchor: .center)
+          }
+        }
+        vm.tableScrollTargetID = nil
+      }
+    }
+  }
+
   // MARK: - Row
 
   @ViewBuilder
   private func trackRow(_ track: Track) -> some View {
     // Phase 45: Use HStack to match header layout exactly
-    Color.clear
+    let baseRow = Color.clear
       .frame(height: 20)
       .overlay(alignment: .leading) {
         HStack(spacing: 0) {
@@ -370,10 +397,11 @@ struct AlbumTableView: View {
         }
       }
       .clipShape(.rect)
+      .contentShape(.rect)
       .frame(minWidth: 1, maxWidth: .infinity, alignment: .leading)
-  }
 
-  // MARK: - Cell content
+    baseRow
+  }
 
   // Phase 43/46: All user data uses Text(verbatim:) to prevent String Catalog pollution.
   @ViewBuilder
@@ -461,6 +489,14 @@ struct AlbumTableView: View {
         showNewPlaylistAlert = true
       }
     )
+  }
+
+  /// Phase 53: Handles the `.onMove` callback from ForEach drag-reorder.
+  /// Translates IndexSet + destination into the `moveTracks` API.
+  private func handleOnMove(from source: IndexSet, to destination: Int) {
+    guard vm.canReorderCurrentPlaylist else { return }
+    let ids = source.map { tracks[$0].id }
+    vm.moveTracksInCurrentPlaylist(trackIDs: ids, toIndex: destination)
   }
 
   // MARK: - Column visibility

@@ -377,6 +377,40 @@ final class MadTunesViewModel {
     library.moveTracks(trackIDs, inPlaylist: playlistID, toIndex: toIndex)
   }
 
+  // MARK: - Phase 53: Menu command helpers for track reordering
+
+  /// Whether the selected tracks can be moved up in the current playlist.
+  var canMoveSelectedTracksUp: Bool {
+    guard useTableView, canReorderCurrentPlaylist, !selectedTrackIDs.isEmpty else { return false }
+    let tracks = currentTracks
+    let firstSelectedIdx = tracks.firstIndex { selectedTrackIDs.contains($0.id) }
+    return (firstSelectedIdx ?? 0) > 0
+  }
+
+  /// Whether the selected tracks can be moved down in the current playlist.
+  var canMoveSelectedTracksDown: Bool {
+    guard useTableView, canReorderCurrentPlaylist, !selectedTrackIDs.isEmpty else { return false }
+    let tracks = currentTracks
+    let lastSelectedIdx = tracks.lastIndex { selectedTrackIDs.contains($0.id) }
+    return (lastSelectedIdx ?? tracks.count - 1) < tracks.count - 1
+  }
+
+  /// Moves selected tracks one position up. Called by menu command (Option+↑).
+  func moveSelectedTracksUp() {
+    let tracks = currentTracks
+    let orderedSelected = tracks.enumerated().filter { selectedTrackIDs.contains($0.element.id) }
+    guard let firstIdx = orderedSelected.first?.offset, firstIdx > 0 else { return }
+    moveTracksInCurrentPlaylist(trackIDs: orderedSelected.map(\.element.id), toIndex: firstIdx - 1)
+  }
+
+  /// Moves selected tracks one position down. Called by menu command (Option+↓).
+  func moveSelectedTracksDown() {
+    let tracks = currentTracks
+    let orderedSelected = tracks.enumerated().filter { selectedTrackIDs.contains($0.element.id) }
+    guard let lastIdx = orderedSelected.last?.offset, lastIdx < tracks.count - 1 else { return }
+    moveTracksInCurrentPlaylist(trackIDs: orderedSelected.map(\.element.id), toIndex: lastIdx + 2)
+  }
+
   /// Resets column browser filters.
   func resetColumnBrowserFilters() {
     if !columnBrowserSelectedGenres.isEmpty { columnBrowserSelectedGenres = [] }
@@ -655,8 +689,9 @@ final class MadTunesViewModel {
   // MARK: - Table Keyboard Navigation
 
   /// Handles keyboard input when the table view is active.
-  /// Phase 48: Arrow keys, Shift+Arrow, PgUp/PgDn, and Cmd+A are now handled
-  /// natively by SwiftUI Table. This handler only intercepts action keys:
+  /// Phase 53: Now backed by List instead of Table. Arrow keys, Shift+Arrow,
+  /// PgUp/PgDn are handled natively by the List. Track reorder (Option+↑/↓)
+  /// is handled via menu commands in MadTunesScene. This handler intercepts:
   /// Cmd+C copy, Cmd+↓/Return/Space to play.
   func handleTableKeyPress(_ press: KeyPress) -> KeyPress.Result {
     let tracks = currentTracks

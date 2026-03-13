@@ -219,9 +219,6 @@ struct MadTunesMainView: View {
             tracks: vm.currentTracks,
             selectedTrackIDs: $vm.selectedTrackIDs,
             currentTrackID: viewModel.player.currentTrack?.id,
-            onTrackSingleClicked: { _, _ in
-              // No-op (selection handled internally)
-            },
             onTrackDoubleClicked: { track, tracks in
               // when a user double-clicks in the table we treat it as playing
               // the full filtered list beginning at that track

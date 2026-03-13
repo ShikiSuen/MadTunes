@@ -376,7 +376,7 @@ public final class MusicLibrary {
       favorites.trackIDs.append(contentsOf: newIDs)
     }
     playlists[1] = favorites
-    persistAllPlaylists()
+    persistAllPlaylistsDebounced()
   }
 
   // MARK: - Track Management
@@ -387,7 +387,7 @@ public final class MusicLibrary {
     let existing = Set(playlists[idx].trackIDs)
     let newIDs = trackIDs.filter { !existing.contains($0) }
     playlists[idx].trackIDs.append(contentsOf: newIDs)
-    persistAllPlaylists()
+    persistAllPlaylistsDebounced()
   }
 
   /// 重新排序播放清單內的曲目（拖放功能）。
@@ -421,7 +421,7 @@ public final class MusicLibrary {
     newOrder.insert(contentsOf: draggedIDsInOrder, at: insertionIndex)
 
     playlists[playlistIndex].trackIDs = newOrder
-    persistAllPlaylists()
+    persistAllPlaylistsDebounced()
   }
 
   /// 從資料庫中移除指定曲目（包含 SwiftData 持久層），並從所有播放清單中清理其引用
@@ -501,6 +501,7 @@ public final class MusicLibrary {
   private var artworkAttemptedKeys: Set<String> = []
   private var activeSecurityScopedURLs: [URL] = []
   nonisolated private let importProgressDebouncer: Debouncer = .init(delay: 1)
+  nonisolated private let persistPlaylistsDebouncer: Debouncer = .init(delay: 0.1)
   nonisolated private let _modelContainer: ModelContainer?
 
   @ObservationIgnored private var currentProcessingFileName: String = ""
@@ -614,6 +615,14 @@ public final class MusicLibrary {
       context.insert(persisted)
     }
     try? context.save()
+  }
+
+  private func persistAllPlaylistsDebounced() {
+    Task {
+      await persistPlaylistsDebouncer.debounce(keepFirstAttemptInstead: true) { @MainActor in
+        self.persistAllPlaylists()
+      }
+    }
   }
 
   /// Load persisted playlists from SwiftData.
