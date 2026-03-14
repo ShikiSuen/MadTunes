@@ -94,14 +94,13 @@ enum TableColumnType: String, CaseIterable, Identifiable {
 struct AlbumTableView: View {
   // MARK: Lifecycle
 
+  /// Phase 62: Simplified init — selectedTrackIDs read from vm directly.
   init(
     tracks: [Track],
-    selectedTrackIDs: Binding<Set<UUID>>,
     currentTrackID: UUID? = nil,
     onTrackDoubleClicked: @escaping (Track, [Track]) -> Void = { _, _ in }
   ) {
     self.tracks = tracks
-    self._selectedTrackIDs = selectedTrackIDs
     self.currentTrackID = currentTrackID
     self.onTrackDoubleClicked = onTrackDoubleClicked
   }
@@ -160,7 +159,6 @@ struct AlbumTableView: View {
 
   // MARK: Private
 
-  @Binding private var selectedTrackIDs: Set<UUID>
   @State private var vm: MadTunesViewModel = .shared
 
   private let tracks: [Track]
@@ -304,7 +302,7 @@ struct AlbumTableView: View {
   @ViewBuilder
   private func trackList(scrollProxy proxy: ScrollViewProxy) -> some View {
     let canReorder = vm.canReorderCurrentPlaylist
-    List(selection: $selectedTrackIDs) {
+    List(selection: Bindable(vm).selectedTrackIDs) {
       // Phase 52: Conditionally apply .onMove — only for playlists that
       // support reordering. This prevents List from showing drag affordances
       // on All Music, dynamic playlists, or when sorting/filtering is active.

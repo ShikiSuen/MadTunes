@@ -22,6 +22,8 @@ final class AlbumGridViewModel {
 
   // MARK: Internal
 
+  var mainVM: MadTunesViewModel?
+
   // MARK: - Display Buffer
 
   /// Progressively-populated display buffer (Phase 56).
@@ -129,121 +131,99 @@ final class AlbumGridViewModel {
 
   // MARK: - Drag Selection
 
-  /// Update highlighted albums based on current rubber-band rect.
-  func updateDragSelection(
-    highlightedAlbumIDs: inout Set<UUID>,
-    expandedAlbumID: inout UUID?,
-    albumSelectionFixedAnchorID: inout UUID?,
-    albumSelectionCursorID: inout UUID?
-  ) {
-    guard let rect = selectionRect else { return }
+  /// Phase 62: Update highlighted albums based on current rubber-band rect.
+  /// Accesses shared state via mainVM directly (no inout).
+  func updateDragSelection() {
+    guard let mainVM, let rect = selectionRect else { return }
     var selected = preDragHighlighted
     for (id, frame) in albumFrames {
       if rect.intersects(frame) {
         selected.insert(id)
       }
     }
-    highlightedAlbumIDs = selected
-    expandedAlbumID = nil
+    mainVM.highlightedAlbumIDs = selected
+    mainVM.expandedAlbumID = nil
     if let first = displayedAlbums.first(where: { selected.contains($0.id) }) {
-      albumSelectionFixedAnchorID = first.id
-      albumSelectionCursorID = first.id
+      mainVM.albumSelectionFixedAnchorID = first.id
+      mainVM.albumSelectionCursorID = first.id
     }
   }
 
   // MARK: - Album Selection
 
-  /// Handle album click with modifier key awareness (Phase 36).
-  func handleAlbumSelection(
-    album: Album,
-    highlightedAlbumIDs: inout Set<UUID>,
-    expandedAlbumID: inout UUID?,
-    albumSelectionFixedAnchorID: inout UUID?,
-    albumSelectionCursorID: inout UUID?
-  ) {
+  /// Phase 62: Handle album click with modifier key awareness (Phase 36).
+  /// Accesses shared state via mainVM directly (no inout).
+  func handleAlbumSelection(album: Album) {
+    guard let mainVM else { return }
     #if canImport(AppKit) && !canImport(UIKit)
     let flags = NSEvent.modifierFlags
 
     if flags.contains(.shift) {
-      handleShiftClick(
-        album: album,
-        highlightedAlbumIDs: &highlightedAlbumIDs,
-        expandedAlbumID: &expandedAlbumID,
-        albumSelectionFixedAnchorID: &albumSelectionFixedAnchorID,
-        albumSelectionCursorID: &albumSelectionCursorID
-      )
+      handleShiftClick(album: album)
     } else if flags.contains(.command) {
-      if highlightedAlbumIDs.contains(album.id) {
-        highlightedAlbumIDs.remove(album.id)
+      if mainVM.highlightedAlbumIDs.contains(album.id) {
+        mainVM.highlightedAlbumIDs.remove(album.id)
       } else {
-        highlightedAlbumIDs.insert(album.id)
+        mainVM.highlightedAlbumIDs.insert(album.id)
       }
-      if highlightedAlbumIDs.count != 1 {
-        assignExpandedAlbumID(nil, expandedAlbumID: &expandedAlbumID)
-      } else if let only = highlightedAlbumIDs.first {
+      if mainVM.highlightedAlbumIDs.count != 1 {
+        assignExpandedAlbumID(nil)
+      } else if let only = mainVM.highlightedAlbumIDs.first {
         assignExpandedAlbumID(
-          expandedAlbumID == only ? nil : only,
-          expandedAlbumID: &expandedAlbumID
+          mainVM.expandedAlbumID == only ? nil : only
         )
       }
-      albumSelectionFixedAnchorID = album.id
-      albumSelectionCursorID = album.id
+      mainVM.albumSelectionFixedAnchorID = album.id
+      mainVM.albumSelectionCursorID = album.id
     } else {
       assignExpandedAlbumID(
-        expandedAlbumID == album.id ? nil : album.id,
-        expandedAlbumID: &expandedAlbumID
+        mainVM.expandedAlbumID == album.id ? nil : album.id
       )
-      highlightedAlbumIDs = [album.id]
-      albumSelectionFixedAnchorID = album.id
-      albumSelectionCursorID = album.id
+      mainVM.highlightedAlbumIDs = [album.id]
+      mainVM.albumSelectionFixedAnchorID = album.id
+      mainVM.albumSelectionCursorID = album.id
     }
     #else
     assignExpandedAlbumID(
-      expandedAlbumID == album.id ? nil : album.id,
-      expandedAlbumID: &expandedAlbumID
+      mainVM.expandedAlbumID == album.id ? nil : album.id
     )
-    highlightedAlbumIDs = [album.id]
+    mainVM.highlightedAlbumIDs = [album.id]
     #endif
   }
 
-  /// Phase 36: Shift+click range selection (Windows Explorer style).
-  func handleShiftClick(
-    album: Album,
-    highlightedAlbumIDs: inout Set<UUID>,
-    expandedAlbumID: inout UUID?,
-    albumSelectionFixedAnchorID: inout UUID?,
-    albumSelectionCursorID: inout UUID?
-  ) {
+  /// Phase 36/62: Shift+click range selection (Windows Explorer style).
+  func handleShiftClick(album: Album) {
+    guard let mainVM else { return }
     let currentAlbums = displayedAlbums
 
     let anchorID: UUID
-    if let existingAnchor = albumSelectionFixedAnchorID {
+    if let existingAnchor = mainVM.albumSelectionFixedAnchorID {
       anchorID = existingAnchor
-    } else if let first = highlightedAlbumIDs.first {
+    } else if let first = mainVM.highlightedAlbumIDs.first {
       anchorID = first
-      albumSelectionFixedAnchorID = anchorID
+      mainVM.albumSelectionFixedAnchorID = anchorID
     } else {
-      highlightedAlbumIDs = [album.id]
-      albumSelectionFixedAnchorID = album.id
-      albumSelectionCursorID = album.id
-      expandedAlbumID = nil
+      mainVM.highlightedAlbumIDs = [album.id]
+      mainVM.albumSelectionFixedAnchorID = album.id
+      mainVM.albumSelectionCursorID = album.id
+      mainVM.expandedAlbumID = nil
       return
     }
 
     guard let anchorIdx = currentAlbums.firstIndex(where: { $0.id == anchorID }),
           let clickIdx = currentAlbums.firstIndex(where: { $0.id == album.id }) else {
-      highlightedAlbumIDs = [album.id]
-      albumSelectionFixedAnchorID = album.id
-      albumSelectionCursorID = album.id
-      expandedAlbumID = nil
+      mainVM.highlightedAlbumIDs = [album.id]
+      mainVM.albumSelectionFixedAnchorID = album.id
+      mainVM.albumSelectionCursorID = album.id
+      mainVM.expandedAlbumID = nil
       return
     }
 
     let lo = min(anchorIdx, clickIdx)
     let hi = max(anchorIdx, clickIdx)
-    highlightedAlbumIDs = Set(currentAlbums[lo ... hi].map(\.id))
-    albumSelectionCursorID = album.id
-    expandedAlbumID = nil
+    mainVM.highlightedAlbumIDs = Set(currentAlbums[lo ... hi].map(\.id))
+    mainVM.albumSelectionCursorID = album.id
+    mainVM.expandedAlbumID = nil
   }
 
   // MARK: - Show Track Info
@@ -282,8 +262,14 @@ final class AlbumGridViewModel {
   /// In-flight batch update task. Cancelled on new updates.
   private var displayedAlbumsUpdateTask: Task<Void, Never>?
 
-  private func assignExpandedAlbumID(_ newID: UUID?, expandedAlbumID: inout UUID?) {
-    guard expandedAlbumID != newID else { return }
-    expandedAlbumID = newID
+  /// Phase 62: Assign expandedAlbumID via mainVM with a short delay.
+  /// The 50ms delay lets the double-click's second tap arrive before
+  /// the layout shifts from expansion, complementing Phase 61's debouncer.
+  private func assignExpandedAlbumID(_ newID: UUID?) {
+    guard let mainVM, mainVM.expandedAlbumID != newID else { return }
+    Task {
+      try? await Task.sleep(for: .milliseconds(50))
+      mainVM.expandedAlbumID = newID
+    }
   }
 }

@@ -19,6 +19,8 @@ final class AlbumTableViewModel {
 
   // MARK: Internal
 
+  var mainVM: MadTunesViewModel?
+
   // MARK: - Display Buffer
 
   /// Progressively-populated display buffer (Phase 56).

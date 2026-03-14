@@ -18,6 +18,13 @@ import UIKit
 @Observable
 @MainActor
 final class MadTunesViewModel {
+  // MARK: Lifecycle
+
+  init() {
+    gridVM.mainVM = self
+    tableVM.mainVM = self
+  }
+
   // MARK: Internal
 
   static let shared = MadTunesViewModel()

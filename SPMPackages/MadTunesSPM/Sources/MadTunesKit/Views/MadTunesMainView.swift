@@ -217,7 +217,6 @@ struct MadTunesMainView: View {
         if vm.useTableView {
           AlbumTableView(
             tracks: vm.currentTracksDisplayed,
-            selectedTrackIDs: $vm.selectedTrackIDs,
             // Phase 53: Only show playing indicator when actively playing.
             currentTrackID: viewModel.player.isPlaying ? viewModel.player.currentTrack?.id : nil,
             onTrackDoubleClicked: { track, tracks in
@@ -238,9 +237,6 @@ struct MadTunesMainView: View {
         } else {
           AlbumGridView(
             albums: displayAlbums,
-            expandedAlbumID: $vm.expandedAlbumID,
-            highlightedAlbumIDs: $vm.highlightedAlbumIDs,
-            selectedTrackIDs: $vm.selectedTrackIDs,
             // Phase 53: Only show playing indicator when actively playing.
             currentTrackID: viewModel.player.isPlaying ? viewModel.player.currentTrack?.id : nil,
             onTrackSelected: { track, albumTracks in
