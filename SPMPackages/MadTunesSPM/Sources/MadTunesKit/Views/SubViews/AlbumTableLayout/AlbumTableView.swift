@@ -183,6 +183,11 @@ struct AlbumTableView: View {
     return dict
   }()
 
+  // Phase 56: Display buffer to avoid per-item UI updates when large
+  // track arrays are provided (e.g. during import). We progressively
+  // append to `displayedTracks` in batches to keep the UI responsive.
+  @State private var displayedTracks: [Track] = []
+
   private let tracks: [Track]
   private let currentTrackID: UUID?
   private let onTrackDoubleClicked: (Track, [Track]) -> Void
@@ -330,7 +335,7 @@ struct AlbumTableView: View {
       // support reordering. This prevents List from showing drag affordances
       // on All Music, dynamic playlists, or when sorting/filtering is active.
       if canReorder {
-        ForEach(tracks) { track in
+        ForEach(displayedTracks) { track in
           trackRow(track)
             .id(track.id)
             .tag(track.id)
@@ -340,7 +345,7 @@ struct AlbumTableView: View {
           handleOnMove(from: from, to: to)
         }
       } else {
-        ForEach(tracks) { track in
+        ForEach(displayedTracks) { track in
           trackRow(track)
             .id(track.id)
             .tag(track.id)
@@ -349,16 +354,23 @@ struct AlbumTableView: View {
       }
     }
     .listStyle(.inset(alternatesRowBackgrounds: true))
+    .onAppear {
+      // Initialize / progressively display initial content
+      scheduleDisplayedTracksUpdate(to: tracks)
+    }
+    .onChange(of: tracks) { _, newValue in
+      scheduleDisplayedTracksUpdate(to: newValue)
+    }
     .contextMenu(forSelectionType: UUID.self, menu: { ids in
-      let selected = tracks.filter { ids.contains($0.id) }
+      let selected = displayedTracks.filter { ids.contains($0.id) }
       if !selected.isEmpty {
         trackContextMenu(forTracks: selected)
       }
     }, primaryAction: { ids in
       // Double-click: play starting from the first selected track.
       guard let firstID = ids.first,
-            let track = tracks.first(where: { $0.id == firstID }) else { return }
-      onTrackDoubleClicked(track, tracks)
+            let track = displayedTracks.first(where: { $0.id == firstID }) else { return }
+      onTrackDoubleClicked(track, displayedTracks)
     })
     .onChange(of: vm.tableScrollTargetID) { _, newID in
       if let id = newID {
@@ -495,8 +507,50 @@ struct AlbumTableView: View {
   /// Translates IndexSet + destination into the `moveTracks` API.
   private func handleOnMove(from source: IndexSet, to destination: Int) {
     guard vm.canReorderCurrentPlaylist else { return }
-    let ids = source.map { tracks[$0].id }
+    let ids = source.map { displayedTracks[$0].id }
     vm.moveTracksInCurrentPlaylist(trackIDs: ids, toIndex: destination)
+  }
+
+  // Phase 56: Coalesced/batched update helper.
+  // If the change is an append-only update we progressively append in
+  // batches to `displayedTracks` to avoid triggering a full re-render per item.
+  private func scheduleDisplayedTracksUpdate(to newTracks: [Track]) {
+    let batchSize = 50
+    Task { @MainActor in
+      // Quick path: identical -> nothing to do
+      if newTracks.map({ $0.id }) == displayedTracks.map({ $0.id }) { return }
+
+      // If displayed is empty and new is large, progressively present it.
+      if displayedTracks.isEmpty, newTracks.count > batchSize {
+        displayedTracks.removeAll()
+        var idx = 0
+        while idx < newTracks.count {
+          let end = min(idx + batchSize, newTracks.count)
+          displayedTracks.append(contentsOf: newTracks[idx ..< end])
+          idx = end
+          // yield to the scheduler so UI can update between batches
+          await Task.yield()
+        }
+        return
+      }
+
+      // If the new list starts with the displayed list, treat as append-only
+      let oldIDs = displayedTracks.map { $0.id }
+      let newIDs = newTracks.map { $0.id }
+      if oldIDs.count <= newIDs.count, Array(newIDs.prefix(oldIDs.count)) == oldIDs {
+        var idx = oldIDs.count
+        while idx < newIDs.count {
+          let end = min(idx + batchSize, newIDs.count)
+          displayedTracks.append(contentsOf: newTracks[idx ..< end])
+          idx = end
+          await Task.yield()
+        }
+        return
+      }
+
+      // Fallback: replace entirely
+      displayedTracks = newTracks
+    }
   }
 
   // MARK: - Column visibility
