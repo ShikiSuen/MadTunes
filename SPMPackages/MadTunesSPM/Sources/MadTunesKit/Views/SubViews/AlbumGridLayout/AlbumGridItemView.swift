@@ -86,19 +86,44 @@ struct AlbumGridItemView: View {
     if isCursor {
       // Cursor item: thicker border, lower opacity
       Rectangle()
-        .fill(Color.madTunesAccent.opacity(0.15))
+        .fill(
+          LinearGradient(
+            colors: [
+              Color.madTunesAccent.opacity(0.15),
+              Color.madTunesAccent.opacity(0.13),
+              Color.madTunesAccent.opacity(0.10),
+              Color.madTunesAccent.opacity(0),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+          )
+        )
         .stroke(
-          Color.madTunesAccent.opacity(0.5),
-          lineWidth: 2.5
+          LinearGradient(
+            colors: [
+              Color.madTunesAccent.opacity(0.8),
+              Color.madTunesAccent.opacity(0.6),
+              Color.madTunesAccent.opacity(0.4),
+              Color.madTunesAccent.opacity(0),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+          ),
+          lineWidth: 3.5
         )
         .allowsHitTesting(false)
     } else {
       // Regular selected item
       Rectangle()
-        .fill(Color.madTunesAccent.opacity(0.2))
-        .stroke(
-          Color.madTunesAccent.opacity(0.25),
-          lineWidth: 1
+        .fill(
+          LinearGradient(
+            colors: [
+              Color.madTunesAccent.opacity(0.4),
+              Color.madTunesAccent.opacity(0),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+          )
         )
         .allowsHitTesting(false)
     }
