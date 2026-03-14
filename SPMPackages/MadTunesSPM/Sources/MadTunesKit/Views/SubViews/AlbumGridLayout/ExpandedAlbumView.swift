@@ -233,8 +233,8 @@ struct ExpandedAlbumView: View {
   }
 
   @ViewBuilder private var trackList: some View {
-    let query = vm.searchText.trimmingCharacters(in: .whitespaces)
-    let sorted: [Track] = query.isEmpty ? album.tracks : filteredTracksForAlbumView(query: query)
+    let tokens = searchTokens(from: vm.searchText)
+    let sorted: [Track] = tokens.isEmpty ? album.tracks : filteredTracksForAlbumView(query: vm.searchText)
 
     if !sorted.isEmpty {
       let hideArtist = album.allTrackArtistsSameAsAlbumArtist
@@ -385,30 +385,31 @@ struct ExpandedAlbumView: View {
 
   /// 根據當前搜尋條件過濾曲目，若曲目無匹配但專輯匹配則顯示全部
   private func filteredTracksForAlbumView(query: String) -> [Track] {
+    let tokens = searchTokens(from: vm.searchText)
+    guard !tokens.isEmpty else { return album.tracks }
+
     let filtered: [Track] = switch vm.searchFilterMode {
     case .trackTitle:
       album.tracks.filter { track in
-        track.title.localizedCaseInsensitiveContains(query)
+        tokensAllMatchAcrossFields(tokens, fields: [track.title])
       }
     case .albumTitle:
       // 在專輯內檢視時，如果搜尋模式是專輯名稱且該專輯符合條件，顯示所有曲目
-      album.title.localizedCaseInsensitiveContains(query) ? album.tracks : []
+      tokensAllMatchAcrossFields(tokens, fields: [album.title]) ? album.tracks : []
     case .artist:
       album.tracks.filter { track in
-        track.artist.localizedCaseInsensitiveContains(query)
-          || track.albumArtist.localizedCaseInsensitiveContains(query)
+        tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist])
       }
     case .either:
       album.tracks.filter { track in
-        track.title.localizedCaseInsensitiveContains(query)
-          || track.artist.localizedCaseInsensitiveContains(query)
-          || track.albumArtist.localizedCaseInsensitiveContains(query)
+        tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist])
       }
     }
+
     // 如果過濾後為空，但專輯本身符合搜尋條件（專輯名稱或藝人），則顯示所有曲目
     if filtered.isEmpty {
-      let albumMatches = album.title.localizedCaseInsensitiveContains(query)
-        || album.artist.localizedCaseInsensitiveContains(query)
+      let albumMatches = tokensAllMatchAcrossFields(tokens, fields: [album.title])
+        || tokensAllMatchAcrossFields(tokens, fields: [album.artist])
       return albumMatches ? album.tracks : filtered
     }
     return filtered

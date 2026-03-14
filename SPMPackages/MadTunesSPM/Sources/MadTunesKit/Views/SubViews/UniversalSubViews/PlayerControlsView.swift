@@ -94,7 +94,7 @@ struct PlayerControlsView: View {
                 where: { $0.allTrackIDsSet.contains(track.id) }
               ) {
                 vm.scrollToAlbumID = album.id
-              } else if vm.isColumnBrowserFiltering || !vm.searchText.isEmpty {
+              } else if vm.isColumnBrowserFiltering || !searchTokens(from: vm.searchText).isEmpty {
                 // Album hidden by filters — reset and defer scroll.
                 let targetAlbum = vm.library.albums.first(
                   where: { $0.allTrackIDsSet.contains(track.id) }

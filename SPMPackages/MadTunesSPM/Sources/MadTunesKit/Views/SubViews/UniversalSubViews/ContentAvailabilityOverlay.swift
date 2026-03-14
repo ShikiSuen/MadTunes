@@ -61,6 +61,23 @@ struct ContentAvailabilityOverlay: View {
             .ignoresSafeArea()
         }
         .compositingGroup()
+      } else if viewModel.isSearching {
+        Gradient.ColorMeshGradient
+          .ignoresSafeArea()
+          .overlay {
+            ContentUnavailableView {
+              WinUI3ProgressRing(size: 96, lineWidth: 7)
+                .tint(.primary)
+                .overlay {
+                  Image(systemName: "waveform.badge.magnifyingglass")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 48)
+                    .foregroundStyle(.secondary)
+                }
+            }
+          }
+          .compositingGroup()
       } else if displayAlbums.isEmpty {
         Gradient.ColorMeshGradient
           .ignoresSafeArea()
@@ -113,6 +130,7 @@ struct ContentAvailabilityOverlay: View {
           .compositingGroup()
       }
     }
+    .animation(.easeOut(duration: 0.12), value: viewModel.isSearching)
     .animation(.easeOut(duration: 0.12), value: viewModel.library.isImporting)
     .animation(.easeOut(duration: 0.12), value: hasActiveFilters)
   }
@@ -141,7 +159,7 @@ struct ContentAvailabilityOverlay: View {
 
   /// Phase 51: 是否有活動的篩選條件（搜尋文字或 Column Browser 篩選）。
   private var hasActiveFilters: Bool {
-    let hasSearchText = !viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    let hasSearchText = !searchTokens(from: viewModel.searchText).isEmpty
     let hasColumnBrowserFilter = viewModel.isColumnBrowserFiltering
     return hasSearchText || hasColumnBrowserFilter
   }

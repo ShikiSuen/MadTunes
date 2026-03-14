@@ -41,31 +41,88 @@ extension String {
   /// 2. 剩下的詞，用 全形、半形、tab、ASCII-COMMA 分割開之後，塞入 `result`。
   /// 3. 返回 result。
   public var asSearchableKeywords: Set<String> {
-    var result: Set<String> = [] // <- 關鍵詞單元集合。
+    var result: Set<String> = []
 
     let fullwidthSpace = "\u{3000}"
     let wsnl = CharacterSet.whitespacesAndNewlines
     let trimmingSet = wsnl.union(CharacterSet(charactersIn: fullwidthSpace))
     let separatorSet = wsnl.union(CharacterSet(charactersIn: ",，\u{3000}"))
 
-    // 使用 Swift 6.2 的內建 Regex literal，捕捉被 ASCII 雙引號包住的群組
+    // 捕捉 ASCII 雙引號
     let quoted = /"([^\"]+)"/
 
-    // 1) 擷取所有引號內的片段，trim 後加入結果
+    // 1) 引號內片段
     matches(of: quoted).forEach { matched in
       let captured = String(matched.1)
       let trimmed = captured.trimmingCharacters(in: trimmingSet)
-      if !trimmed.isEmpty { result.insert(trimmed) }
+      if !trimmed.isEmpty {
+        result.insert(trimmed)
+      }
     }
 
-    // 2) 將所有被引號包住的段落以單一空白取代，對剩餘字串再以分隔集合拆分
+    // 2) 移除 quoted 段落後再拆分
     let withoutQuotes = replacing(quoted, with: " ")
     let parts = withoutQuotes.components(separatedBy: separatorSet)
-    parts.forEach { p in
+
+    for p in parts {
       let token = p.trimmingCharacters(in: trimmingSet)
-      if !token.isEmpty { result.insert(token) }
+      if !token.isEmpty {
+        result.insert(token)
+      }
     }
 
     return result
   }
+}
+
+// MARK: - Search Tokens Helpers
+
+/// 從使用者輸入的搜尋字串產生對應的關鍵詞集合（小寫）。
+/// 會呼叫 `asSearchableKeywords` 做分詞並回傳 lowercased 的集合。
+public func searchTokens(from text: String) -> Set<String> {
+  let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+  guard !trimmed.isEmpty else { return [] }
+
+  return Set(
+    trimmed
+      .asSearchableKeywords
+      .map { $0.lowercased() }
+  )
+}
+
+/// 對於一組欄位（fields），檢查每一個 token 是否至少被其中一個欄位命中。
+/// 命中規則：
+/// 1. 先以欄位的 `asSearchableKeywords` 做 **whole-word 比對**（O(1) set lookup）
+/// 2. 若找不到，且 token 長度 ≥ 2，回退到子字串比對。
+public func tokensAllMatchAcrossFields(_ tokens: Set<String>, fields: [String]) -> Bool {
+  guard !tokens.isEmpty else { return true }
+  guard !fields.isEmpty else { return false }
+
+  // 預先 tokenize fields（避免重複 tokenization）
+  let fieldTokensLower: [Set<String>] = fields.map {
+    Set($0.asSearchableKeywords.map { $0.lowercased() })
+  }
+
+  for token in tokens {
+    var matched = false
+
+    for (idx, field) in fields.enumerated() {
+      // 1) whole-token match (O(1))
+      if fieldTokensLower[idx].contains(token) {
+        matched = true
+        break
+      }
+
+      // 2) substring fallback（避免單字母噪聲）
+      if token.count >= 2,
+         field.range(of: token, options: [.caseInsensitive]) != nil {
+        matched = true
+        break
+      }
+    }
+
+    if !matched { return false }
+  }
+
+  return true
 }

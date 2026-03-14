@@ -163,7 +163,7 @@ struct MadTunesMainView: View {
             }
           }
           ToolbarItem(placement: .primaryAction) {
-            if (!viewModel.library.isImporting && !albums.isEmpty) || !vm.searchText.isEmpty {
+            if (!viewModel.library.isImporting && !albums.isEmpty) || !searchTokens(from: vm.searchText).isEmpty {
               Menu {
                 Picker(
                   String(localized: "i18n:Search.SearchFields", bundle: #bundle),
@@ -260,6 +260,11 @@ struct MadTunesMainView: View {
         placement: .toolbar,
         prompt: String(localized: "i18n:Search.Prompt", bundle: #bundle)
       )
+      .task(id: vm.searchText) {
+        // Lightweight async observation hook: keep a short, cancelable delay so
+        // UI can coordinate with the ViewModel's debounced background search.
+        do { try await Task.sleep(nanoseconds: 50_000_000) } catch { /* cancelled */ }
+      }
       .environment(viewModel)
       .onKeyPress { press in
         viewModel.handleKeyPress(press, albums: displayAlbums)
@@ -273,7 +278,9 @@ struct MadTunesMainView: View {
       .onChange(of: viewModel.selectedPlaylistID) { _, _ in
         if !viewModel.selectedTrackIDs.isEmpty { viewModel.selectedTrackIDs.removeAll() }
         viewModel.resetColumnBrowserFilters()
-        if !viewModel.searchText.isEmpty { viewModel.searchText = "" }
+        if !searchTokens(from: viewModel.searchText).isEmpty {
+          viewModel.searchText = ""
+        }
       }
       // Phase 43: Ensure artwork is loaded when playing from table view.
       .onChange(of: viewModel.player.currentTrack?.id) { _, _ in

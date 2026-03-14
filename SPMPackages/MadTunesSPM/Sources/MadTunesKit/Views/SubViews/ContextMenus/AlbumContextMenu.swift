@@ -157,9 +157,9 @@ struct AlbumContextMenu: View {
     // - 若 searchFilterMode == .albumTitle 且該 album 匹配，回傳該 album 的所有曲目
     // - 否則在該 album 範圍內套用 per-track 篩選（trackTitle / artist / either）
 
-    let query = searchText.trimmingCharacters(in: .whitespaces)
+    let tokens = searchTokens(from: searchText)
     // No query → return all tracks (sorted)
-    guard !query.isEmpty else {
+    guard !tokens.isEmpty else {
       return allTracks.sorted {
         ($0.albumTitle, $0.discNumber, $0.trackNumber, $0.title)
           < ($1.albumTitle, $1.discNumber, $1.trackNumber, $1.title)
@@ -176,29 +176,40 @@ struct AlbumContextMenu: View {
 
       switch searchFilterMode {
       case .albumTitle:
-        if album.title.localizedCaseInsensitiveContains(query) {
+        // 命中專輯名稱。
+        if tokensAllMatchAcrossFields(tokens, fields: [album.title]) {
           results.append(contentsOf: albumSorted)
         }
 
       case .trackTitle:
-        results.append(contentsOf: albumSorted.filter { $0.title.localizedCaseInsensitiveContains(query) })
+        // 命中音軌標題。
+        results.append(contentsOf: albumSorted.filter { tokensAllMatchAcrossFields(tokens, fields: [$0.title]) })
 
       case .artist:
-        if album.artist.localizedCaseInsensitiveContains(query) {
-          // album-level match → include all tracks
-          results.append(contentsOf: albumSorted)
+        // 命中專輯藝人或單曲藝人。
+        // 如果專輯藝人無法命中某專輯的話，回傳其中的單曲藝人命中結果。
+        // 如果專輯藝人有命中的話，則回傳該專輯的全部結果。
+        let artistFields = [album.artist] + album.tracks.flatMap { [$0.artist, $0.albumArtist] }
+        if tokensAllMatchAcrossFields(tokens, fields: artistFields) {
+          results.append(contentsOf: albumSorted.filter { tr in
+            tokensAllMatchAcrossFields(tokens, fields: [tr.artist])
+          })
         } else {
           results.append(contentsOf: albumSorted.filter { tr in
-            tr.artist.localizedCaseInsensitiveContains(query) || tr.albumArtist.localizedCaseInsensitiveContains(query)
+            tokensAllMatchAcrossFields(tokens, fields: [tr.artist, tr.albumArtist])
           })
         }
 
       case .either:
-        results.append(contentsOf: albumSorted.filter { tr in
-          tr.title.localizedCaseInsensitiveContains(query)
-            || tr.artist.localizedCaseInsensitiveContains(query)
-            || tr.albumArtist.localizedCaseInsensitiveContains(query)
-        })
+        // If the whole-album matches (tokens anywhere in album/title/artist/track fields), include all tracks.
+        let albumFields = [album.title, album.artist] + album.tracks.flatMap { [$0.title, $0.artist, $0.albumArtist] }
+        if tokensAllMatchAcrossFields(tokens, fields: albumFields) {
+          results.append(contentsOf: albumSorted)
+        } else {
+          results.append(contentsOf: albumSorted.filter { tr in
+            tokensAllMatchAcrossFields(tokens, fields: [tr.title, tr.artist, tr.albumArtist])
+          })
+        }
       }
     }
 

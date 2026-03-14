@@ -64,10 +64,11 @@ final class MadTunesViewModel {
   var albumSortOrder: AlbumSortOrder = .artistYearTitle
   var screenVM = ScreenVM.shared
 
-  // Keyword search
-  var searchText: String = ""
   var searchFilterMode: SearchFilterMode = .either
 
+  var filteredAlbumsCache: [Album] = []
+  var filteredTracksCache: [Track] = []
+  var isSearching: Bool = false
   // Scroll-to-album trigger (set by artwork double-click, consumed by AlbumGridView)
   var scrollToAlbumID: UUID?
 
@@ -78,6 +79,13 @@ final class MadTunesViewModel {
   /// Separate song-artist filter (tracks' artist field).
   var columnBrowserSelectedSongArtists: Set<String> = []
   var columnBrowserSelectedAlbumTitles: Set<String> = []
+
+  // Keyword search
+  var searchText: String = "" {
+    didSet {
+      scheduleSearch()
+    }
+  }
 
   var gridColumnCount: Int {
     let width = screenVM.mainColumnCanvasSizeObserved.width
@@ -95,6 +103,11 @@ final class MadTunesViewModel {
   }
 
   var currentAlbums: [Album] {
+    let tokensNow = searchTokens(from: searchText)
+    if !tokensNow.isEmpty {
+      return filteredAlbumsCache
+    }
+
     var result = unfilteredAlbums
     if !columnBrowserSelectedGenres.isEmpty {
       result = result.filter { album in
@@ -112,36 +125,37 @@ final class MadTunesViewModel {
     if !columnBrowserSelectedAlbumTitles.isEmpty {
       result = result.filter { columnBrowserSelectedAlbumTitles.contains($0.title) }
     }
-    let query = searchText.trimmingCharacters(in: .whitespaces)
-    if !query.isEmpty {
+    let tokens = searchTokens(from: searchText)
+    if !tokens.isEmpty {
       result = result.filter { album in
-        // 先檢查專輯層級的欄位（根據過濾模式）
+        // Album-level match: allow tokens to be found anywhere inside the album
+        // (album title/artist or any track's title/artist/albumArtist). This
+        // enables queries like "曾志豪 仙劍奇俠傳" to match an album whose
+        // title matches one token and contains a track matching the other.
+        let albumFields = [album.title, album.artist] + album.tracks.flatMap { [$0.title, $0.artist, $0.albumArtist] }
         let albumMatches: Bool = switch searchFilterMode {
         case .trackTitle:
-          false // 專輯標題不屬於曲目名稱
+          false
         case .albumTitle:
-          album.title.localizedCaseInsensitiveContains(query)
+          tokensAllMatchAcrossFields(tokens, fields: [album.title])
         case .artist:
-          album.artist.localizedCaseInsensitiveContains(query)
+          tokensAllMatchAcrossFields(tokens, fields: [album.artist])
+            || tokensAllMatchAcrossFields(tokens, fields: album.tracks.flatMap { [$0.artist, $0.albumArtist] })
         case .either:
-          album.title.localizedCaseInsensitiveContains(query)
-            || album.artist.localizedCaseInsensitiveContains(query)
+          tokensAllMatchAcrossFields(tokens, fields: albumFields)
         }
 
-        // 檢查曲目層級的欄位
+        // Track-level match: all tokens must be present within the same track
         let trackMatches = album.tracks.contains { track in
           switch searchFilterMode {
           case .trackTitle:
-            track.title.localizedCaseInsensitiveContains(query)
+            tokensAllMatchAcrossFields(tokens, fields: [track.title])
           case .albumTitle:
-            false // 專輯名稱模式不檢查曲目層級
+            false
           case .artist:
-            track.artist.localizedCaseInsensitiveContains(query)
-              || track.albumArtist.localizedCaseInsensitiveContains(query)
+            tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist])
           case .either:
-            track.title.localizedCaseInsensitiveContains(query)
-              || track.artist.localizedCaseInsensitiveContains(query)
-              || track.albumArtist.localizedCaseInsensitiveContains(query)
+            tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist])
           }
         }
 
@@ -259,7 +273,7 @@ final class MadTunesViewModel {
     // visible order would not map cleanly back to the playlist order.
     let canReorder = (isFavorites || isStatic)
       && tableSortCriteria == nil
-      && searchText.trimmingCharacters(in: .whitespaces).isEmpty
+      && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       && !isColumnBrowserFiltering
     return canReorder
   }
@@ -299,21 +313,18 @@ final class MadTunesViewModel {
       var tracks = library.tracks(for: playlist)
 
       // Apply keyword search filtering (only affects the visible subset).
-      let query = searchText.trimmingCharacters(in: .whitespaces)
-      if !query.isEmpty {
+      let tokens = searchTokens(from: searchText)
+      if !tokens.isEmpty {
         tracks = tracks.filter { track in
           switch searchFilterMode {
           case .trackTitle:
-            return track.title.localizedCaseInsensitiveContains(query)
+            return tokensAllMatchAcrossFields(tokens, fields: [track.title])
           case .albumTitle:
-            return track.albumTitle.localizedCaseInsensitiveContains(query)
+            return tokensAllMatchAcrossFields(tokens, fields: [track.albumTitle])
           case .artist:
-            return track.artist.localizedCaseInsensitiveContains(query)
-              || track.albumArtist.localizedCaseInsensitiveContains(query)
+            return tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist])
           case .either:
-            return track.title.localizedCaseInsensitiveContains(query)
-              || track.artist.localizedCaseInsensitiveContains(query)
-              || track.albumArtist.localizedCaseInsensitiveContains(query)
+            return tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist])
           }
         }
       }
@@ -324,22 +335,28 @@ final class MadTunesViewModel {
 
     var tracks = precomputedAlbums.flatMap(\.tracks)
 
-    // Phase 55: Apply per-track keyword search filtering for All Music.
-    let query = searchText.trimmingCharacters(in: .whitespaces)
-    if !query.isEmpty {
+    // Phase 55/57: Prefer precomputed filteredTracksCache when a query is active.
+    let tokens = searchTokens(from: searchText)
+    if !tokens.isEmpty {
+      // If the async search has produced a result (or is in progress), use cache to avoid recomputation.
+      if !filteredTracksCache.isEmpty || isSearching {
+        if let criteria = tableSortCriteria {
+          return sortedTracks(filteredTracksCache, by: criteria)
+        }
+        return filteredTracksCache
+      }
+
+      // Fallback: if cache is not yet ready, perform inline filtering to avoid showing full unfiltered list.
       tracks = tracks.filter { track in
         switch searchFilterMode {
         case .trackTitle:
-          return track.title.localizedCaseInsensitiveContains(query)
+          return tokensAllMatchAcrossFields(tokens, fields: [track.title])
         case .albumTitle:
-          return track.albumTitle.localizedCaseInsensitiveContains(query)
+          return tokensAllMatchAcrossFields(tokens, fields: [track.albumTitle])
         case .artist:
-          return track.artist.localizedCaseInsensitiveContains(query)
-            || track.albumArtist.localizedCaseInsensitiveContains(query)
+          return tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist])
         case .either:
-          return track.title.localizedCaseInsensitiveContains(query)
-            || track.artist.localizedCaseInsensitiveContains(query)
-            || track.albumArtist.localizedCaseInsensitiveContains(query)
+          return tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist])
         }
       }
     }
@@ -463,31 +480,38 @@ final class MadTunesViewModel {
   /// 從專輯中取得符合當前搜尋條件的曲目，用於播放。
   /// 如果沒有搜尋條件，返回該專輯所有曲目。
   func filteredTracksForPlayback(from album: Album) -> [Track] {
-    let query = searchText.trimmingCharacters(in: .whitespaces)
+    let tokens = searchTokens(from: searchText)
     let allTracks = album.tracks
 
-    guard !query.isEmpty else {
-      return allTracks
-    }
+    guard !tokens.isEmpty else { return allTracks }
 
-    // 專輯名稱模式：如果該專輯符合搜尋條件，返回所有曲目；否則返回空陣列
-    if searchFilterMode == .albumTitle {
-      return album.title.localizedCaseInsensitiveContains(query) ? allTracks : []
+    // 如果整張專輯在 album 層級匹配（考慮 title/artist 及曲目內的 artist/title），
+    // 則回傳整張專輯（允許 token 跨專輯/曲目欄位匹配）。保留原先的
+    // albumTitle 快路徑。
+    let albumFields = [album.title, album.artist] + album.tracks.flatMap { [$0.title, $0.artist, $0.albumArtist] }
+    let albumMatches: Bool = switch searchFilterMode {
+    case .trackTitle:
+      false
+    case .albumTitle:
+      tokensAllMatchAcrossFields(tokens, fields: [album.title])
+    case .artist:
+      tokensAllMatchAcrossFields(tokens, fields: [album.artist])
+        || tokensAllMatchAcrossFields(tokens, fields: album.tracks.flatMap { [$0.artist, $0.albumArtist] })
+    case .either:
+      tokensAllMatchAcrossFields(tokens, fields: albumFields)
     }
+    if albumMatches { return allTracks }
 
     return allTracks.filter { track in
       switch searchFilterMode {
       case .trackTitle:
-        return track.title.localizedCaseInsensitiveContains(query)
+        return tokensAllMatchAcrossFields(tokens, fields: [track.title])
       case .albumTitle:
         return true // 已由上方處理
       case .artist:
-        return track.artist.localizedCaseInsensitiveContains(query)
-          || track.albumArtist.localizedCaseInsensitiveContains(query)
+        return tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist])
       case .either:
-        return track.title.localizedCaseInsensitiveContains(query)
-          || track.artist.localizedCaseInsensitiveContains(query)
-          || track.albumArtist.localizedCaseInsensitiveContains(query)
+        return tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist])
       }
     }
   }
@@ -572,32 +596,29 @@ final class MadTunesViewModel {
 
   /// 獲取指定專輯中經過篩選的曲目（與 ExpandedAlbumView 邏輯一致）
   func filteredTracks(for album: Album) -> [Track] {
-    let query = searchText.trimmingCharacters(in: .whitespaces)
-    guard !query.isEmpty else { return album.tracks }
+    let tokens = searchTokens(from: searchText)
+    guard !tokens.isEmpty else { return album.tracks }
 
     let filtered: [Track] = switch searchFilterMode {
     case .trackTitle:
       album.tracks.filter { track in
-        track.title.localizedCaseInsensitiveContains(query)
+        tokensAllMatchAcrossFields(tokens, fields: [track.title])
       }
     case .albumTitle:
-      album.title.localizedCaseInsensitiveContains(query) ? album.tracks : []
+      tokensAllMatchAcrossFields(tokens, fields: [album.title]) ? album.tracks : []
     case .artist:
       album.tracks.filter { track in
-        track.artist.localizedCaseInsensitiveContains(query)
-          || track.albumArtist.localizedCaseInsensitiveContains(query)
+        tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist])
       }
     case .either:
       album.tracks.filter { track in
-        track.title.localizedCaseInsensitiveContains(query)
-          || track.artist.localizedCaseInsensitiveContains(query)
-          || track.albumArtist.localizedCaseInsensitiveContains(query)
+        tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist])
       }
     }
     // 如果過濾後為空，但專輯本身符合搜尋條件，則顯示所有曲目
     if filtered.isEmpty {
-      let albumMatches = album.title.localizedCaseInsensitiveContains(query)
-        || album.artist.localizedCaseInsensitiveContains(query)
+      let albumFields = [album.title, album.artist] + album.tracks.flatMap { [$0.title, $0.artist, $0.albumArtist] }
+      let albumMatches = tokensAllMatchAcrossFields(tokens, fields: albumFields)
       return albumMatches ? album.tracks : filtered
     }
     return filtered
@@ -758,6 +779,10 @@ final class MadTunesViewModel {
 
   // MARK: Private
 
+  // --- Async search/cache (Phase 57):
+  // Cached filtered results produced by the debounced async search task.
+  private var searchTask: Task<Void, Never>?
+
   private let minItemWidth: CGFloat = 160
   private let gridSpacing: CGFloat = 16
 
@@ -771,6 +796,139 @@ final class MadTunesViewModel {
       return library.albums(for: playlist)
     }
     return library.albums
+  }
+
+  /// Schedule a debounced asynchronous search. Cancels prior pending search.
+  private func scheduleSearch() {
+    // Cancel any existing work
+    searchTask?.cancel()
+
+    let textSnapshot = searchText
+    // If the query is empty, clear caches immediately on main actor.
+    let trimmed = textSnapshot.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.isEmpty {
+      filteredAlbumsCache = []
+      filteredTracksCache = []
+      isSearching = false
+      return
+    }
+
+    isSearching = true
+    // Debounced task — runs off the main actor so heavy filtering won't block UI.
+    searchTask = Task { [weak self] in
+      do {
+        try await Task.sleep(nanoseconds: 1_000_000_000) // 1.0s debounce
+      } catch {
+        return // cancelled
+      }
+      if Task.isCancelled { return }
+      guard let self = self else { return }
+
+      // Snapshot base albums applying column browser filters on the main actor.
+      let baseAlbums: [Album] = await MainActor.run {
+        var result = self.unfilteredAlbums
+        if !self.columnBrowserSelectedGenres.isEmpty {
+          result = result.filter { album in
+            album.tracks.contains { self.columnBrowserSelectedGenres.contains($0.genre) }
+          }
+        }
+        if !self.columnBrowserSelectedAlbumArtists.isEmpty {
+          result = result.filter { self.columnBrowserSelectedAlbumArtists.contains($0.artist) }
+        }
+        if !self.columnBrowserSelectedSongArtists.isEmpty {
+          result = result.filter { album in
+            album.tracks.contains { self.columnBrowserSelectedSongArtists.contains($0.artist) }
+          }
+        }
+        if !self.columnBrowserSelectedAlbumTitles.isEmpty {
+          result = result.filter { self.columnBrowserSelectedAlbumTitles.contains($0.title) }
+        }
+        return result
+      }
+
+      if Task.isCancelled { return }
+
+      // Tokenize query once (lowercased tokens)
+      let tokens = searchTokens(from: textSnapshot)
+      if tokens.isEmpty {
+        await MainActor.run {
+          if self.searchText == textSnapshot {
+            self.filteredAlbumsCache = []
+            self.filteredTracksCache = []
+            self.isSearching = false
+          }
+        }
+        return
+      }
+
+      // Perform filtering in this task (cooperative cancellation checks).
+      var albumsResult: [Album] = []
+      var tracksResult: [Track] = []
+
+      for album in baseAlbums {
+        if Task.isCancelled { return }
+
+        // Build album-level fields for matching (title, artist, plus all track fields).
+        let albumFields = [album.title, album.artist] + album.tracks.flatMap { [$0.title, $0.artist, $0.albumArtist] }
+
+        // Album-level match according to current searchFilterMode. Use tokensAllMatchAcrossFields
+        // to allow matching tokens anywhere inside the album (cross-field).
+        let albumMatches: Bool = switch self.searchFilterMode {
+        case .trackTitle:
+          false
+        case .albumTitle:
+          tokensAllMatchAcrossFields(tokens, fields: [album.title])
+        case .artist:
+          tokensAllMatchAcrossFields(tokens, fields: [album.artist])
+            || tokensAllMatchAcrossFields(tokens, fields: album.tracks.flatMap { [$0.artist, $0.albumArtist] })
+        case .either:
+          tokensAllMatchAcrossFields(tokens, fields: albumFields)
+        }
+
+        // Track-level scan: collect tracks that match (all tokens must match within the same track).
+        var matchedTracksForAlbum: [Track] = []
+        for track in album.tracks {
+          if Task.isCancelled { return }
+          switch self.searchFilterMode {
+          case .trackTitle:
+            if tokensAllMatchAcrossFields(tokens, fields: [track.title]) {
+              matchedTracksForAlbum.append(track)
+            }
+          case .albumTitle:
+            // albumTitle handled at album-level; no per-track matching
+            break
+          case .artist:
+            if tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist]) {
+              matchedTracksForAlbum.append(track)
+            }
+          case .either:
+            if tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist]) {
+              matchedTracksForAlbum.append(track)
+            }
+          }
+        }
+
+        if albumMatches {
+          albumsResult.append(album)
+          // when album-level matches, include all tracks in the track cache
+          tracksResult.append(contentsOf: album.tracks)
+        } else if !matchedTracksForAlbum.isEmpty {
+          albumsResult.append(album)
+          tracksResult.append(contentsOf: matchedTracksForAlbum)
+        }
+      }
+
+      if Task.isCancelled { return }
+
+      // Commit results on main actor only if query hasn't changed.
+      await MainActor.run {
+        if self.searchText == textSnapshot {
+          self.filteredAlbumsCache = albumsResult
+          self.filteredTracksCache = tracksResult
+          self.isSearching = false
+        }
+      }
+    }
   }
 
   private func handleGridKeyPress(_ press: KeyPress, albums: [Album]) -> KeyPress.Result {
