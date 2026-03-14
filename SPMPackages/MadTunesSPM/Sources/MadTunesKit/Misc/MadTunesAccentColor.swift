@@ -11,7 +11,7 @@ import AppKit
 extension Color {
   /// The MadTunes accent color, matching the values defined in the Xcode Asset Catalog.
   /// Asset Catalog AccentColor does not propagate to SwiftUI views, so we define it in code.
-  /// Phase 54: When the user has explicitly set a system accent color (non-multicolor),
+  /// Phase 53: When the user has explicitly set a system accent color (non-multicolor),
   /// respect that setting. Otherwise, use MadTunes' own green.
   static let madTunesAccent: Color = {
     #if canImport(AppKit) && !targetEnvironment(macCatalyst)

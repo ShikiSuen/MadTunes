@@ -77,7 +77,7 @@ public struct MadTunesScene: Scene {
         }
         #endif
       }
-      // Phase 53: Menu commands for playlist track reordering.
+      // Phase 52: Menu commands for playlist track reordering.
       // App-level .commands with .keyboardShortcut bypass List/Table's
       // internal NSTableView which consumes all modifier+Arrow key events.
       CommandGroup(after: .pasteboard) {

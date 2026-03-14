@@ -51,11 +51,11 @@ final class MadTunesViewModel {
   var tableSelectionAnchorID: UUID?
   /// Table view: moving cursor (highlighted row).
   var tableSelectionCursorID: UUID?
-  /// Phase 43: Set during keyboard navigation to auto-scroll the table.
+  /// Phase 42: Set during keyboard navigation to auto-scroll the table.
   /// Not set on mouse click; reset to nil after the scroll completes.
   var tableScrollTargetID: UUID?
 
-  /// Phase 45: Table view column sorting (column type, ascending?)
+  /// Phase 44: Table view column sorting (column type, ascending?)
   var tableSortCriteria: (column: TableColumnType, ascending: Bool)?
 
   var isFileImporterPresented = false // Only for non-AppKit targets.
@@ -271,7 +271,7 @@ final class MadTunesViewModel {
     return max(1, Int((canvasHeight - 60) / rowHeight))
   }
 
-  // MARK: - Phase 53: Menu command helpers for track reordering
+  // MARK: - Phase 52: Menu command helpers for track reordering
 
   /// Whether the selected tracks can be moved up in the current playlist.
   var canMoveSelectedTracksUp: Bool {
@@ -662,7 +662,7 @@ final class MadTunesViewModel {
   // MARK: - Table Keyboard Navigation
 
   /// Handles keyboard input when the table view is active.
-  /// Phase 53: Now backed by List instead of Table. Arrow keys, Shift+Arrow,
+  /// Phase 52: Now backed by List instead of Table. Arrow keys, Shift+Arrow,
   /// PgUp/PgDn are handled natively by the List. Track reorder (Option+↑/↓)
   /// is handled via menu commands in MadTunesScene. This handler intercepts:
   /// Cmd+C copy, Cmd+↓/Return/Space to play.
@@ -678,7 +678,7 @@ final class MadTunesViewModel {
       }
     }
 
-    // Phase 43: CMD+↓: Play selected tracks immediately.
+    // Phase 42: CMD+↓: Play selected tracks immediately.
     if press.key == .downArrow, press.modifiers.contains(.command) {
       let selected = tracks.filter { selectedTrackIDs.contains($0.id) }
       if !selected.isEmpty {
@@ -702,18 +702,18 @@ final class MadTunesViewModel {
       return .ignored
     }
 
-    // Phase 48: All other keys (arrows, page, etc.) fall through to Table.
+    // Phase 47: All other keys (arrows, page, etc.) fall through to Table.
     return .ignored
   }
 
-  // MARK: - Phase 45: Table Sorting
+  // MARK: - Phase 44: Table Sorting
 
-  // Phase 45: Clear sorting (switch back to album order)
+  // Phase 44: Clear sorting (switch back to album order)
   func clearTableSorting() {
     tableSortCriteria = nil
   }
 
-  // Phase 45: Set or toggle column sort
+  // Phase 44: Set or toggle column sort
   func setTableSort(column: TableColumnType) {
     if let current = tableSortCriteria, current.column == column {
       // Toggle direction
@@ -729,7 +729,7 @@ final class MadTunesViewModel {
     }
   }
 
-  // Phase 45: Get sort indicator for column header
+  // Phase 44: Get sort indicator for column header
   func sortIndicator(for column: TableColumnType) -> String? {
     guard let criteria = tableSortCriteria, criteria.column == column else { return nil }
     return criteria.ascending ? " ▲" : " ▼"

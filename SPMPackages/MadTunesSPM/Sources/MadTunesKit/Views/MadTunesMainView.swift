@@ -94,7 +94,7 @@ struct MadTunesMainView: View {
           .fixedSize(horizontal: false, vertical: true)
         }
         .toolbar {
-          // Phase 42: view mode toggle should come first
+          // Phase 41: view mode toggle should come first
           ToolbarItem(placement: .primaryAction) {
             Picker(selection: $vm.useTableView) {
               Label(String(localized: "i18n:Toolbar.ViewGrid", bundle: #bundle), systemImage: "square.grid.2x2")
@@ -218,7 +218,7 @@ struct MadTunesMainView: View {
           AlbumTableView(
             tracks: vm.currentTracks(fromAlbums: displayAlbums),
             selectedTrackIDs: $vm.selectedTrackIDs,
-            // Phase 54: Only show playing indicator when actively playing.
+            // Phase 53: Only show playing indicator when actively playing.
             currentTrackID: viewModel.player.isPlaying ? viewModel.player.currentTrack?.id : nil,
             onTrackDoubleClicked: { track, tracks in
               // when a user double-clicks in the table we treat it as playing
@@ -241,7 +241,7 @@ struct MadTunesMainView: View {
             expandedAlbumID: $vm.expandedAlbumID,
             highlightedAlbumIDs: $vm.highlightedAlbumIDs,
             selectedTrackIDs: $vm.selectedTrackIDs,
-            // Phase 54: Only show playing indicator when actively playing.
+            // Phase 53: Only show playing indicator when actively playing.
             currentTrackID: viewModel.player.isPlaying ? viewModel.player.currentTrack?.id : nil,
             onTrackSelected: { track, albumTracks in
               viewModel.onTrackSelected(track, albumTracks)
@@ -275,7 +275,7 @@ struct MadTunesMainView: View {
         viewModel.resetColumnBrowserFilters()
         if !viewModel.searchText.isEmpty { viewModel.searchText = "" }
       }
-      // Phase 44: Ensure artwork is loaded when playing from table view.
+      // Phase 43: Ensure artwork is loaded when playing from table view.
       .onChange(of: viewModel.player.currentTrack?.id) { _, _ in
         guard let track = viewModel.player.currentTrack else { return }
         let key = viewModel.library.albumKey(title: track.albumTitle, artist: track.albumArtist)

@@ -84,7 +84,7 @@ struct PlayerControlsView: View {
               guard let track = player.currentTrack else { return }
 
               if vm.useTableView {
-                // Phase 47: When table view is visible, double-clicking the artwork
+                // Phase 46: When table view is visible, double-clicking the artwork
                 // should scroll the table to the currently playing track.
                 vm.tableScrollTargetID = track.id
                 return

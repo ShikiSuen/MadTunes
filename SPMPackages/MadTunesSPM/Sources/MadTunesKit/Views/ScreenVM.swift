@@ -30,7 +30,7 @@ public final class ScreenVM {
     UIDevice.current.beginGeneratingDeviceOrientationNotifications()
     let orientationNow = Self.getInitialOrientation()
     self.orientation = orientationNow
-    // Phase 51: Load persisted splitViewVisibility from UserDefaults.
+    // Phase 50: Load persisted splitViewVisibility from UserDefaults.
     self.splitViewVisibility = Self.loadPersistedSplitViewVisibility(
       defaultValue: Self.initialSplitViewVisibility(
         orientation: orientationNow,
@@ -56,7 +56,7 @@ public final class ScreenVM {
     }
     #else
     self.orientation = .landscape
-    // Phase 51: Load persisted splitViewVisibility from UserDefaults.
+    // Phase 50: Load persisted splitViewVisibility from UserDefaults.
     self.splitViewVisibility = Self.loadPersistedSplitViewVisibility(defaultValue: .all)
     #endif
     updateHash4Tracking()
@@ -226,7 +226,7 @@ public final class ScreenVM {
     }
   }
 
-  // Phase 51: Persist splitViewVisibility to UserDefaults.
+  // Phase 50: Persist splitViewVisibility to UserDefaults.
   private func registerSplitViewVisibilityObservation() {
     withObservationTracking {
       _ = splitViewVisibility

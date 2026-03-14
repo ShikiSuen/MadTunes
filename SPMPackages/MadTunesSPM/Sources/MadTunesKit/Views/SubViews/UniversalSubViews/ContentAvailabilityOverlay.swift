@@ -139,7 +139,7 @@ struct ContentAvailabilityOverlay: View {
     return playlist.id == viewModel.library.playlists[1].id
   }
 
-  /// Phase 52: 是否有活動的篩選條件（搜尋文字或 Column Browser 篩選）。
+  /// Phase 51: 是否有活動的篩選條件（搜尋文字或 Column Browser 篩選）。
   private var hasActiveFilters: Bool {
     let hasSearchText = !viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty
     let hasColumnBrowserFilter = viewModel.isColumnBrowserFiltering

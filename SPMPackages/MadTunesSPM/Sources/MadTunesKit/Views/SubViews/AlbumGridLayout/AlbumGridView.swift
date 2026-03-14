@@ -32,7 +32,7 @@ struct AlbumGridView: View {
 
   var body: some View {
     mainContent
-      // Phase 55: Unify the animated response against `expandedAlbumID` changes.
+      // Phase 54: Unify the animated response against `expandedAlbumID` changes.
       .animation(.easeInOut(duration: 0.3), value: expandedAlbumID)
       .animation(canvasAnimation, value: canvasWidth)
       .opacity(screenVM.windowSizeEverObserved ? 1 : 0)
@@ -101,12 +101,12 @@ struct AlbumGridView: View {
   @State private var newPlaylistName = ""
   @State private var trackIDsForNewPlaylist: Set<UUID> = []
 
-  // Phase 50: Single debouncer for album click handling.
+  // Phase 49: Single debouncer for album click handling.
   // Delay single-click to allow double-click recognition (0.25s matches system double-tap timeout).
   // Double-click cancels pending single-click to prevent toggle-then-reopen issue.
   @State private var albumClickDebouncer: Debouncer = .init(delay: 0.25)
 
-  // Phase 55: Unify the management of the delay of proxy-scroll action.
+  // Phase 54: Unify the management of the delay of proxy-scroll action.
   @State private var proxyScrollDebouncer: Debouncer = .init(delay: 0.3)
 
   private let albums: [Album]
@@ -355,7 +355,7 @@ struct AlbumGridView: View {
             vm.library.albumKey(title: album.title, artist: album.artist)
           )
         )
-        // Phase 50: Combined gesture with debounced single-click and priority double-click.
+        // Phase 49: Combined gesture with debounced single-click and priority double-click.
         // Single-click delays 0.25s to allow double-click recognition.
         // Double-click cancels pending single-click to prevent toggle-then-reopen.
         .simultaneousGesture(
@@ -557,7 +557,7 @@ struct AlbumGridView: View {
     trackIDsForNewPlaylist = []
   }
 
-  // Phase 50: Only assign expandedAlbumID if the value is different.
+  // Phase 49: Only assign expandedAlbumID if the value is different.
   // Prevents redundant layout animations when the value hasn't changed.
 }
 

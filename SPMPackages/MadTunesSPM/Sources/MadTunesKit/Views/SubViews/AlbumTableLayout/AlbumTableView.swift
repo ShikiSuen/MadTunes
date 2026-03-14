@@ -8,7 +8,7 @@ import SwiftUI
 
 /// Identifiers for table columns to support visibility toggling.
 enum TableColumnType: String, CaseIterable, Identifiable {
-  // Phase 46: Playing indicator column (always visible, first column)
+  // Phase 45: Playing indicator column (always visible, first column)
   case playingIndicator = "PlayingIndicator"
   case trackNumber = "TrackNumber"
   case name = "Name"
@@ -29,7 +29,7 @@ enum TableColumnType: String, CaseIterable, Identifiable {
 
   var localizedName: String {
     switch self {
-    case .playingIndicator: "" // Phase 46: No text, uses SF Symbol in header
+    case .playingIndicator: "" // Phase 45: No text, uses SF Symbol in header
     case .name: String(localized: "i18n:Table.Column.Name", bundle: #bundle)
     case .length: String(localized: "i18n:Table.Column.Length", bundle: #bundle)
     case .artist: String(localized: "i18n:Table.Column.Artist", bundle: #bundle)
@@ -44,7 +44,7 @@ enum TableColumnType: String, CaseIterable, Identifiable {
 
   var defaultWidth: CGFloat {
     switch self {
-    case .playingIndicator: 28 // Phase 46: Compact width for speaker icon
+    case .playingIndicator: 28 // Phase 45: Compact width for speaker icon
     case .name: 250
     case .length: 60
     case .artist: 150
@@ -60,7 +60,7 @@ enum TableColumnType: String, CaseIterable, Identifiable {
   var isDefaultVisible: Bool {
     switch self {
     case .playingIndicator:
-      true // Phase 46: Always visible
+      true // Phase 45: Always visible
     case .albumArtist, .albumTitle, .artist, .genre, .length, .name:
       true
     case .folder, .trackNumber, .year:
@@ -68,10 +68,10 @@ enum TableColumnType: String, CaseIterable, Identifiable {
     }
   }
 
-  // Phase 46: Whether this column can be hidden by user
+  // Phase 45: Whether this column can be hidden by user
   var isHidable: Bool {
     switch self {
-    case .playingIndicator: false // Phase 46: Cannot hide
+    case .playingIndicator: false // Phase 45: Cannot hide
     default: true
     }
   }
@@ -87,7 +87,7 @@ enum TableColumnType: String, CaseIterable, Identifiable {
 /// shows a context menu. The column header row at the bottom is independently
 /// managed.
 ///
-/// Phase 53: Migrated from `Table` to `List` + `ForEach` so that `.onMove`
+/// Phase 52: Migrated from `Table` to `List` + `ForEach` so that `.onMove`
 /// can provide native drag-reorder for playlist tracks. `Table` intercepted
 /// both row-level drag gestures and Option+Arrow key events, making both
 /// drag-reorder and keyboard-reorder impossible to implement.
@@ -109,7 +109,7 @@ struct AlbumTableView: View {
   // MARK: Internal
 
   var body: some View {
-    // Phase 53: List + ForEach replaces the single-column headerless Table.
+    // Phase 52: List + ForEach replaces the single-column headerless Table.
     // This enables native .onMove drag-reorder and avoids Table's interception
     // of row-level gestures and Option+Arrow key events.
     ScrollViewReader { proxy in
@@ -174,7 +174,7 @@ struct AlbumTableView: View {
   @State private var newPlaylistName = ""
   @State private var trackIDsForNewPlaylist: Set<UUID> = []
 
-  // Phase 43: Per-column widths (persisted to UserDefaults).
+  // Phase 42: Per-column widths (persisted to UserDefaults).
   @State private var columnWidths: [String: CGFloat] = {
     guard let data = UserDefaults.standard.data(forKey: TableColumnType.columnWidthsKey),
           let dict = try? JSONDecoder().decode([String: CGFloat].self, from: data) else {
@@ -192,7 +192,7 @@ struct AlbumTableView: View {
   }
 
   private var visibleColumns: [TableColumnType] {
-    // Phase 46: Ensure playingIndicator is always first and always visible
+    // Phase 45: Ensure playingIndicator is always first and always visible
     let userVisible = TableColumnType.allCases.filter {
       $0 != .playingIndicator && isColumnVisible($0)
     }
@@ -238,8 +238,8 @@ struct AlbumTableView: View {
     }
   }
 
-  // Phase 43/46: Menu-style Picker with native Toggle checkmarks for column visibility.
-  // Phase 46: Only show hidable columns (playingIndicator is always visible)
+  // Phase 42/46: Menu-style Picker with native Toggle checkmarks for column visibility.
+  // Phase 45: Only show hidable columns (playingIndicator is always visible)
   @ViewBuilder private var columnVisibilityMenu: some View {
     Menu {
       ForEach(TableColumnType.allCases.filter(\.isHidable)) { column in
@@ -256,13 +256,13 @@ struct AlbumTableView: View {
     }
   }
 
-  // Phase 45: Sortable column header button
+  // Phase 44: Sortable column header button
   @ViewBuilder
-  // Phase 46: Column header button with speaker icon for playing indicator
+  // Phase 45: Column header button with speaker icon for playing indicator
   private func columnHeaderButton(_ column: TableColumnType) -> some View {
     if column == .playingIndicator {
       HStack(spacing: 4) {
-        // Phase 46: Playing indicator column uses speaker icon
+        // Phase 45: Playing indicator column uses speaker icon
         Image(systemName: "speaker.wave.2.fill")
           .font(.system(size: 11))
           .foregroundStyle(.secondary)
@@ -291,7 +291,7 @@ struct AlbumTableView: View {
     }
   }
 
-  // Phase 43/45: Column divider for resizing
+  // Phase 42/45: Column divider for resizing
   @ViewBuilder
   private func columnDivider(after column: TableColumnType) -> some View {
     Rectangle()
@@ -326,7 +326,7 @@ struct AlbumTableView: View {
   private func trackList(scrollProxy proxy: ScrollViewProxy) -> some View {
     let canReorder = vm.canReorderCurrentPlaylist
     List(selection: $selectedTrackIDs) {
-      // Phase 53: Conditionally apply .onMove — only for playlists that
+      // Phase 52: Conditionally apply .onMove — only for playlists that
       // support reordering. This prevents List from showing drag affordances
       // on All Music, dynamic playlists, or when sorting/filtering is active.
       if canReorder {
@@ -376,7 +376,7 @@ struct AlbumTableView: View {
 
   @ViewBuilder
   private func trackRow(_ track: Track) -> some View {
-    // Phase 45: Use HStack to match header layout exactly
+    // Phase 44: Use HStack to match header layout exactly
     let baseRow = Color.clear
       .frame(height: 20)
       .overlay(alignment: .leading) {
@@ -403,12 +403,12 @@ struct AlbumTableView: View {
     baseRow
   }
 
-  // Phase 43/46: All user data uses Text(verbatim:) to prevent String Catalog pollution.
+  // Phase 42/46: All user data uses Text(verbatim:) to prevent String Catalog pollution.
   @ViewBuilder
   private func cellContent(for track: Track, column: TableColumnType) -> some View {
     switch column {
     case .playingIndicator:
-      // Phase 46: Playing indicator column shows speaker icon for current track
+      // Phase 45: Playing indicator column shows speaker icon for current track
       if track.id == currentTrackID {
         Image(systemName: "speaker.wave.2.fill")
           .foregroundStyle(Color.primary)
@@ -419,7 +419,7 @@ struct AlbumTableView: View {
           .frame(width: 16)
       }
     case .name:
-      // Phase 46: Removed speaker icon (now in separate playingIndicator column)
+      // Phase 45: Removed speaker icon (now in separate playingIndicator column)
       Text(verbatim: track.title)
         .help(Text(verbatim: track.title))
     case .length:
@@ -437,7 +437,7 @@ struct AlbumTableView: View {
       Text(verbatim: track.albumArtist)
         .help(Text(verbatim: track.albumArtist))
     case .trackNumber:
-      // Phase 46: Always show disc-track format, treating missing values as 0
+      // Phase 45: Always show disc-track format, treating missing values as 0
       let disc = max(0, track.discNumber)
       let trackNum = max(0, track.trackNumber)
       Text(verbatim: "\(disc)-\(String(format: "%02d", trackNum))")
@@ -458,7 +458,7 @@ struct AlbumTableView: View {
 
   // MARK: - Context menu builder
 
-  // Phase 48: Context menu for Table's forSelectionType API.
+  // Phase 47: Context menu for Table's forSelectionType API.
   @ViewBuilder
   private func trackContextMenu(forTracks selectedTracks: [Track]) -> some View {
     TrackContextMenu(
@@ -491,7 +491,7 @@ struct AlbumTableView: View {
     )
   }
 
-  /// Phase 53: Handles the `.onMove` callback from ForEach drag-reorder.
+  /// Phase 52: Handles the `.onMove` callback from ForEach drag-reorder.
   /// Translates IndexSet + destination into the `moveTracks` API.
   private func handleOnMove(from source: IndexSet, to destination: Int) {
     guard vm.canReorderCurrentPlaylist else { return }
@@ -524,12 +524,12 @@ struct AlbumTableView: View {
     }
   }
 
-  // Phase 43: Dynamic column width helper.
+  // Phase 42: Dynamic column width helper.
   private func columnWidth(for column: TableColumnType) -> CGFloat {
     columnWidths[column.rawValue] ?? column.defaultWidth
   }
 
-  // Phase 45: Handle column resize via drag gesture
+  // Phase 44: Handle column resize via drag gesture
   private func handleColumnResize(column: TableColumnType, translation: CGFloat) {
     let key = column.rawValue
     let currentWidth = columnWidths[key] ?? column.defaultWidth
@@ -538,7 +538,7 @@ struct AlbumTableView: View {
     persistColumnWidths()
   }
 
-  // Phase 43: Persist column widths to UserDefaults.
+  // Phase 42: Persist column widths to UserDefaults.
   private func persistColumnWidths() {
     if let data = try? JSONEncoder().encode(columnWidths) {
       UserDefaults.standard.set(data, forKey: TableColumnType.columnWidthsKey)

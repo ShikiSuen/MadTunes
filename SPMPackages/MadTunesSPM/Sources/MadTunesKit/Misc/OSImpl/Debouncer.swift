@@ -19,7 +19,7 @@ public actor Debouncer {
   ) async {
     if keepFirstAttemptInstead {
       guard !isInExclusiveState else { return }
-      // Phase 50: Set exclusive state synchronously within the actor's
+      // Phase 49: Set exclusive state synchronously within the actor's
       // serial execution so subsequent calls see it before this method returns.
       isInExclusiveState = true
     }
