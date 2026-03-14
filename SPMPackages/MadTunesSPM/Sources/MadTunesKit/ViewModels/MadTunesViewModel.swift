@@ -24,6 +24,11 @@ final class MadTunesViewModel {
 
   var library = MusicLibrary()
   var player = AudioPlayer()
+
+  // Phase 60: Sub-ViewModels for table and grid views.
+  var tableVM = AlbumTableViewModel()
+  var gridVM = AlbumGridViewModel()
+
   var selectedPlaylistID: UUID?
   var expandedAlbumID: UUID?
   var highlightedAlbumIDs: Set<UUID> = []
@@ -31,16 +36,6 @@ final class MadTunesViewModel {
   /// When true the main content area shows AlbumTableView instead of AlbumGridView.
   /// Persisted via UserDefaults.
   var useTableView: Bool = UserDefaults.standard.bool(forKey: "MadTunes.useTableView")
-
-  /// Table view column visibility settings (key: column identifier, value: isVisible).
-  /// Persisted via UserDefaults as JSON.
-  var tableColumnVisibility: [String: Bool] = {
-    guard let data = UserDefaults.standard.data(forKey: "MadTunes.tableColumnVisibility"),
-          let dict = try? JSONDecoder().decode([String: Bool].self, from: data) else {
-      return [:]
-    }
-    return dict
-  }()
 
   /// The fixed anchor for Shift+Arrow range selection. Set on click / plain arrow.
   var albumSelectionFixedAnchorID: UUID?
@@ -221,13 +216,6 @@ final class MadTunesViewModel {
       && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       && !isColumnBrowserFiltering
     return canReorder
-  }
-
-  /// Estimated number of tracks visible per "page" in the table view.
-  var tablePageSize: Int {
-    let canvasHeight = screenVM.mainColumnCanvasSizeObserved.height
-    let rowHeight: CGFloat = 28 // approximate single row height
-    return max(1, Int((canvasHeight - 60) / rowHeight))
   }
 
   // MARK: - Phase 52: Menu command helpers for track reordering

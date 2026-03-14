@@ -123,36 +123,36 @@ struct AlbumTableView: View {
           columnVisibilityMenu
         }
     }
-    .sheet(isPresented: $isTrackInfoPresented) {
+    .sheet(isPresented: Bindable(tableVM).isTrackInfoPresented) {
       trackInfoSheetContent
     }
     .alert(
       String(localized: "i18n:Alert.RemoveFromLibraryTitle", bundle: #bundle),
-      isPresented: $showDeleteConfirmation
+      isPresented: Bindable(tableVM).showDeleteConfirmation
     ) {
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
       Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
-        let trackIDs = Set(tracksToDelete.map(\.id))
+        let trackIDs = Set(tableVM.tracksToDelete.map(\.id))
         vm.library.removeTracks(ids: trackIDs)
-        tracksToDelete = []
+        tableVM.tracksToDelete = []
       }
     } message: {
       Text(String(
         localized: "i18n:Alert.RemoveTracksMessage",
-        defaultValue: "This will remove \(tracksToDelete.count) track(s) from the library. The original files will not be deleted.",
+        defaultValue: "This will remove \(tableVM.tracksToDelete.count) track(s) from the library. The original files will not be deleted.",
         bundle: #bundle
       ))
     }
     .alert(
       String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),
-      isPresented: $showNewPlaylistAlert
+      isPresented: Bindable(tableVM).showNewPlaylistAlert
     ) {
       TextField(
         String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle),
-        text: $newPlaylistName
+        text: Bindable(tableVM).newPlaylistName
       )
       Button(String(localized: "i18n:Common.Create", bundle: #bundle)) {
-        commitNewPlaylistAlert()
+        tableVM.commitNewPlaylistAlert(library: vm.library)
       }
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
     }
@@ -163,45 +163,19 @@ struct AlbumTableView: View {
   @Binding private var selectedTrackIDs: Set<UUID>
   @State private var vm: MadTunesViewModel = .shared
 
-  @State private var isTrackInfoPresented = false
-  @State private var tracksForTrackInfo: [Track] = []
-  @State private var detailedMetadataList: [DetailedTrackMetadata?] = []
-
-  @State private var showDeleteConfirmation = false
-  @State private var tracksToDelete: [Track] = []
-
-  @State private var showNewPlaylistAlert = false
-  @State private var newPlaylistName = ""
-  @State private var trackIDsForNewPlaylist: Set<UUID> = []
-
-  // Phase 42: Per-column widths (persisted to UserDefaults).
-  @State private var columnWidths: [String: CGFloat] = {
-    guard let data = UserDefaults.standard.data(forKey: TableColumnType.columnWidthsKey),
-          let dict = try? JSONDecoder().decode([String: CGFloat].self, from: data) else {
-      return [:]
-    }
-    return dict
-  }()
-
-  // Phase 56: Display buffer to avoid per-item UI updates when large
-  // track arrays are provided (e.g. during import). We progressively
-  // append to `displayedTracks` in batches to keep the UI responsive.
-  @State private var displayedTracks: [Track] = []
-
   private let tracks: [Track]
   private let currentTrackID: UUID?
   private let onTrackDoubleClicked: (Track, [Track]) -> Void
+
+  // Phase 60: Sub-ViewModel reference.
+  private var tableVM: AlbumTableViewModel { vm.tableVM }
 
   private var canvasWidth: CGFloat {
     vm.screenVM.mainColumnCanvasSizeObserved.width
   }
 
   private var visibleColumns: [TableColumnType] {
-    // Phase 45: Ensure playingIndicator is always first and always visible
-    let userVisible = TableColumnType.allCases.filter {
-      $0 != .playingIndicator && isColumnVisible($0)
-    }
-    return [.playingIndicator] + (userVisible.isEmpty ? [.name] : userVisible)
+    tableVM.visibleColumns
   }
 
   // MARK: - Header
@@ -212,7 +186,7 @@ struct AlbumTableView: View {
         let isLast = index == visibleColumns.count - 1
         columnHeaderButton(column)
           .frame(
-            width: isLast ? nil : columnWidth(for: column),
+            width: isLast ? nil : tableVM.columnWidth(for: column),
             height: 28,
             alignment: .leading
           )
@@ -230,15 +204,15 @@ struct AlbumTableView: View {
   // MARK: - Sheet / bar helpers
 
   @ViewBuilder private var trackInfoSheetContent: some View {
-    if tracksForTrackInfo.count == 1, let track = tracksForTrackInfo.first {
+    if tableVM.tracksForTrackInfo.count == 1, let track = tableVM.tracksForTrackInfo.first {
       TrackInfoView(
         track: track,
-        detailedMetadata: detailedMetadataList.first ?? nil
+        detailedMetadata: tableVM.detailedMetadataList.first ?? nil
       )
     } else {
       MultiTrackInfoView(
-        tracks: tracksForTrackInfo,
-        detailedMetadataList: detailedMetadataList
+        tracks: tableVM.tracksForTrackInfo,
+        detailedMetadataList: tableVM.detailedMetadataList
       )
     }
   }
@@ -249,8 +223,8 @@ struct AlbumTableView: View {
     Menu {
       ForEach(TableColumnType.allCases.filter(\.isHidable)) { column in
         Toggle(column.localizedName, isOn: Binding(
-          get: { isColumnVisible(column) },
-          set: { _ in toggleColumnVisibility(column) }
+          get: { tableVM.isColumnVisible(column) },
+          set: { _ in tableVM.toggleColumnVisibility(column) }
         ))
       }
     } label: {
@@ -311,7 +285,7 @@ struct AlbumTableView: View {
       .gesture(
         DragGesture(minimumDistance: 0)
           .onChanged { value in
-            handleColumnResize(column: column, translation: value.translation.width)
+            tableVM.handleColumnResize(column: column, translation: value.translation.width)
           }
       )
       .onHover { isHovering in
@@ -335,7 +309,7 @@ struct AlbumTableView: View {
       // support reordering. This prevents List from showing drag affordances
       // on All Music, dynamic playlists, or when sorting/filtering is active.
       if canReorder {
-        ForEach(displayedTracks) { track in
+        ForEach(tableVM.displayedTracks) { track in
           trackRow(track)
             .id(track.id)
             .tag(track.id)
@@ -345,7 +319,7 @@ struct AlbumTableView: View {
           handleOnMove(from: from, to: to)
         }
       } else {
-        ForEach(displayedTracks) { track in
+        ForEach(tableVM.displayedTracks) { track in
           trackRow(track)
             .id(track.id)
             .tag(track.id)
@@ -355,22 +329,21 @@ struct AlbumTableView: View {
     }
     .listStyle(.inset(alternatesRowBackgrounds: true))
     .onAppear {
-      // Initialize / progressively display initial content
-      scheduleDisplayedTracksUpdate(to: tracks)
+      tableVM.scheduleDisplayedTracksUpdate(to: tracks)
     }
     .onChange(of: tracks) { _, newValue in
-      scheduleDisplayedTracksUpdate(to: newValue)
+      tableVM.scheduleDisplayedTracksUpdate(to: newValue)
     }
     .contextMenu(forSelectionType: UUID.self, menu: { ids in
-      let selected = displayedTracks.filter { ids.contains($0.id) }
+      let selected = tableVM.displayedTracks.filter { ids.contains($0.id) }
       if !selected.isEmpty {
         trackContextMenu(forTracks: selected)
       }
     }, primaryAction: { ids in
       // Double-click: play starting from the first selected track.
       guard let firstID = ids.first,
-            let track = displayedTracks.first(where: { $0.id == firstID }) else { return }
-      onTrackDoubleClicked(track, displayedTracks)
+            let track = tableVM.displayedTracks.first(where: { $0.id == firstID }) else { return }
+      onTrackDoubleClicked(track, tableVM.displayedTracks)
     })
     .onChange(of: vm.tableScrollTargetID) { _, newID in
       if let id = newID {
@@ -395,7 +368,7 @@ struct AlbumTableView: View {
         HStack(spacing: 0) {
           ForEach(Array(visibleColumns.enumerated()), id: \.element) { index, column in
             let isTrailingColumn = index == visibleColumns.count - 1
-            let columnWidth = isTrailingColumn ? nil : columnWidth(for: column)
+            let columnWidth = isTrailingColumn ? nil : tableVM.columnWidth(for: column)
             cellContent(for: track, column: column)
               .font(.callout)
               .lineLimit(1)
@@ -480,25 +453,25 @@ struct AlbumTableView: View {
       currentPlaylistID: vm.selectedPlaylistID,
       isCurrentTrack: selectedTracks.count == 1 && selectedTracks.first?.id == currentTrackID,
       onShowTrackInfo: {
-        tracksForTrackInfo = selectedTracks
+        tableVM.tracksForTrackInfo = selectedTracks
         Task {
           var metadataList: [DetailedTrackMetadata?] = []
-          for tr in tracksForTrackInfo {
+          for tr in tableVM.tracksForTrackInfo {
             let metadata = await MetadataReader.readDetailedMetadata(from: tr.fileURL)
             metadataList.append(metadata)
           }
-          detailedMetadataList = metadataList
-          isTrackInfoPresented = true
+          tableVM.detailedMetadataList = metadataList
+          tableVM.isTrackInfoPresented = true
         }
       },
       onShowDeleteConfirmation: {
-        tracksToDelete = selectedTracks
-        showDeleteConfirmation = true
+        tableVM.tracksToDelete = selectedTracks
+        tableVM.showDeleteConfirmation = true
       },
       onNewPlaylistWithTracks: { trackIDs in
-        trackIDsForNewPlaylist = trackIDs
-        newPlaylistName = ""
-        showNewPlaylistAlert = true
+        tableVM.trackIDsForNewPlaylist = trackIDs
+        tableVM.newPlaylistName = ""
+        tableVM.showNewPlaylistAlert = true
       }
     )
   }
@@ -507,107 +480,7 @@ struct AlbumTableView: View {
   /// Translates IndexSet + destination into the `moveTracks` API.
   private func handleOnMove(from source: IndexSet, to destination: Int) {
     guard vm.canReorderCurrentPlaylist else { return }
-    let ids = source.map { displayedTracks[$0].id }
+    let ids = source.map { tableVM.displayedTracks[$0].id }
     vm.moveTracksInCurrentPlaylist(trackIDs: ids, toIndex: destination)
-  }
-
-  // Phase 56: Coalesced/batched update helper.
-  // If the change is an append-only update we progressively append in
-  // batches to `displayedTracks` to avoid triggering a full re-render per item.
-  private func scheduleDisplayedTracksUpdate(to newTracks: [Track]) {
-    let batchSize = 50
-    Task { @MainActor in
-      // Quick path: identical -> nothing to do
-      if newTracks.map({ $0.id }) == displayedTracks.map({ $0.id }) { return }
-
-      // If displayed is empty and new is large, progressively present it.
-      if displayedTracks.isEmpty, newTracks.count > batchSize {
-        displayedTracks.removeAll()
-        var idx = 0
-        while idx < newTracks.count {
-          let end = min(idx + batchSize, newTracks.count)
-          displayedTracks.append(contentsOf: newTracks[idx ..< end])
-          idx = end
-          // yield to the scheduler so UI can update between batches
-          await Task.yield()
-        }
-        return
-      }
-
-      // If the new list starts with the displayed list, treat as append-only
-      let oldIDs = displayedTracks.map { $0.id }
-      let newIDs = newTracks.map { $0.id }
-      if oldIDs.count <= newIDs.count, Array(newIDs.prefix(oldIDs.count)) == oldIDs {
-        var idx = oldIDs.count
-        while idx < newIDs.count {
-          let end = min(idx + batchSize, newIDs.count)
-          displayedTracks.append(contentsOf: newTracks[idx ..< end])
-          idx = end
-          await Task.yield()
-        }
-        return
-      }
-
-      // Fallback: replace entirely
-      displayedTracks = newTracks
-    }
-  }
-
-  // MARK: - Column visibility
-
-  private func isColumnVisible(_ column: TableColumnType) -> Bool {
-    vm.tableColumnVisibility[column.rawValue] ?? column.isDefaultVisible
-  }
-
-  private func toggleColumnVisibility(_ column: TableColumnType) {
-    let currentValue = isColumnVisible(column)
-    var newVisibility = vm.tableColumnVisibility
-    newVisibility[column.rawValue] = !currentValue
-
-    let allHidden = TableColumnType.allCases.allSatisfy {
-      !(newVisibility[$0.rawValue] ?? $0.isDefaultVisible)
-    }
-    if allHidden {
-      newVisibility[TableColumnType.name.rawValue] = true
-    }
-
-    vm.tableColumnVisibility = newVisibility
-
-    if let data = try? JSONEncoder().encode(newVisibility) {
-      UserDefaults.standard.set(data, forKey: TableColumnType.userDefaultsKey)
-    }
-  }
-
-  // Phase 42: Dynamic column width helper.
-  private func columnWidth(for column: TableColumnType) -> CGFloat {
-    columnWidths[column.rawValue] ?? column.defaultWidth
-  }
-
-  // Phase 44: Handle column resize via drag gesture
-  private func handleColumnResize(column: TableColumnType, translation: CGFloat) {
-    let key = column.rawValue
-    let currentWidth = columnWidths[key] ?? column.defaultWidth
-    let newWidth = max(40, currentWidth + translation)
-    columnWidths[key] = newWidth
-    persistColumnWidths()
-  }
-
-  // Phase 42: Persist column widths to UserDefaults.
-  private func persistColumnWidths() {
-    if let data = try? JSONEncoder().encode(columnWidths) {
-      UserDefaults.standard.set(data, forKey: TableColumnType.columnWidthsKey)
-    }
-  }
-
-  private func commitNewPlaylistAlert() {
-    let name = newPlaylistName.trimmingCharacters(in: .whitespaces)
-    guard !name.isEmpty else { return }
-    let existingNames = Set(vm.library.playlists.dropFirst(2).map(\.name))
-    guard !existingNames.contains(name) else { return }
-    vm.library.addPlaylist(name: name)
-    if let newPlaylist = vm.library.playlists.last {
-      vm.library.addTracks(trackIDsForNewPlaylist, toPlaylist: newPlaylist.id)
-    }
-    trackIDsForNewPlaylist = []
   }
 }

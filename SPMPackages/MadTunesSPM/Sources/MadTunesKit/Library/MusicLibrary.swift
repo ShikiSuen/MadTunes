@@ -68,6 +68,10 @@ public final class MusicLibrary {
   /// library update occurs (e.g. removal of tracks).
   public var changeID: UUID = .init()
 
+  // MARK: - Internal State
+
+  public var artworkCache: [String: Data] = [:]
+
   // MARK: - Favorites
 
   /// 喜好項目播放清單（系統預設，不可刪除）
@@ -484,12 +488,6 @@ public final class MusicLibrary {
   public func albumKey(title: String, artist: String) -> String {
     "\(title):::\(artist)"
   }
-
-  // MARK: Internal
-
-  // MARK: - Internal State
-
-  var artworkCache: [String: Data] = [:]
 
   // MARK: Private
 
