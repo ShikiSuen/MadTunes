@@ -32,8 +32,8 @@ struct AlbumGridView: View {
 
   var body: some View {
     mainContent
-      // Phase 50: Removed .animation(albumAnimation, value: expandedAlbumID).
-      // Use explicit withAnimation instead to prevent animation conflicts.
+      // Phase 55: Unify the animated response against `expandedAlbumID` changes.
+      .animation(.easeInOut(duration: 0.3), value: expandedAlbumID)
       .animation(canvasAnimation, value: canvasWidth)
       .opacity(screenVM.windowSizeEverObserved ? 1 : 0)
       .sheet(isPresented: $isTrackInfoPresented) {
@@ -105,6 +105,9 @@ struct AlbumGridView: View {
   // Delay single-click to allow double-click recognition (0.25s matches system double-tap timeout).
   // Double-click cancels pending single-click to prevent toggle-then-reopen issue.
   @State private var albumClickDebouncer: Debouncer = .init(delay: 0.25)
+
+  // Phase 55: Unify the management of the delay of proxy-scroll action.
+  @State private var proxyScrollDebouncer: Debouncer = .init(delay: 0.3)
 
   private let albums: [Album]
   private var currentTrackID: UUID?
@@ -190,8 +193,7 @@ struct AlbumGridView: View {
       .frame(width: canvasWidth, alignment: .leading)
       .onChange(of: expandedAlbumID) { _, newValue in
         guard let newValue else { return }
-        Task { @MainActor in
-          try? await Task.sleep(for: .milliseconds(100))
+        proxyScrollDebouncer.debounceOnMain {
           withAnimation(.easeInOut(duration: 0.3)) {
             proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
           }
@@ -201,8 +203,7 @@ struct AlbumGridView: View {
         guard oldWidth != newWidth, let expandedID = expandedAlbumID else { return }
         let wasVisible = expandedAlbumWasInView
         guard wasVisible else { return }
-        Task { @MainActor in
-          try? await Task.sleep(for: .milliseconds(200))
+        proxyScrollDebouncer.debounceOnMain {
           withAnimation(.easeInOut(duration: 0.3)) {
             proxy.scrollTo("\(expandedID)_\(Int(newWidth))")
           }
@@ -215,10 +216,10 @@ struct AlbumGridView: View {
         // ForEach uses `id: \.offset` so `proxy.scrollTo(offset)` works
         // even for rows that LazyVStack hasn't realised yet.
         let rows = albums.chunked(into: columnCount)
-        guard let rowIndex = rows.firstIndex(where: { $0.contains { $0.id == albumID } })
-        else { return }
-        Task { @MainActor in
-          try? await Task.sleep(for: .milliseconds(50))
+        guard let rowIndex = rows.firstIndex(
+          where: { $0.contains { $0.id == albumID } }
+        ) else { return }
+        proxyScrollDebouncer.debounceOnMain {
           withAnimation(.easeInOut(duration: 0.3)) {
             proxy.scrollTo(rowIndex, anchor: .center)
           }
@@ -362,21 +363,23 @@ struct AlbumGridView: View {
             .onEnded { _ in
               onAlbumDoubleClicked?(album)
               albumClickDebouncer.cancelOnMain()
-              withAnimation(.easeInOut(duration: 0.3)) {
+              albumClickDebouncer.debounceOnMain(
+                keepFirstAttemptInstead: true
+              ) {
                 expandedAlbumID = album.id
+                highlightedAlbumIDs = [album.id]
+                vm.albumSelectionFixedAnchorID = album.id
+                vm.albumSelectionCursorID = album.id
               }
-              highlightedAlbumIDs = [album.id]
-              vm.albumSelectionFixedAnchorID = album.id
-              vm.albumSelectionCursorID = album.id
             }
             .simultaneously(
               with: TapGesture(count: 1)
                 .onEnded {
-                  albumClickDebouncer.debounceOnMain(
-                    keepFirstAttemptInstead: expandedAlbumID != album.id
-                  ) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                      handleTrackRowSelection(album: album)
+                  Task {
+                    albumClickDebouncer.debounceOnMain(
+                      keepFirstAttemptInstead: expandedAlbumID != album.id
+                    ) {
+                      handleAlbumSelection(album: album)
                     }
                   }
                 }
@@ -443,7 +446,15 @@ struct AlbumGridView: View {
     }
   }
 
-  private func handleTrackRowSelection(album: Album) {
+  private func assignExpandedAlbumID(_ newID: UUID?) {
+    guard expandedAlbumID != newID else { return }
+    Task {
+      try? await Task.sleep(for: .milliseconds(50))
+      expandedAlbumID = newID
+    }
+  }
+
+  private func handleAlbumSelection(album: Album) {
     #if canImport(AppKit) && !canImport(UIKit)
     let flags = NSEvent.modifierFlags
 
@@ -458,23 +469,23 @@ struct AlbumGridView: View {
         highlightedAlbumIDs.insert(album.id)
       }
       if highlightedAlbumIDs.count != 1 {
-        expandedAlbumID = nil
+        assignExpandedAlbumID(nil)
       } else if let only = highlightedAlbumIDs.first {
-        expandedAlbumID = expandedAlbumID == only ? nil : only
+        assignExpandedAlbumID(expandedAlbumID == only ? nil : only)
       }
       // Reset anchor and cursor to the clicked album
       vm.albumSelectionFixedAnchorID = album.id
       vm.albumSelectionCursorID = album.id
     } else {
       // Plain click: single select and toggle expansion
+      assignExpandedAlbumID(expandedAlbumID == album.id ? nil : album.id)
       highlightedAlbumIDs = [album.id]
-      expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
       vm.albumSelectionFixedAnchorID = album.id
       vm.albumSelectionCursorID = album.id
     }
     #else
+    assignExpandedAlbumID(expandedAlbumID == album.id ? nil : album.id)
     highlightedAlbumIDs = [album.id]
-    expandedAlbumID = expandedAlbumID == album.id ? nil : album.id
     #endif
   }
 
