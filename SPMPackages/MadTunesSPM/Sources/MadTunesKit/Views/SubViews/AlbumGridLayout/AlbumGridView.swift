@@ -80,6 +80,11 @@ struct AlbumGridView: View {
   @State private var screenVM: ScreenVM = .shared
   @State private var expandedAlbumWasInView = false
 
+  // Phase 56: Display buffer for progressive rendering of albums to avoid
+  // UI thrash when many albums are produced (e.g. during import).
+  @State private var displayedAlbums: [Album] = []
+  @State private var displayedAlbumsUpdateTask: Task<Void, Never>?
+
   // Rubber-band drag selection state (macOS only).
   @State private var dragOrigin: CGPoint?
   @State private var dragCurrent: CGPoint?
@@ -150,7 +155,7 @@ struct AlbumGridView: View {
 
   @ViewBuilder private var mainContent: some View {
     ScrollViewReader { proxy in
-      let rows = albums.chunked(into: columnCount)
+      let rows = displayedAlbums.chunked(into: columnCount)
       ScrollView {
         LazyVStack(alignment: .leading, spacing: spacing) {
           ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
@@ -191,8 +196,16 @@ struct AlbumGridView: View {
       }
       .scrollContentBackground(.hidden)
       .frame(width: canvasWidth, alignment: .leading)
+      .onAppear {
+        scheduleDisplayedAlbumsUpdate(to: albums)
+      }
+      .onChange(of: albums) { _, newAlbums in
+        scheduleDisplayedAlbumsUpdate(to: newAlbums)
+      }
       .onChange(of: expandedAlbumID) { _, newValue in
         guard let newValue else { return }
+        // Ensure the expanded album is included in displayedAlbums quickly.
+        scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: newValue)
         proxyScrollDebouncer.debounceOnMain {
           withAnimation(.easeInOut(duration: 0.3)) {
             proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
@@ -212,9 +225,13 @@ struct AlbumGridView: View {
       .onChange(of: vm.scrollToAlbumID) { _, newValue in
         guard let albumID = newValue else { return }
         vm.scrollToAlbumID = nil
-        // Compute the row offset that contains the target album.
-        // ForEach uses `id: \.offset` so `proxy.scrollTo(offset)` works
-        // even for rows that LazyVStack hasn't realised yet.
+        // If the target album isn't yet in displayedAlbums, ask for a quick
+        // inclusion so that proxy.scrollTo can find the row.
+        if !displayedAlbums.contains(where: { $0.id == albumID }) {
+          scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: albumID)
+        }
+        // Compute the row offset using the full album list (this will match
+        // displayedAlbums once ensureVisibleAlbumID causes a fast include).
         let rows = albums.chunked(into: columnCount)
         guard let rowIndex = rows.firstIndex(
           where: { $0.contains { $0.id == albumID } }
@@ -406,7 +423,7 @@ struct AlbumGridView: View {
   @ViewBuilder
   private func albumContextMenu(for album: Album) -> some View {
     let selectedAlbums = highlightedAlbumIDs.contains(album.id)
-      ? albums.filter { highlightedAlbumIDs.contains($0.id) }
+      ? displayedAlbums.filter { highlightedAlbumIDs.contains($0.id) }
       : [album]
     AlbumContextMenu(
       albums: selectedAlbums,
@@ -440,7 +457,7 @@ struct AlbumGridView: View {
     }
     highlightedAlbumIDs = selected
     expandedAlbumID = nil
-    if let first = albums.first(where: { selected.contains($0.id) }) {
+    if let first = displayedAlbums.first(where: { selected.contains($0.id) }) {
       vm.albumSelectionFixedAnchorID = first.id
       vm.albumSelectionCursorID = first.id
     }
@@ -491,7 +508,7 @@ struct AlbumGridView: View {
 
   /// Phase 36: Shift+click range selection (Windows Explorer style)
   private func handleShiftClick(album: Album) {
-    let currentAlbums = albums
+    let currentAlbums = displayedAlbums
 
     // Determine the anchor: existing anchor, or first selected item, or none
     let anchorID: UUID
@@ -555,6 +572,62 @@ struct AlbumGridView: View {
       vm.library.addTracks(trackIDsForNewPlaylist, toPlaylist: newPlaylist.id)
     }
     trackIDsForNewPlaylist = []
+  }
+
+  // Phase 56: Coalesced/batched update helper for albums.
+  // Progressively appends albums to `displayedAlbums` in batches to keep
+  // the grid responsive during large imports or streaming updates.
+  private func scheduleDisplayedAlbumsUpdate(to newAlbums: [Album], ensureVisibleAlbumID: UUID? = nil) {
+    // Cancel any existing update in-flight.
+    displayedAlbumsUpdateTask?.cancel()
+    displayedAlbumsUpdateTask = Task { @MainActor in
+      let batchSize = 30
+
+      // Fast path: ensure immediate visibility of a target album (full replace).
+      if ensureVisibleAlbumID != nil {
+        displayedAlbums = newAlbums
+        displayedAlbumsUpdateTask = nil
+        return
+      }
+
+      // No-op if identical by id sequence.
+      let newIDs = newAlbums.map { $0.id }
+      if displayedAlbums.map({ $0.id }) == newIDs { displayedAlbumsUpdateTask = nil; return }
+
+      // Initial large load: progressively append in batches.
+      if displayedAlbums.isEmpty, newAlbums.count > batchSize {
+        displayedAlbums.removeAll()
+        var idx = 0
+        while idx < newAlbums.count {
+          if Task.isCancelled { displayedAlbumsUpdateTask = nil; return }
+          let end = min(idx + batchSize, newAlbums.count)
+          displayedAlbums.append(contentsOf: newAlbums[idx ..< end])
+          idx = end
+          await Task.yield()
+        }
+        displayedAlbumsUpdateTask = nil
+        return
+      }
+
+      // Append-only fast path: if newAlbums starts with displayedAlbums, append remaining.
+      let oldIDs = displayedAlbums.map { $0.id }
+      if oldIDs.count <= newIDs.count, Array(newIDs.prefix(oldIDs.count)) == oldIDs {
+        var idx = oldIDs.count
+        while idx < newIDs.count {
+          if Task.isCancelled { displayedAlbumsUpdateTask = nil; return }
+          let end = min(idx + batchSize, newIDs.count)
+          displayedAlbums.append(contentsOf: newAlbums[idx ..< end])
+          idx = end
+          await Task.yield()
+        }
+        displayedAlbumsUpdateTask = nil
+        return
+      }
+
+      // Fallback: replace entirely.
+      displayedAlbums = newAlbums
+      displayedAlbumsUpdateTask = nil
+    }
   }
 
   // Phase 49: Only assign expandedAlbumID if the value is different.
