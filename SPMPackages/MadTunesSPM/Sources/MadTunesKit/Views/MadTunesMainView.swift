@@ -39,7 +39,7 @@ struct MadTunesMainView: View {
         .environment(\.colorScheme, .dark)
         .navigationSplitViewColumnWidth(min: 210, ideal: 210, max: 210)
     } detail: {
-      let albums = viewModel.currentAlbums
+      let albums = viewModel.currentAlbumsDisplayed
       contentArea(albums: albums)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
@@ -216,7 +216,7 @@ struct MadTunesMainView: View {
       .overlay(alignment: .leading) {
         if vm.useTableView {
           AlbumTableView(
-            tracks: vm.currentTracks(fromAlbums: displayAlbums),
+            tracks: vm.currentTracksDisplayed,
             selectedTrackIDs: $vm.selectedTrackIDs,
             // Phase 53: Only show playing indicator when actively playing.
             currentTrackID: viewModel.player.isPlaying ? viewModel.player.currentTrack?.id : nil,

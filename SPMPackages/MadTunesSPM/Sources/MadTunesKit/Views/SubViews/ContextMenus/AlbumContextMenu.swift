@@ -151,14 +151,8 @@ struct AlbumContextMenu: View {
   }
 
   private var sortedTracks: [Track] {
-    // Phase 55: 為避免多專輯選取下的誤判，逐專輯計算過濾結果。
-    // 對於每個傳入的 album：
-    // - 若 query 為空，回傳所有曲目（排序後）
-    // - 若 searchFilterMode == .albumTitle 且該 album 匹配，回傳該 album 的所有曲目
-    // - 否則在該 album 範圍內套用 per-track 篩選（trackTitle / artist / either）
-
+    // Phase 58: Use ViewModel's shared trackMatchesSearch for consistent filtering.
     let tokens = searchTokens(from: searchText)
-    // No query → return all tracks (sorted)
     guard !tokens.isEmpty else {
       return allTracks.sorted {
         ($0.albumTitle, $0.discNumber, $0.trackNumber, $0.title)
@@ -166,54 +160,19 @@ struct AlbumContextMenu: View {
       }
     }
 
+    // Since currentAlbumsDisplayed already contains only filtered tracks,
+    // the albums passed here should already be pre-filtered. However, if called
+    // with unfiltered albums (e.g. from a raw selection), apply per-track filtering.
+    let vm = MadTunesViewModel.shared
     var results: [Track] = []
-
     for album in albums {
-      let albumSorted = album.tracks.sorted {
-        ($0.albumTitle, $0.discNumber, $0.trackNumber, $0.title)
-          < ($1.albumTitle, $1.discNumber, $1.trackNumber, $1.title)
-      }
-
-      switch searchFilterMode {
-      case .albumTitle:
-        // 命中專輯名稱。
-        if tokensAllMatchAcrossFields(tokens, fields: [album.title]) {
-          results.append(contentsOf: albumSorted)
-        }
-
-      case .trackTitle:
-        // 命中音軌標題。
-        results.append(contentsOf: albumSorted.filter { tokensAllMatchAcrossFields(tokens, fields: [$0.title]) })
-
-      case .artist:
-        // 命中專輯藝人或單曲藝人。
-        // 如果專輯藝人無法命中某專輯的話，回傳其中的單曲藝人命中結果。
-        // 如果專輯藝人有命中的話，則回傳該專輯的全部結果。
-        let artistFields = [album.artist] + album.tracks.flatMap { [$0.artist, $0.albumArtist] }
-        if tokensAllMatchAcrossFields(tokens, fields: artistFields) {
-          results.append(contentsOf: albumSorted.filter { tr in
-            tokensAllMatchAcrossFields(tokens, fields: [tr.artist])
-          })
-        } else {
-          results.append(contentsOf: albumSorted.filter { tr in
-            tokensAllMatchAcrossFields(tokens, fields: [tr.artist, tr.albumArtist])
-          })
-        }
-
-      case .either:
-        // If the whole-album matches (tokens anywhere in album/title/artist/track fields), include all tracks.
-        let albumFields = [album.title, album.artist] + album.tracks.flatMap { [$0.title, $0.artist, $0.albumArtist] }
-        if tokensAllMatchAcrossFields(tokens, fields: albumFields) {
-          results.append(contentsOf: albumSorted)
-        } else {
-          results.append(contentsOf: albumSorted.filter { tr in
-            tokensAllMatchAcrossFields(tokens, fields: [tr.title, tr.artist, tr.albumArtist])
-          })
-        }
-      }
+      let filtered = album.tracks.filter { vm.trackMatchesSearch($0, tokens: tokens, mode: searchFilterMode) }
+      results.append(contentsOf: filtered)
     }
-
-    return results
+    return results.sorted {
+      ($0.albumTitle, $0.discNumber, $0.trackNumber, $0.title)
+        < ($1.albumTitle, $1.discNumber, $1.trackNumber, $1.title)
+    }
   }
 
   // Phase 55: Use sortedTracks (search-filtered) for trackIDs and favorited check,

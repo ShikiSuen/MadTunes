@@ -66,8 +66,8 @@ final class MadTunesViewModel {
 
   var searchFilterMode: SearchFilterMode = .either
 
-  var filteredAlbumsCache: [Album] = []
-  var filteredTracksCache: [Track] = []
+  var displayedTracksCache: [Track] = []
+  var displayedAlbumsCache: [Album] = []
   var isSearching: Bool = false
   // Scroll-to-album trigger (set by artwork double-click, consumed by AlbumGridView)
   var scrollToAlbumID: UUID?
@@ -102,67 +102,25 @@ final class MadTunesViewModel {
     return visibleRows * gridColumnCount
   }
 
-  var currentAlbums: [Album] {
-    let tokensNow = searchTokens(from: searchText)
-    if !tokensNow.isEmpty {
-      return filteredAlbumsCache
-    }
+  /// Flat track list for table view (filtered + table-sorted).
+  /// Replaces the old `currentTracks` / `currentTracks(fromAlbums:)`.
+  var currentTracksDisplayed: [Track] {
+    let tracks = filteredTracksBase
+    guard let criteria = tableSortCriteria else { return tracks }
+    return sortedTracks(tracks, by: criteria)
+  }
 
-    var result = unfilteredAlbums
-    if !columnBrowserSelectedGenres.isEmpty {
-      result = result.filter { album in
-        album.tracks.contains { columnBrowserSelectedGenres.contains($0.genre) }
-      }
-    }
-    if !columnBrowserSelectedAlbumArtists.isEmpty {
-      result = result.filter { columnBrowserSelectedAlbumArtists.contains($0.artist) }
-    }
-    if !columnBrowserSelectedSongArtists.isEmpty {
-      result = result.filter { album in
-        album.tracks.contains { columnBrowserSelectedSongArtists.contains($0.artist) }
-      }
-    }
-    if !columnBrowserSelectedAlbumTitles.isEmpty {
-      result = result.filter { columnBrowserSelectedAlbumTitles.contains($0.title) }
-    }
+  /// Albums for grid view, derived from filtered tracks.
+  /// Each album contains ONLY the tracks that passed all filters.
+  /// Replaces the old `currentAlbums`.
+  var currentAlbumsDisplayed: [Album] {
     let tokens = searchTokens(from: searchText)
-    if !tokens.isEmpty {
-      result = result.filter { album in
-        // Album-level match: allow tokens to be found anywhere inside the album
-        // (album title/artist or any track's title/artist/albumArtist). This
-        // enables queries like "曾志豪 仙劍奇俠傳" to match an album whose
-        // title matches one token and contains a track matching the other.
-        let albumFields = [album.title, album.artist] + album.tracks.flatMap { [$0.title, $0.artist, $0.albumArtist] }
-        let albumMatches: Bool = switch searchFilterMode {
-        case .trackTitle:
-          false
-        case .albumTitle:
-          tokensAllMatchAcrossFields(tokens, fields: [album.title])
-        case .artist:
-          tokensAllMatchAcrossFields(tokens, fields: [album.artist])
-            || tokensAllMatchAcrossFields(tokens, fields: album.tracks.flatMap { [$0.artist, $0.albumArtist] })
-        case .either:
-          tokensAllMatchAcrossFields(tokens, fields: albumFields)
-        }
-
-        // Track-level match: all tokens must be present within the same track
-        let trackMatches = album.tracks.contains { track in
-          switch searchFilterMode {
-          case .trackTitle:
-            tokensAllMatchAcrossFields(tokens, fields: [track.title])
-          case .albumTitle:
-            false
-          case .artist:
-            tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist])
-          case .either:
-            tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist])
-          }
-        }
-
-        return albumMatches || trackMatches
-      }
+    // When search is active and cache is ready, use cached albums.
+    if !tokens.isEmpty, !displayedAlbumsCache.isEmpty || isSearching {
+      return displayedAlbumsCache
     }
-    return sortedAlbums(result)
+
+    return buildAlbumsFromFilteredTracks(filteredTracksBase)
   }
 
   /// Whether any column browser filter is active.
@@ -239,19 +197,6 @@ final class MadTunesViewModel {
     return library.artworkCache[key]
   }
 
-  /// A flat list of every track that should be displayed in the table view.
-  ///
-  /// When viewing a user playlist (static playlists and Favorites), we preserve
-  /// the playlist's own ordering, allowing drag-reorder to work as expected.
-  /// When viewing All Music or a dynamic playlist, we fall back to the album-based
-  /// ordering used by the grid view.
-  ///
-  /// Prefer calling `currentTracks(fromAlbums:)` when the caller already has
-  /// a reference to `currentAlbums` to avoid redundant recomputation.
-  var currentTracks: [Track] {
-    currentTracks(fromAlbums: currentAlbums)
-  }
-
   /// Whether the currently selected playlist supports drag‑reordering.
   ///
   /// Enabled for user static playlists and Favorites, disabled for All Music and
@@ -290,7 +235,7 @@ final class MadTunesViewModel {
   /// Whether the selected tracks can be moved up in the current playlist.
   var canMoveSelectedTracksUp: Bool {
     guard useTableView, canReorderCurrentPlaylist, !selectedTrackIDs.isEmpty else { return false }
-    let tracks = currentTracks
+    let tracks = currentTracksDisplayed
     let firstSelectedIdx = tracks.firstIndex { selectedTrackIDs.contains($0.id) }
     return (firstSelectedIdx ?? 0) > 0
   }
@@ -298,71 +243,43 @@ final class MadTunesViewModel {
   /// Whether the selected tracks can be moved down in the current playlist.
   var canMoveSelectedTracksDown: Bool {
     guard useTableView, canReorderCurrentPlaylist, !selectedTrackIDs.isEmpty else { return false }
-    let tracks = currentTracks
+    let tracks = currentTracksDisplayed
     let lastSelectedIdx = tracks.lastIndex { selectedTrackIDs.contains($0.id) }
     return (lastSelectedIdx ?? tracks.count - 1) < tracks.count - 1
   }
 
-  /// Computes the current track list, reusing pre-computed `albums` for the
-  /// "All Music" / album-based path to avoid a redundant `currentAlbums` call.
-  func currentTracks(fromAlbums precomputedAlbums: [Album]) -> [Track] {
-    // If we're viewing a playlist other than All Music, use the playlist's own order.
-    if let playlistID = selectedPlaylistID,
-       let playlist = library.playlists.first(where: { $0.id == playlistID }),
-       playlist.id != library.playlists.first?.id {
-      var tracks = library.tracks(for: playlist)
+  // MARK: - Phase 58: Shared Per-Track Search Filter
 
-      // Apply keyword search filtering (only affects the visible subset).
-      let tokens = searchTokens(from: searchText)
-      if !tokens.isEmpty {
-        tracks = tracks.filter { track in
-          switch searchFilterMode {
-          case .trackTitle:
-            return tokensAllMatchAcrossFields(tokens, fields: [track.title])
-          case .albumTitle:
-            return tokensAllMatchAcrossFields(tokens, fields: [track.albumTitle])
-          case .artist:
-            return tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist])
-          case .either:
-            return tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist])
-          }
-        }
-      }
-
-      guard let criteria = tableSortCriteria else { return tracks }
-      return sortedTracks(tracks, by: criteria)
+  /// Shared per-track search filter following Phase 58 spec.
+  /// Returns true if the track matches the given tokens under the specified mode.
+  /// Reusable by ViewModel, ContextMenu, and ExpandedAlbumView.
+  func trackMatchesSearch(_ track: Track, tokens: Set<String>, mode: SearchFilterMode) -> Bool {
+    guard !tokens.isEmpty else { return true }
+    switch mode {
+    case .albumTitle:
+      return tokensAllMatchAcrossFields(tokens, fields: [track.albumTitle])
+    case .trackTitle:
+      return tokensAllMatchAcrossFields(tokens, fields: [track.title])
+    case .artist:
+      return tokensAllMatchAcrossFields(tokens, fields: [track.albumArtist, track.artist])
+    case .either:
+      return tokensAllMatchAcrossFields(
+        tokens,
+        fields: [track.title, track.artist, track.albumTitle, track.albumArtist]
+      )
     }
+  }
 
-    var tracks = precomputedAlbums.flatMap(\.tracks)
-
-    // Phase 55/57: Prefer precomputed filteredTracksCache when a query is active.
-    let tokens = searchTokens(from: searchText)
-    if !tokens.isEmpty {
-      // If the async search has produced a result (or is in progress), use cache to avoid recomputation.
-      if !filteredTracksCache.isEmpty || isSearching {
-        if let criteria = tableSortCriteria {
-          return sortedTracks(filteredTracksCache, by: criteria)
-        }
-        return filteredTracksCache
-      }
-
-      // Fallback: if cache is not yet ready, perform inline filtering to avoid showing full unfiltered list.
-      tracks = tracks.filter { track in
-        switch searchFilterMode {
-        case .trackTitle:
-          return tokensAllMatchAcrossFields(tokens, fields: [track.title])
-        case .albumTitle:
-          return tokensAllMatchAcrossFields(tokens, fields: [track.albumTitle])
-        case .artist:
-          return tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist])
-        case .either:
-          return tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist])
-        }
-      }
-    }
-
-    guard let criteria = tableSortCriteria else { return tracks }
-    return sortedTracks(tracks, by: criteria)
+  /// Returns true if a track passes both column browser AND search keyword filters.
+  func trackPassesAllFilters(_ track: Track, tokens: Set<String>, mode: SearchFilterMode) -> Bool {
+    if !columnBrowserSelectedGenres.isEmpty, !columnBrowserSelectedGenres.contains(track.genre) { return false }
+    if !columnBrowserSelectedAlbumArtists.isEmpty,
+       !columnBrowserSelectedAlbumArtists.contains(track.albumArtist) { return false }
+    if !columnBrowserSelectedSongArtists.isEmpty,
+       !columnBrowserSelectedSongArtists.contains(track.artist) { return false }
+    if !columnBrowserSelectedAlbumTitles.isEmpty,
+       !columnBrowserSelectedAlbumTitles.contains(track.albumTitle) { return false }
+    return trackMatchesSearch(track, tokens: tokens, mode: mode)
   }
 
   func moveTracksInCurrentPlaylist(trackIDs: [UUID], toIndex: Int) {
@@ -372,7 +289,7 @@ final class MadTunesViewModel {
 
   /// Moves selected tracks one position up. Called by menu command (Option+↑).
   func moveSelectedTracksUp() {
-    let tracks = currentTracks
+    let tracks = currentTracksDisplayed
     let orderedSelected = tracks.enumerated().filter { selectedTrackIDs.contains($0.element.id) }
     guard let firstIdx = orderedSelected.first?.offset, firstIdx > 0 else { return }
     moveTracksInCurrentPlaylist(trackIDs: orderedSelected.map(\.element.id), toIndex: firstIdx - 1)
@@ -380,7 +297,7 @@ final class MadTunesViewModel {
 
   /// Moves selected tracks one position down. Called by menu command (Option+↓).
   func moveSelectedTracksDown() {
-    let tracks = currentTracks
+    let tracks = currentTracksDisplayed
     let orderedSelected = tracks.enumerated().filter { selectedTrackIDs.contains($0.element.id) }
     guard let lastIdx = orderedSelected.last?.offset, lastIdx < tracks.count - 1 else { return }
     moveTracksInCurrentPlaylist(trackIDs: orderedSelected.map(\.element.id), toIndex: lastIdx + 2)
@@ -394,9 +311,9 @@ final class MadTunesViewModel {
     if !columnBrowserSelectedAlbumTitles.isEmpty { columnBrowserSelectedAlbumTitles = [] }
   }
 
-  /// Plays all tracks matching the current column browser filter state.
+  /// Plays all tracks matching the current filter state.
   func playFilteredTracks() {
-    let tracks = currentAlbums.flatMap(\.tracks)
+    let tracks = filteredTracksBase
     guard !tracks.isEmpty else { return }
     player.setQueue(tracks, startingAt: 0)
   }
@@ -470,50 +387,11 @@ final class MadTunesViewModel {
   }
 
   func onAlbumDoubleClicked(_ album: Album) {
-    let tracks = filteredTracksForPlayback(from: album)
-    guard let firstTrack = tracks.first else { return }
-    guard let startIndex = tracks.firstIndex(where: { $0.id == firstTrack.id }) else { return }
-    player.setQueue(tracks, startingAt: startIndex)
+    // Album passed here is already filtered (contains only matching tracks).
+    let tracks = album.tracks
+    guard !tracks.isEmpty else { return }
+    player.setQueue(tracks, startingAt: 0)
     highlightedAlbumIDs = [album.id]
-  }
-
-  /// 從專輯中取得符合當前搜尋條件的曲目，用於播放。
-  /// 如果沒有搜尋條件，返回該專輯所有曲目。
-  func filteredTracksForPlayback(from album: Album) -> [Track] {
-    let tokens = searchTokens(from: searchText)
-    let allTracks = album.tracks
-
-    guard !tokens.isEmpty else { return allTracks }
-
-    // 如果整張專輯在 album 層級匹配（考慮 title/artist 及曲目內的 artist/title），
-    // 則回傳整張專輯（允許 token 跨專輯/曲目欄位匹配）。保留原先的
-    // albumTitle 快路徑。
-    let albumFields = [album.title, album.artist] + album.tracks.flatMap { [$0.title, $0.artist, $0.albumArtist] }
-    let albumMatches: Bool = switch searchFilterMode {
-    case .trackTitle:
-      false
-    case .albumTitle:
-      tokensAllMatchAcrossFields(tokens, fields: [album.title])
-    case .artist:
-      tokensAllMatchAcrossFields(tokens, fields: [album.artist])
-        || tokensAllMatchAcrossFields(tokens, fields: album.tracks.flatMap { [$0.artist, $0.albumArtist] })
-    case .either:
-      tokensAllMatchAcrossFields(tokens, fields: albumFields)
-    }
-    if albumMatches { return allTracks }
-
-    return allTracks.filter { track in
-      switch searchFilterMode {
-      case .trackTitle:
-        return tokensAllMatchAcrossFields(tokens, fields: [track.title])
-      case .albumTitle:
-        return true // 已由上方處理
-      case .artist:
-        return tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist])
-      case .either:
-        return tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist])
-      }
-    }
   }
 
   func importURLs(_ urls: [URL]) {
@@ -591,37 +469,16 @@ final class MadTunesViewModel {
 
   /// 選中所有肉眼可見的專輯（受 Column Browser 與搜尋篩選影響）
   func selectAllVisibleAlbums() {
-    highlightedAlbumIDs = Set(currentAlbums.map(\.id))
+    highlightedAlbumIDs = Set(currentAlbumsDisplayed.map(\.id))
   }
 
-  /// 獲取指定專輯中經過篩選的曲目（與 ExpandedAlbumView 邏輯一致）
+  /// 獲取指定專輯中經過篩選的曲目。
+  /// 使用共用的 `trackMatchesSearch` 做 per-track 篩選。
+  /// 此函式在 ExpandedAlbumView、ContextMenu 等處皆可複用。
   func filteredTracks(for album: Album) -> [Track] {
     let tokens = searchTokens(from: searchText)
     guard !tokens.isEmpty else { return album.tracks }
-
-    let filtered: [Track] = switch searchFilterMode {
-    case .trackTitle:
-      album.tracks.filter { track in
-        tokensAllMatchAcrossFields(tokens, fields: [track.title])
-      }
-    case .albumTitle:
-      tokensAllMatchAcrossFields(tokens, fields: [album.title]) ? album.tracks : []
-    case .artist:
-      album.tracks.filter { track in
-        tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist])
-      }
-    case .either:
-      album.tracks.filter { track in
-        tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist])
-      }
-    }
-    // 如果過濾後為空，但專輯本身符合搜尋條件，則顯示所有曲目
-    if filtered.isEmpty {
-      let albumFields = [album.title, album.artist] + album.tracks.flatMap { [$0.title, $0.artist, $0.albumArtist] }
-      let albumMatches = tokensAllMatchAcrossFields(tokens, fields: albumFields)
-      return albumMatches ? album.tracks : filtered
-    }
-    return filtered
+    return album.tracks.filter { trackMatchesSearch($0, tokens: tokens, mode: searchFilterMode) }
   }
 
   /// 選中指定專輯中所有肉眼可見的曲目
@@ -709,7 +566,7 @@ final class MadTunesViewModel {
   /// is handled via menu commands in MadTunesScene. This handler intercepts:
   /// Cmd+C copy, Cmd+↓/Return/Space to play.
   func handleTableKeyPress(_ press: KeyPress) -> KeyPress.Result {
-    let tracks = currentTracks
+    let tracks = currentTracksDisplayed
     guard !tracks.isEmpty else { return .ignored }
 
     // CMD+C: Copy selected tracks metadata.
@@ -786,6 +643,36 @@ final class MadTunesViewModel {
   private let minItemWidth: CGFloat = 160
   private let gridSpacing: CGFloat = 16
 
+  // MARK: - Phase 58: New Data Pipeline (Single-Filter)
+
+  /// Base tracks for the current playlist, before any filtering.
+  /// Preserves playlist ordering for static/Favorites playlists.
+  private var baseTracks: [Track] {
+    if let playlistID = selectedPlaylistID,
+       let playlist = library.playlists.first(where: { $0.id == playlistID }),
+       playlist.id != library.playlists.first?.id {
+      return library.tracks(for: playlist)
+    }
+    return library.tracks
+  }
+
+  /// Single source of truth: all displayable tracks after applying all filters.
+  /// Does NOT apply table sort — call `currentTracksDisplayed` for the sorted version.
+  private var filteredTracksBase: [Track] {
+    let tokens = searchTokens(from: searchText)
+
+    // When search is active and cache is ready, use cache (produced by async debounce).
+    if !tokens.isEmpty, !displayedTracksCache.isEmpty || isSearching {
+      return displayedTracksCache
+    }
+
+    let base = baseTracks
+    // No filters at all → return as-is.
+    if tokens.isEmpty, !isColumnBrowserFiltering { return base }
+
+    return base.filter { trackPassesAllFilters($0, tokens: tokens, mode: searchFilterMode) }
+  }
+
   // MARK: - Computed Helpers
 
   /// Albums from the current playlist, before column browser filtering.
@@ -798,6 +685,24 @@ final class MadTunesViewModel {
     return library.albums
   }
 
+  /// Groups a flat filtered track list back into Album objects, preserving
+  /// original album metadata (id, artworkData) via `unfilteredAlbums`.
+  private func buildAlbumsFromFilteredTracks(_ filteredTracks: [Track]) -> [Album] {
+    let filteredIDs = Set(filteredTracks.map(\.id))
+    let albums = unfilteredAlbums.compactMap { album -> Album? in
+      let matching = album.tracks.filter { filteredIDs.contains($0.id) }
+      guard !matching.isEmpty else { return nil }
+      return Album(
+        id: album.id,
+        title: album.title,
+        artist: album.artist,
+        tracks: matching,
+        artworkData: album.artworkData
+      )
+    }
+    return sortedAlbums(albums)
+  }
+
   /// Schedule a debounced asynchronous search. Cancels prior pending search.
   private func scheduleSearch() {
     // Cancel any existing work
@@ -807,8 +712,8 @@ final class MadTunesViewModel {
     // If the query is empty, clear caches immediately on main actor.
     let trimmed = textSnapshot.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmed.isEmpty {
-      filteredAlbumsCache = []
-      filteredTracksCache = []
+      displayedTracksCache = []
+      displayedAlbumsCache = []
       isSearching = false
       return
     }
@@ -824,107 +729,80 @@ final class MadTunesViewModel {
       if Task.isCancelled { return }
       guard let self = self else { return }
 
-      // Snapshot base albums applying column browser filters on the main actor.
-      let baseAlbums: [Album] = await MainActor.run {
-        var result = self.unfilteredAlbums
-        if !self.columnBrowserSelectedGenres.isEmpty {
-          result = result.filter { album in
-            album.tracks.contains { self.columnBrowserSelectedGenres.contains($0.genre) }
-          }
-        }
-        if !self.columnBrowserSelectedAlbumArtists.isEmpty {
-          result = result.filter { self.columnBrowserSelectedAlbumArtists.contains($0.artist) }
-        }
-        if !self.columnBrowserSelectedSongArtists.isEmpty {
-          result = result.filter { album in
-            album.tracks.contains { self.columnBrowserSelectedSongArtists.contains($0.artist) }
-          }
-        }
-        if !self.columnBrowserSelectedAlbumTitles.isEmpty {
-          result = result.filter { self.columnBrowserSelectedAlbumTitles.contains($0.title) }
-        }
-        return result
+      // Snapshot base tracks and filter config on the main actor.
+      let (base, mode, genres, albumArtists, songArtists, albumTitles) = await MainActor.run {
+        (
+          self.baseTracks,
+          self.searchFilterMode,
+          self.columnBrowserSelectedGenres,
+          self.columnBrowserSelectedAlbumArtists,
+          self.columnBrowserSelectedSongArtists,
+          self.columnBrowserSelectedAlbumTitles
+        )
       }
 
       if Task.isCancelled { return }
 
-      // Tokenize query once (lowercased tokens)
       let tokens = searchTokens(from: textSnapshot)
       if tokens.isEmpty {
         await MainActor.run {
           if self.searchText == textSnapshot {
-            self.filteredAlbumsCache = []
-            self.filteredTracksCache = []
+            self.displayedTracksCache = []
+            self.displayedAlbumsCache = []
             self.isSearching = false
           }
         }
         return
       }
 
-      // Perform filtering in this task (cooperative cancellation checks).
-      var albumsResult: [Album] = []
+      // Per-track filtering using the shared filter logic.
       var tracksResult: [Track] = []
-
-      for album in baseAlbums {
+      for track in base {
         if Task.isCancelled { return }
-
-        // Build album-level fields for matching (title, artist, plus all track fields).
-        let albumFields = [album.title, album.artist] + album.tracks.flatMap { [$0.title, $0.artist, $0.albumArtist] }
-
-        // Album-level match according to current searchFilterMode. Use tokensAllMatchAcrossFields
-        // to allow matching tokens anywhere inside the album (cross-field).
-        let albumMatches: Bool = switch self.searchFilterMode {
-        case .trackTitle:
-          false
-        case .albumTitle:
-          tokensAllMatchAcrossFields(tokens, fields: [album.title])
-        case .artist:
-          tokensAllMatchAcrossFields(tokens, fields: [album.artist])
-            || tokensAllMatchAcrossFields(tokens, fields: album.tracks.flatMap { [$0.artist, $0.albumArtist] })
-        case .either:
-          tokensAllMatchAcrossFields(tokens, fields: albumFields)
-        }
-
-        // Track-level scan: collect tracks that match (all tokens must match within the same track).
-        var matchedTracksForAlbum: [Track] = []
-        for track in album.tracks {
-          if Task.isCancelled { return }
-          switch self.searchFilterMode {
-          case .trackTitle:
-            if tokensAllMatchAcrossFields(tokens, fields: [track.title]) {
-              matchedTracksForAlbum.append(track)
-            }
-          case .albumTitle:
-            // albumTitle handled at album-level; no per-track matching
-            break
-          case .artist:
-            if tokensAllMatchAcrossFields(tokens, fields: [track.artist, track.albumArtist]) {
-              matchedTracksForAlbum.append(track)
-            }
-          case .either:
-            if tokensAllMatchAcrossFields(tokens, fields: [track.title, track.artist, track.albumArtist]) {
-              matchedTracksForAlbum.append(track)
-            }
-          }
-        }
-
-        if albumMatches {
-          albumsResult.append(album)
-          // when album-level matches, include all tracks in the track cache
-          tracksResult.append(contentsOf: album.tracks)
-        } else if !matchedTracksForAlbum.isEmpty {
-          albumsResult.append(album)
-          tracksResult.append(contentsOf: matchedTracksForAlbum)
+        // Column browser filters
+        if !genres.isEmpty, !genres.contains(track.genre) { continue }
+        if !albumArtists.isEmpty, !albumArtists.contains(track.albumArtist) { continue }
+        if !songArtists.isEmpty, !songArtists.contains(track.artist) { continue }
+        if !albumTitles.isEmpty, !albumTitles.contains(track.albumTitle) { continue }
+        // Search filter (shared logic)
+        if self.trackMatchesSearch(track, tokens: tokens, mode: mode) {
+          tracksResult.append(track)
         }
       }
+
+      if Task.isCancelled { return }
+
+      // Build albums from filtered tracks using unfilteredAlbums for metadata.
+      let unfilteredAlbumsSnapshot: [Album] = await MainActor.run { self.unfilteredAlbums }
+      if Task.isCancelled { return }
+
+      let filteredIDs = Set(tracksResult.map(\.id))
+      var albumsResult: [Album] = []
+      for album in unfilteredAlbumsSnapshot {
+        if Task.isCancelled { return }
+        let matching = album.tracks.filter { filteredIDs.contains($0.id) }
+        if !matching.isEmpty {
+          albumsResult.append(Album(
+            id: album.id,
+            title: album.title,
+            artist: album.artist,
+            tracks: matching,
+            artworkData: album.artworkData
+          ))
+        }
+      }
+
+      if Task.isCancelled { return }
+
+      let sortedAlbumsResult = await MainActor.run { self.sortedAlbums(albumsResult) }
 
       if Task.isCancelled { return }
 
       // Commit results on main actor only if query hasn't changed.
       await MainActor.run {
         if self.searchText == textSnapshot {
-          self.filteredAlbumsCache = albumsResult
-          self.filteredTracksCache = tracksResult
+          self.displayedTracksCache = tracksResult
+          self.displayedAlbumsCache = sortedAlbumsResult
           self.isSearching = false
         }
       }

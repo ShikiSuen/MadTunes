@@ -90,7 +90,7 @@ struct PlayerControlsView: View {
                 return
               }
 
-              if let album = vm.currentAlbums.first(
+              if let album = vm.currentAlbumsDisplayed.first(
                 where: { $0.allTrackIDsSet.contains(track.id) }
               ) {
                 vm.scrollToAlbumID = album.id
