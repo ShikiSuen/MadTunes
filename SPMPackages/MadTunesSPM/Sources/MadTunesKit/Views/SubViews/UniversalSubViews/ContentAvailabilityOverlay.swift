@@ -61,6 +61,23 @@ struct ContentAvailabilityOverlay: View {
             .ignoresSafeArea()
         }
         .compositingGroup()
+      } else if !viewModel.library.hasLoadedPersistence {
+        Gradient.ColorMeshGradient
+          .ignoresSafeArea()
+          .overlay {
+            ContentUnavailableView {
+              WinUI3ProgressRing(size: 96, lineWidth: 7)
+                .tint(.primary)
+                .overlay {
+                  Image(systemName: "internaldrive")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 48)
+                    .foregroundStyle(.secondary)
+                }
+            }
+          }
+          .compositingGroup()
       } else if viewModel.isSearching {
         Gradient.ColorMeshGradient
           .ignoresSafeArea()
@@ -130,6 +147,7 @@ struct ContentAvailabilityOverlay: View {
           .compositingGroup()
       }
     }
+    .animation(.easeOut(duration: 0.12), value: viewModel.library.hasLoadedPersistence)
     .animation(.easeOut(duration: 0.12), value: viewModel.isSearching)
     .animation(.easeOut(duration: 0.12), value: viewModel.library.isImporting)
     .animation(.easeOut(duration: 0.12), value: hasActiveFilters)

@@ -194,8 +194,8 @@ struct MadTunesMainView: View {
     .tint(.madTunesAccent)
     .trackScreenVMParameters()
     .environment(viewModel)
-    .onAppear {
-      viewModel.library.loadPersistedData()
+    .task {
+      await viewModel.library.loadPersistedData()
       viewModel.selectedPlaylistID = viewModel.library.playlists.first?.id
     }
   }

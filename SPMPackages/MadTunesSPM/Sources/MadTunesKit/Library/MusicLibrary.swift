@@ -179,10 +179,13 @@ public final class MusicLibrary {
       }
     }
 
+    // 之前的操作都是直接操縱 in-memory 資料庫。
+    var newTracksArray = tracks
     // Flush remaining tracks.
     if !pendingTracks.isEmpty {
-      tracks.append(contentsOf: pendingTracks)
+      newTracksArray.append(contentsOf: pendingTracks)
     }
+    tracks = await newTracksArray.selfSortByDefault()
     if !playlists.isEmpty {
       playlists[0].trackIDs = tracks.map(\.id)
     }
@@ -194,7 +197,7 @@ public final class MusicLibrary {
   // MARK: - Persistence
 
   /// Load persisted tracks from SwiftData. Call once at launch.
-  public func loadPersistedData() {
+  public func loadPersistedData() async {
     guard !hasLoadedPersistence else { return }
     hasLoadedPersistence = true
     guard let container = _modelContainer else { return }
@@ -225,7 +228,7 @@ public final class MusicLibrary {
       loadPersistedPlaylists()
       return
     }
-    tracks = loadedTracks
+    tracks = await loadedTracks.selfSortByDefault()
     if !playlists.isEmpty {
       playlists[0].trackIDs = tracks.map(\.id)
     }
