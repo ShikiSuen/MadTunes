@@ -151,46 +151,71 @@ struct AlbumContextMenu: View {
   }
 
   private var sortedTracks: [Track] {
-    let tracks = allTracks.sorted {
-      ($0.albumTitle, $0.discNumber, $0.trackNumber, $0.title)
-        < ($1.albumTitle, $1.discNumber, $1.trackNumber, $1.title)
-    }
+    // Phase 55: 為避免多專輯選取下的誤判，逐專輯計算過濾結果。
+    // 對於每個傳入的 album：
+    // - 若 query 為空，回傳所有曲目（排序後）
+    // - 若 searchFilterMode == .albumTitle 且該 album 匹配，回傳該 album 的所有曲目
+    // - 否則在該 album 範圍內套用 per-track 篩選（trackTitle / artist / either）
 
     let query = searchText.trimmingCharacters(in: .whitespaces)
+    // No query → return all tracks (sorted)
     guard !query.isEmpty else {
-      return tracks
-    }
-
-    // 專輯名稱模式：返回所有曲目（因為專輯本身已經被過濾顯示）
-    if searchFilterMode == .albumTitle {
-      return tracks
-    }
-
-    return tracks.filter { track in
-      switch searchFilterMode {
-      case .trackTitle:
-        return track.title.localizedCaseInsensitiveContains(query)
-      case .albumTitle:
-        return true // 已由上方處理
-      case .artist:
-        return track.artist.localizedCaseInsensitiveContains(query)
-          || track.albumArtist.localizedCaseInsensitiveContains(query)
-      case .either:
-        return track.title.localizedCaseInsensitiveContains(query)
-          || track.artist.localizedCaseInsensitiveContains(query)
-          || track.albumArtist.localizedCaseInsensitiveContains(query)
+      return allTracks.sorted {
+        ($0.albumTitle, $0.discNumber, $0.trackNumber, $0.title)
+          < ($1.albumTitle, $1.discNumber, $1.trackNumber, $1.title)
       }
     }
+
+    var results: [Track] = []
+
+    for album in albums {
+      let albumSorted = album.tracks.sorted {
+        ($0.albumTitle, $0.discNumber, $0.trackNumber, $0.title)
+          < ($1.albumTitle, $1.discNumber, $1.trackNumber, $1.title)
+      }
+
+      switch searchFilterMode {
+      case .albumTitle:
+        if album.title.localizedCaseInsensitiveContains(query) {
+          results.append(contentsOf: albumSorted)
+        }
+
+      case .trackTitle:
+        results.append(contentsOf: albumSorted.filter { $0.title.localizedCaseInsensitiveContains(query) })
+
+      case .artist:
+        if album.artist.localizedCaseInsensitiveContains(query) {
+          // album-level match → include all tracks
+          results.append(contentsOf: albumSorted)
+        } else {
+          results.append(contentsOf: albumSorted.filter { tr in
+            tr.artist.localizedCaseInsensitiveContains(query) || tr.albumArtist.localizedCaseInsensitiveContains(query)
+          })
+        }
+
+      case .either:
+        results.append(contentsOf: albumSorted.filter { tr in
+          tr.title.localizedCaseInsensitiveContains(query)
+            || tr.artist.localizedCaseInsensitiveContains(query)
+            || tr.albumArtist.localizedCaseInsensitiveContains(query)
+        })
+      }
+    }
+
+    return results
   }
 
+  // Phase 55: Use sortedTracks (search-filtered) for trackIDs and favorited check,
+  // so that "Add to Favorites" / "Add to Playlist" only affect visible tracks.
   private var trackIDs: Set<UUID> {
-    Set(allTracks.map(\.id))
+    Set(sortedTracks.map(\.id))
   }
 
   private var allTracksFavorited: Bool {
-    guard !allTracks.isEmpty else { return false }
+    let filtered = sortedTracks
+    guard !filtered.isEmpty else { return false }
     let favorites = library.favoritesPlaylist.trackIDs
-    return allTracks.allSatisfy { favorites.contains($0.id) }
+    return filtered.allSatisfy { favorites.contains($0.id) }
   }
 
   /// 當前正在檢視的靜態播放清單 ID（若有）。

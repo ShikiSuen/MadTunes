@@ -322,7 +322,28 @@ final class MadTunesViewModel {
       return sortedTracks(tracks, by: criteria)
     }
 
-    let tracks = precomputedAlbums.flatMap(\.tracks)
+    var tracks = precomputedAlbums.flatMap(\.tracks)
+
+    // Phase 55: Apply per-track keyword search filtering for All Music.
+    let query = searchText.trimmingCharacters(in: .whitespaces)
+    if !query.isEmpty {
+      tracks = tracks.filter { track in
+        switch searchFilterMode {
+        case .trackTitle:
+          return track.title.localizedCaseInsensitiveContains(query)
+        case .albumTitle:
+          return track.albumTitle.localizedCaseInsensitiveContains(query)
+        case .artist:
+          return track.artist.localizedCaseInsensitiveContains(query)
+            || track.albumArtist.localizedCaseInsensitiveContains(query)
+        case .either:
+          return track.title.localizedCaseInsensitiveContains(query)
+            || track.artist.localizedCaseInsensitiveContains(query)
+            || track.albumArtist.localizedCaseInsensitiveContains(query)
+        }
+      }
+    }
+
     guard let criteria = tableSortCriteria else { return tracks }
     return sortedTracks(tracks, by: criteria)
   }
