@@ -123,6 +123,11 @@ struct MadTunesMainView: View {
           .fixedSize(horizontal: false, vertical: true)
         }
         .toolbar {
+          // Phase 68: Button for showing the popover of hotkey hints
+          ToolbarItem(placement: .automatic) {
+            HotKeyHintView()
+          }
+
           // Phase 41: view mode toggle should come first
           ToolbarItem(placement: .primaryAction) {
             Picker(selection: $vm.useTableView) {

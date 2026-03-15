@@ -1289,6 +1289,702 @@
         }
       }
     },
+    "i18n:HotKeyHint.KeyLabel.Click" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Click"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "クリック"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "點擊"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.KeyLabel.Drag" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Drag"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ドラッグ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖拽"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖曳"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.KeyLabel.DragSelection" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Drag selection"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択をドラッグ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖曳选取"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖曳選取"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.ArrowKeys" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Move selection\n(grid: row/column; expanded: track list)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択を移動\n（グリッド: 行/列; 展開時: トラックリスト）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移动选择\n（网格：行/列；展开时：曲目列表）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移動選取\n（網格：行/列；展開時：曲目列表）"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.ArrowKeys.ExpandedNoSelection" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Select the first track in the album"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アルバムの最初のトラックを選択"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择专辑中的第一首曲目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選取專輯中的第一首曲目"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.ArrowKeys.ExpandedNoSelection.Condition" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "(When expanded with no track selected)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(展開中でトラックが選択されていない場合)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(专辑展开且未选中曲目时)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(專輯展開且未選中曲目時)"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.CmdClickSelect" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Multi-select/deselect albums (expanded: tracks)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アルバムを複数選択/選択解除（展開時はトラック）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "多选/取消选择专辑（展开时为曲目）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "多選/取消選擇專輯（展開時為曲目）"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.DragSelectAlbums" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rubber-band select multiple albums (hold ⌘ to append)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ドラッグで複数アルバムを選択（⌘を押すと追加選択）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖曳框选多个专辑（按住⌘追加选择）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖曳框選多個專輯（按住⌘追加選取）"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.DragSelectAlbums.Condition" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "(Only effective when no album is expanded)\n(Tap the grid gaps to initiate the Rubber-band selection)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(アルバムが展開されていないときのみ有効)\n(グリッドのアイテム間の空き領域をタップしてラバーバンド選択を開始)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(仅在没有专辑展开时有效)\n(点击网格项目之间的空白区域以启动橡皮筋选择)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(僅在沒有專輯展開時有效)\n(點擊網格項目之間的空白區域以啟動橡皮筋選取)"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.EscCollapse" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Collapse album"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アルバムを折りたたむ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收起专辑"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收起專輯"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.ReturnExpand" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Expand album / play selected tracks"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アルバムを展開/選択トラックを再生"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展开专辑或播放所选曲目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展開專輯或播放所選曲目"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.SelectAll" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Select all albums / tracks"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのアルバム/トラックを選択"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择全部专辑/曲目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選取全部專輯/曲目"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.ShiftArrowRangeSelect" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Range select albums (anchor-based)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アルバムの範囲選択（アンカー基準）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "范围选择专辑（以锚点为基准）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "範圍選取專輯（以錨點為基準）"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.ShiftClickRangeSelect" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Range select albums (expanded: range select tracks)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アルバムの範囲選択（展開時はトラックの範囲選択）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "范围选择专辑（展开时为曲目范围选择）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "範圍選取專輯（展開時為曲目範圍選取）"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.ShiftDragSelectTracks" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Shift+Drag selects multiple tracks (hold ⌘ to append)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shift+ドラッグで複数トラックを選択（⌘を押すと追加選択）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shift+拖拽选择多个曲目（按住⌘追加选择）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shift+拖曳選取多個曲目（按住⌘追加選取）"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.ShiftSpaceExpanded" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Play selected / collapse (when expanded)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択を再生/折りたたむ（展開時）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "播放所选或收起（展开时）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "播放所選或收起（展開時）"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.ShiftSpaceNotExpanded" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Toggle play/pause (when collapsed)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再生/一時停止を切り替え（未展開時）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切换播放/暂停（未展开时）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切換播放/暫停（未展開時）"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.SpaceExpanded" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Toggle play/pause (when expanded)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再生/一時停止を切り替え（展開時）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切换播放/暂停（展开时）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切換播放/暫停（展開時）"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.SpaceNotExpanded" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Expand album (when collapsed)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アルバムを展開（未展開時）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展开专辑（未展开时）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展開專輯（未展開時）"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.TableView.CmdClickSelect" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Multi-select/deselect tracks"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "トラックを複数選択/選択解除"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "多选/取消选择曲目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "多選/取消選擇曲目"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.TableView.ReturnPlay" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Play selected tracks"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択したトラックを再生"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "播放所选曲目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "播放所選曲目"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.TableView.ShiftClickRangeSelect" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Range select tracks"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "トラックの範囲選択"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "范围选择曲目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "範圍選取曲目"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.TableView.ShiftDragSelect" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Shift+Drag selects multiple tracks"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shift+ドラッグで複数トラックを選択"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shift+拖拽选择多个曲目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shift+拖曳選取多個曲目"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.TableView.SpaceTogglePlay" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Toggle play/pause; or play selected"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再生/一時停止を切り替え、又は選択を再生"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切换播放/暂停、或播放所选"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切換播放/暫停、或播放所選"
+          }
+        }
+      }
+    },
     "i18n:Import.ImportFiles" : {
       "localizations" : {
         "en" : {
@@ -2663,6 +3359,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "欄位"
+          }
+        }
+      }
+    },
+    "i18n:Toolbar.HotKeyHintView" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hotkey Hints"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "操作キーの案内"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "热键提示"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "熱鍵提示"
           }
         }
       }
