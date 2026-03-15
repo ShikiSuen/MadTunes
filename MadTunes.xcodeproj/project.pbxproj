@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -15,7 +15,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		5B56A2892F6658970062DEEC /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5BB9E9612F60BEB1004E2DDB /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		5BCDC4752F66DD4400635767 /* README.zh-Hant.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "README.zh-Hant.md"; sourceTree = "<group>"; };
 		AA000002000000000000000A /* MainApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainApp.swift; sourceTree = "<group>"; };
 		AA000004000000000000000A /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AA000006000000000000000A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -24,6 +26,11 @@
 		AA00000B000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AA00000C000000000000000A /* MadTunesSPM */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = MadTunesSPM; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		5B56A2702F6657CF0062DEEC /* DevPlans */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = DevPlans; sourceTree = "<group>"; };
+		5B56A2722F6657DC0062DEEC /* docs */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = docs; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AA000010000000000000000A /* Frameworks */ = {
@@ -40,9 +47,13 @@
 		AA000020000000000000000A = {
 			isa = PBXGroup;
 			children = (
+				5B56A2702F6657CF0062DEEC /* DevPlans */,
+				5B56A2722F6657DC0062DEEC /* docs */,
 				AA000021000000000000000A /* SPMPackages */,
 				AA000022000000000000000A /* MadTunes */,
 				AA000023000000000000000A /* Products */,
+				5B56A2892F6658970062DEEC /* README.md */,
+				5BCDC4752F66DD4400635767 /* README.zh-Hant.md */,
 			);
 			sourceTree = "<group>";
 		};
