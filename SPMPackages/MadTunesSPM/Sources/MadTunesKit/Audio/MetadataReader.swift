@@ -2,6 +2,7 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
 
+import AudioToolbox
 import AVFoundation
 
 /// Reads audio metadata (title, artist, album, artwork, duration) from a file URL
@@ -109,7 +110,25 @@ public enum MetadataReader: Sendable {
       let tracks = try await asset.load(.tracks)
       if let audioTrack = tracks.first(where: { $0.mediaType == .audio }) {
         let formatDescriptions = try await audioTrack.load(.formatDescriptions)
-        if let formatDesc = formatDescriptions.first {
+
+        // Prefer a format description that contains a valid bit depth.
+        // Some compressed formats (e.g. AAC/MP3) report 0 for mBitsPerChannel.
+        // In that case we fall back to the first available format description.
+        var selectedFormatDesc: CMFormatDescription?
+        for formatDesc in formatDescriptions {
+          guard let basicDesc = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc) else {
+            continue
+          }
+          if basicDesc.pointee.mBitsPerChannel > 0 {
+            selectedFormatDesc = formatDesc
+            break
+          }
+          if selectedFormatDesc == nil {
+            selectedFormatDesc = formatDesc
+          }
+        }
+
+        if let formatDesc = selectedFormatDesc {
           // 獲取 codec 資訊
           let mediaSubType = CMFormatDescriptionGetMediaSubType(formatDesc)
           codec = formatFourCCToString(mediaSubType)
@@ -118,7 +137,9 @@ public enum MetadataReader: Sendable {
           if let basicDesc = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc) {
             sampleRate = basicDesc.pointee.mSampleRate
             channelCount = Int(basicDesc.pointee.mChannelsPerFrame)
-            bitDepth = Int(basicDesc.pointee.mBitsPerChannel)
+            if basicDesc.pointee.mBitsPerChannel > 0 {
+              bitDepth = Int(basicDesc.pointee.mBitsPerChannel)
+            }
 
             // 計算位元率（如果可用）
             if basicDesc.pointee.mBytesPerFrame > 0, basicDesc.pointee.mFramesPerPacket > 0 {
@@ -133,6 +154,11 @@ public enum MetadataReader: Sendable {
           }
         }
 
+        // If the format description did not yield a bit depth, try AudioFile API.
+        if bitDepth == nil {
+          bitDepth = bitDepthFromAudioFile(url: url)
+        }
+
         // 嘗試從 estimatedDataRate 獲取位元率
         if bitrate == nil {
           let dataRate = try await audioTrack.load(.estimatedDataRate)
@@ -143,6 +169,11 @@ public enum MetadataReader: Sendable {
       }
     } catch {
       // 忽略錯誤，返回已獲取的資訊
+    }
+
+    // Treat 0 as unknown; show nothing instead of "0-bit".
+    if let depth = bitDepth, depth <= 0 {
+      bitDepth = nil
     }
 
     return DetailedTrackMetadata(
@@ -332,5 +363,33 @@ public enum MetadataReader: Sendable {
       UInt8(fourcc & 0xFF),
     ]
     return String(decoding: bytes, as: UTF8.self).trimmingCharacters(in: .whitespaces)
+  }
+
+  /// Attempts to read bit depth via AudioFile APIs.
+  ///
+  /// For compressed formats (AAC, MP3, etc.) where CMFormatDescription reports
+  /// mBitsPerChannel == 0, we try two AudioFile properties:
+  /// 1. kAudioFilePropertySourceBitDepth — the original source bit depth before encoding.
+  /// 2. kAudioFilePropertyDataFormat — the stream's AudioStreamBasicDescription.
+  private static func bitDepthFromAudioFile(url: URL) -> Int? {
+    var audioFile: AudioFileID?
+    let openStatus = AudioFileOpenURL(url as CFURL, .readPermission, 0, &audioFile)
+    guard openStatus == noErr, let file = audioFile else { return nil }
+    defer { AudioFileClose(file) }
+
+    // Try source bit depth first (available for compressed formats like AAC/ALAC).
+    var sourceBitDepth: UInt32 = 0
+    var size = UInt32(MemoryLayout<UInt32>.size)
+    let srcStatus = AudioFileGetProperty(file, kAudioFilePropertySourceBitDepth, &size, &sourceBitDepth)
+    if srcStatus == noErr, sourceBitDepth > 0 {
+      return Int(sourceBitDepth)
+    }
+
+    // Fall back to the data format's mBitsPerChannel (works for uncompressed formats).
+    var asbd = AudioStreamBasicDescription()
+    var asbdSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+    let status = AudioFileGetProperty(file, kAudioFilePropertyDataFormat, &asbdSize, &asbd)
+    guard status == noErr, asbd.mBitsPerChannel > 0 else { return nil }
+    return Int(asbd.mBitsPerChannel)
   }
 }
