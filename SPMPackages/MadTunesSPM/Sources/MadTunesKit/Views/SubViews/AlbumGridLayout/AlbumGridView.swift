@@ -252,15 +252,12 @@ struct AlbumGridView: View {
             .onChanged { value in
               if gridVM.dragOrigin == nil {
                 gridVM.dragOrigin = value.startLocation
-                #if canImport(AppKit) && !canImport(UIKit)
-                if NSEvent.modifierFlags.contains(.command) {
+                // Phase 63: Use SwiftUI EventModifiers instead of NSEvent.
+                if vm.currentModifiers.contains(.command) {
                   gridVM.preDragHighlighted = vm.highlightedAlbumIDs
                 } else {
                   gridVM.preDragHighlighted = []
                 }
-                #else
-                gridVM.preDragHighlighted = []
-                #endif
               }
               gridVM.dragCurrent = value.location
               gridVM.updateDragSelection()
@@ -347,12 +344,9 @@ struct AlbumGridView: View {
             .simultaneously(
               with: TapGesture(count: 1)
                 .onEnded {
-                  #if canImport(AppKit) && !canImport(UIKit)
-                  let hasModifier = NSEvent.modifierFlags.contains(.shift)
-                    || NSEvent.modifierFlags.contains(.command)
-                  #else
-                  let hasModifier = false
-                  #endif
+                  // Phase 63: Use SwiftUI EventModifiers instead of NSEvent.
+                  let hasModifier = vm.currentModifiers.contains(.shift)
+                    || vm.currentModifiers.contains(.command)
                   // Phase 61: For plain clicks, immediately enter "cursor selected"
                   // state so the album visually highlights in place without moving.
                   if !hasModifier {

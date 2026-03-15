@@ -77,42 +77,7 @@ public struct MadTunesScene: Scene {
         }
         #endif
       }
-      // Phase 52: Menu commands for playlist track reordering.
-      // App-level .commands with .keyboardShortcut bypass List/Table's
-      // internal NSTableView which consumes all modifier+Arrow key events.
-      CommandGroup(after: .pasteboard) {
-        Section {
-          Button {
-            viewModel.moveSelectedTracksUp()
-          } label: {
-            Label(
-              String(
-                localized: "i18n:Menu.MoveTrackUp",
-                defaultValue: "Move Track Up",
-                bundle: #bundle
-              ),
-              systemImage: "arrow.up"
-            )
-          }
-          .keyboardShortcut(.upArrow, modifiers: [.option])
-          .disabled(!viewModel.canMoveSelectedTracksUp)
-
-          Button {
-            viewModel.moveSelectedTracksDown()
-          } label: {
-            Label(
-              String(
-                localized: "i18n:Menu.MoveTrackDown",
-                defaultValue: "Move Track Down",
-                bundle: #bundle
-              ),
-              systemImage: "arrow.down"
-            )
-          }
-          .keyboardShortcut(.downArrow, modifiers: [.option])
-          .disabled(!viewModel.canMoveSelectedTracksDown)
-        }
-      }
+      GlobalControlMenuCommands()
     }
   }
 

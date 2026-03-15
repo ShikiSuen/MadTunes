@@ -263,7 +263,15 @@ struct MadTunesMainView: View {
       }
       .environment(viewModel)
       .onKeyPress { press in
-        viewModel.handleKeyPress(press, albums: displayAlbums)
+        // Phase 63: Dispatch directly to sub-VMs.
+        if viewModel.useTableView {
+          return viewModel.tableVM.handleKeyPress(press)
+        } else {
+          return viewModel.gridVM.handleKeyPress(press, albums: displayAlbums)
+        }
+      }
+      .onModifierKeysChanged { _, new in
+        viewModel.currentModifiers = new
       }
       .onChange(of: viewModel.expandedAlbumID) { _, _ in
         viewModel.selectedTrackIDs.removeAll()

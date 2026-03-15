@@ -4,6 +4,7 @@
 
 import Foundation
 import Observation
+import SwiftUI
 
 // MARK: - AlbumTableViewModel
 
@@ -161,6 +162,52 @@ final class AlbumTableViewModel {
       library.addTracks(trackIDsForNewPlaylist, toPlaylist: newPlaylist.id)
     }
     trackIDsForNewPlaylist = []
+  }
+
+  // MARK: - Phase 63: Keyboard Navigation (moved from MadTunesViewModel)
+
+  /// Handles keyboard input when the table view is active.
+  /// Arrow keys, Shift+Arrow, PgUp/PgDn are handled natively by the List.
+  /// Track reorder (Option+↑/↓) is handled via menu commands.
+  /// This handler intercepts: Cmd+C copy, Cmd+↓/Return/Space to play.
+  func handleKeyPress(_ press: KeyPress) -> KeyPress.Result {
+    guard let mainVM else { return .ignored }
+    let tracks = mainVM.currentTracksDisplayed
+    guard !tracks.isEmpty else { return .ignored }
+
+    // CMD+C: Copy selected tracks metadata.
+    if press.characters == "c", press.modifiers.contains(.command) {
+      if !mainVM.selectedTrackIDs.isEmpty {
+        mainVM.copySelectedTracksMetadata()
+        return .handled
+      }
+    }
+
+    // CMD+↓: Play selected tracks immediately.
+    if press.key == .downArrow, press.modifiers.contains(.command) {
+      let selected = tracks.filter { mainVM.selectedTrackIDs.contains($0.id) }
+      if !selected.isEmpty {
+        mainVM.player.setQueue(selected, startingAt: 0)
+        return .handled
+      }
+      return .handled
+    }
+
+    // Return / Space: play selected tracks (or track at cursor).
+    if press.key == .return || press.characters == " " {
+      if press.characters == " ", mainVM.player.currentTrack != nil {
+        mainVM.player.togglePlayPause()
+        return .handled
+      }
+      let selected = tracks.filter { mainVM.selectedTrackIDs.contains($0.id) }
+      if !selected.isEmpty {
+        mainVM.player.setQueue(selected, startingAt: 0)
+        return .handled
+      }
+      return .ignored
+    }
+
+    return .ignored
   }
 
   // MARK: Private

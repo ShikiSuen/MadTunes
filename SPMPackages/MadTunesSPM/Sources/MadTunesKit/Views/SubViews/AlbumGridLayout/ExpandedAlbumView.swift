@@ -4,10 +4,6 @@
 
 import SwiftUI
 
-#if canImport(AppKit)
-import AppKit
-#endif
-
 // MARK: - TrackFramePreferenceKey
 
 private struct TrackFramePreferenceKey: PreferenceKey {
@@ -407,8 +403,8 @@ struct ExpandedAlbumView: View {
   }
 
   private func handleTrackSelection(_ track: Track, in sortedTracks: [Track]) {
-    #if canImport(AppKit) && !canImport(UIKit)
-    let modifiers = NSEvent.modifierFlags
+    // Phase 63: Use SwiftUI EventModifiers instead of NSEvent.
+    let modifiers = vm.currentModifiers
     if modifiers.contains(.command) {
       if selectedTrackIDs.contains(track.id) {
         selectedTrackIDs.remove(track.id)
@@ -426,9 +422,6 @@ struct ExpandedAlbumView: View {
     } else {
       selectedTrackIDs = [track.id]
     }
-    #else
-    selectedTrackIDs = [track.id]
-    #endif
     lastClickedTrackID = track.id
   }
 
@@ -436,7 +429,8 @@ struct ExpandedAlbumView: View {
     startLocation: CGPoint, currentLocation: CGPoint, sorted: [Track]
   ) {
     #if canImport(AppKit) && !canImport(UIKit)
-    let modifiers = NSEvent.modifierFlags
+    // Phase 63: Use SwiftUI EventModifiers instead of NSEvent.
+    let modifiers = vm.currentModifiers
     // 僅在摁住 Shift 或 Command 時才啟用拖拽選擇，
     // 避免與未來的拖放（drag-and-drop）功能衝突。
     guard modifiers.contains(.shift) || modifiers.contains(.command) else {
