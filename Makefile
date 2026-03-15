@@ -11,7 +11,37 @@ ARCHIVE_PATH := $(ARCHIVE_DIR)/$(ARCHIVE_NAME)
 .PHONY: format lint
 
 format:
-	@swiftformat --swiftversion 5.7 ./
+	@swiftformat --swiftversion 6.1 ./
 
 lint:
 	@git ls-files --exclude-standard | grep -E '\.swift$$' | swiftlint --fix --autocorrect
+
+archive: archive-macOS archive-iOS
+
+archive-iOS:
+	@ARCHIVE_NAME=MadTunes-iOS-$(DATE_FILE)-$(TIME_FILE).xcarchive; \
+	ARCHIVE_PATH=$(ARCHIVE_DIR)/$$ARCHIVE_NAME; \
+	echo "Creating directory: $(ARCHIVE_DIR)"; \
+	mkdir -p "$(ARCHIVE_DIR)"; \
+	echo "Archiving to: $$ARCHIVE_PATH"; \
+	xcodebuild archive \
+		-project MadTunes.xcodeproj \
+		-scheme MadTunes \
+		-configuration Release \
+		-destination "generic/platform=iOS" \
+		-archivePath "$$ARCHIVE_PATH" \
+		-allowProvisioningUpdates
+
+archive-macOS:
+	@ARCHIVE_NAME=MadTunes-macOS-$(DATE_FILE)-$(TIME_FILE).xcarchive; \
+	ARCHIVE_PATH=$(ARCHIVE_DIR)/$$ARCHIVE_NAME; \
+	echo "Creating directory: $(ARCHIVE_DIR)"; \
+	mkdir -p "$(ARCHIVE_DIR)"; \
+	echo "Archiving to: $$ARCHIVE_PATH"; \
+	xcodebuild archive \
+		-project MadTunes.xcodeproj \
+		-scheme MadTunes \
+		-configuration Release \
+		-destination "generic/platform=macOS" \
+		-archivePath "$$ARCHIVE_PATH" \
+		-allowProvisioningUpdates
