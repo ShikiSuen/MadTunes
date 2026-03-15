@@ -215,18 +215,11 @@ struct AlbumTableView: View {
   // Phase 42/46: Menu-style Picker with native Toggle checkmarks for column visibility.
   // Phase 45: Only show hidable columns (playingIndicator is always visible)
   @ViewBuilder private var columnVisibilityMenu: some View {
-    Menu {
-      ForEach(TableColumnType.allCases.filter(\.isHidable)) { column in
-        Toggle(column.localizedName, isOn: Binding(
-          get: { tableVM.isColumnVisible(column) },
-          set: { _ in tableVM.toggleColumnVisibility(column) }
-        ))
-      }
-    } label: {
-      Label(
-        String(localized: "i18n:Table.ColumnFilter.ToolbarButtonTitle", bundle: #bundle),
-        systemImage: "tablecells"
-      )
+    ForEach(TableColumnType.allCases.filter(\.isHidable)) { column in
+      Toggle(column.localizedName, isOn: Binding(
+        get: { tableVM.isColumnVisible(column) },
+        set: { _ in tableVM.toggleColumnVisibility(column) }
+      ))
     }
   }
 

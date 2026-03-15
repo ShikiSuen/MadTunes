@@ -19,6 +19,36 @@ struct MadTunesMainView: View {
       preferredCompactColumn: $viewColumn
     ) {
       SidebarView(library: vm.library, selectedPlaylistID: $vm.selectedPlaylistID)
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            if !vm.library.isImporting {
+              switch OS.isAppKit {
+              case true:
+                Button {
+                  vm.isFolderImporterPresented = true
+                } label: {
+                  Label(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle), systemImage: "folder")
+                }
+              case false:
+                Menu {
+                  Button {
+                    vm.isFileImporterPresented = true
+                  } label: {
+                    Label(String(localized: "i18n:Import.ImportFiles", bundle: #bundle), systemImage: "music.note")
+                  }
+                  Button {
+                    vm.isFolderImporterPresented = true
+                  } label: {
+                    Label(String(localized: "i18n:Import.ImportFolder", bundle: #bundle), systemImage: "folder")
+                  }
+                } label: {
+                  Label(String(localized: "i18n:Import.ImportMusic", bundle: #bundle), systemImage: "plus")
+                    .tint(.primary)
+                }
+              }
+            }
+          }
+        }
         .background {
           Group {
             if colorScheme == .dark {
@@ -117,47 +147,43 @@ struct MadTunesMainView: View {
             }
           }
           .removeSharedBackgroundVisibility(bypassWhen: OS.isAppKit)
-
           ToolbarItem(placement: .primaryAction) {
-            if !vm.library.isImporting, !albums.isEmpty {
-              switch OS.isAppKit {
-              case true:
-                Button {
-                  vm.isFolderImporterPresented = true
-                } label: {
-                  Label(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle), systemImage: "folder")
-                }
+            if !vm.library.tracks.isEmpty {
+              switch vm.useTableView {
               case false:
                 Menu {
-                  Button {
-                    vm.isFileImporterPresented = true
-                  } label: {
-                    Label(String(localized: "i18n:Import.ImportFiles", bundle: #bundle), systemImage: "music.note")
+                  Picker(
+                    String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
+                    selection: $vm.gridVM.albumSortOrder
+                  ) {
+                    ForEach(AlbumSortOrder.allCases, id: \.self) { order in
+                      Text(order.localizedName).tag(order)
+                    }
                   }
-                  Button {
-                    vm.isFolderImporterPresented = true
-                  } label: {
-                    Label(String(localized: "i18n:Import.ImportFolder", bundle: #bundle), systemImage: "folder")
+                  .pickerStyle(.inline)
+                } label: {
+                  Label(
+                    String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
+                    systemImage: "arrow.up.arrow.down"
+                  )
+                  .tint(.primary)
+                }
+                .disabled(vm.library.isImporting)
+              case true:
+                Menu {
+                  ForEach(TableColumnType.allCases.filter(\.isHidable)) { column in
+                    Toggle(column.localizedName, isOn: Binding(
+                      get: { vm.tableVM.isColumnVisible(column) },
+                      set: { _ in vm.tableVM.toggleColumnVisibility(column) }
+                    ))
                   }
                 } label: {
-                  Label(String(localized: "i18n:Import.ImportMusic", bundle: #bundle), systemImage: "plus")
-                    .tint(.primary)
-                }
-              }
-            }
-          }
-          ToolbarItem(placement: .primaryAction) {
-            if !vm.library.isImporting, !albums.isEmpty {
-              Menu {
-                Picker(String(localized: "i18n:Sort.Label", bundle: #bundle), selection: $vm.gridVM.albumSortOrder) {
-                  ForEach(AlbumSortOrder.allCases, id: \.self) { order in
-                    Text(order.localizedName).tag(order)
-                  }
-                }
-                .pickerStyle(.inline)
-              } label: {
-                Label(String(localized: "i18n:Sort.Label", bundle: #bundle), systemImage: "arrow.up.arrow.down")
+                  Label(
+                    String(localized: "i18n:Table.ColumnFilter.ToolbarButtonTitle", bundle: #bundle),
+                    systemImage: "tablecells.badge.ellipsis"
+                  )
                   .tint(.primary)
+                }
               }
             }
           }

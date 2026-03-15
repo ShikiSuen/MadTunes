@@ -78,6 +78,25 @@ public struct MadTunesScene: Scene {
         #endif
       }
       GlobalControlMenuCommands()
+      CommandGroup(before: .toolbar) {
+        if !vm.library.isImporting, !vm.useTableView {
+          Menu {
+            Picker(
+              String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
+              selection: $vm.gridVM.albumSortOrder
+            ) {
+              ForEach(AlbumSortOrder.allCases, id: \.self) { order in
+                Text(order.localizedName).tag(order)
+              }
+            }
+            .pickerStyle(.inline)
+          } label: {
+            Label(String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle), systemImage: "arrow.up.arrow.down")
+              .tint(.primary)
+          }
+          Divider()
+        }
+      }
     }
   }
 

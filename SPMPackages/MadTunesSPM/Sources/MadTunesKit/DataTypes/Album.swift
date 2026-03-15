@@ -79,9 +79,9 @@ public enum AlbumSortOrder: String, CaseIterable, Sendable {
 
   var localizedName: String {
     switch self {
-    case .artistYearTitle: String(localized: "i18n:Sort.ArtistYearTitle", bundle: #bundle)
-    case .artistTitleYear: String(localized: "i18n:Sort.ArtistTitleYear", bundle: #bundle)
-    case .yearArtistTitle: String(localized: "i18n:Sort.YearArtistTitle", bundle: #bundle)
+    case .artistYearTitle: String(localized: "i18n:AlbumSortMethod.ArtistYearTitle", bundle: #bundle)
+    case .artistTitleYear: String(localized: "i18n:AlbumSortMethod.ArtistTitleYear", bundle: #bundle)
+    case .yearArtistTitle: String(localized: "i18n:AlbumSortMethod.YearArtistTitle", bundle: #bundle)
     }
   }
 }
