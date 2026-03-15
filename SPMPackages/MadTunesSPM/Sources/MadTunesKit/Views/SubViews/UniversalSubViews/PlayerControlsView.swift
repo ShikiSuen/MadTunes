@@ -348,6 +348,7 @@ struct PlayerControlsView: View {
     .buttonStyle(.plain)
     .popover(isPresented: $isQueuePopoverPresented) {
       PlayingQueueView(player: player)
+        .environment(vm)
     }
     .help(String(localized: "i18n:Player.PlayingQueue", bundle: #bundle))
   }

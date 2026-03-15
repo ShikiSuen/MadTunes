@@ -139,6 +139,7 @@ struct MadTunesMainView: View {
               Text(String(localized: "i18n:Toolbar.ToggleViewLayout", bundle: #bundle))
             }
             .pickerStyle(.segmented)
+            .fixedSize()
             .onChange(of: vm.useTableView) { _, newValue in
               UserDefaults.standard.set(newValue, forKey: "MadTunes.useTableView")
               Task {
@@ -279,9 +280,11 @@ struct MadTunesMainView: View {
           return vm.gridVM.handleKeyPress(press, albums: displayAlbums)
         }
       }
+    #if os(macOS)
       .onModifierKeysChanged { _, new in
         vm.currentModifiers = new
       }
+    #endif
       .onChange(of: vm.gridVM.expandedAlbumID) { _, _ in
         vm.selectedTrackIDs.removeAll()
       }

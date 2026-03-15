@@ -315,7 +315,11 @@ struct AlbumTableView: View {
         }
       }
     }
+    #if os(macOS)
     .listStyle(.inset(alternatesRowBackgrounds: true))
+    #else
+    .listStyle(.inset)
+    #endif
     .onAppear {
       tableVM.scheduleDisplayedTracksUpdate(to: tracks)
     }

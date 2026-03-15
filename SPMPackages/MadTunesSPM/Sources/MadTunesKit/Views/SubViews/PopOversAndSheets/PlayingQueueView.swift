@@ -78,18 +78,15 @@ struct PlayingQueueView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        #if !os(macOS)
-          .environment(\editMode, .constant(.active))
-        #endif
-          .onKeyPress { press in
-            handleKeyPress(press)
-          }
-          .onChange(of: player.currentIndex) { _, newIndex in
-            highlightedIndex = newIndex
-          }
-          .onAppear {
-            highlightedIndex = player.currentIndex
-          }
+        .onKeyPress { press in
+          handleKeyPress(press)
+        }
+        .onChange(of: player.currentIndex) { _, newIndex in
+          highlightedIndex = newIndex
+        }
+        .onAppear {
+          highlightedIndex = player.currentIndex
+        }
       }
     }
     .frame(width: 460, height: dynamicHeight)
