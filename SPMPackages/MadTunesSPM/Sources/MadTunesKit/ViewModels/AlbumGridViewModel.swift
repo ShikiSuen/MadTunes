@@ -161,44 +161,98 @@ final class AlbumGridViewModel {
     displayedAlbumsUpdateTask?.cancel()
     displayedAlbumsUpdateTask = Task { @MainActor in
       let batchSize = 30
+      let largeUpdateThreshold = 2_000
 
-      // Fast path: ensure immediate visibility of a target album.
-      if ensureVisibleAlbumID != nil {
-        displayedAlbums = newAlbums
+      func isSameIDSequence(_ a: [Album], _ b: [Album]) -> Bool {
+        guard a.count == b.count else { return false }
+        for (aAlbum, bAlbum) in zip(a, b) where aAlbum.id != bAlbum.id {
+          return false
+        }
+        return true
+      }
+
+      func hasPrefixIDs(prefix: [Album], full: [Album]) -> Bool {
+        guard prefix.count <= full.count else { return false }
+        for (aAlbum, bAlbum) in zip(prefix, full) where aAlbum.id != bAlbum.id {
+          return false
+        }
+        return true
+      }
+
+      @MainActor
+      func appendInBatches(
+        _ albums: [Album],
+        startingAt startIndex: Int = 0,
+        ensureVisibleIndex: Int? = nil
+      ) async {
+        var idx = startIndex
+        while idx < albums.count {
+          if Task.isCancelled { return }
+
+          let currentBatchSize: Int
+          if let targetIndex = ensureVisibleIndex, idx <= targetIndex {
+            // Increase batch size when we still need to reach target index.
+            currentBatchSize = min(
+              largeUpdateThreshold,
+              max(batchSize, targetIndex - idx + 1)
+            )
+          } else {
+            currentBatchSize = batchSize
+          }
+
+          let end = min(idx + currentBatchSize, albums.count)
+          displayedAlbums.append(contentsOf: albums[idx ..< end])
+          idx = end
+          await Task.yield()
+        }
+      }
+
+      // No-op if identical by id sequence.
+      if isSameIDSequence(displayedAlbums, newAlbums) {
         displayedAlbumsUpdateTask = nil
         return
       }
 
-      // No-op if identical by id sequence.
-      let newIDs = newAlbums.map(\.id)
-      if displayedAlbums.map(\.id) == newIDs { displayedAlbumsUpdateTask = nil; return }
+      // If we need a specific album to be visible quickly, ensure it is included
+      // in the first batch by prefixing enough albums to contain it.
+      if let targetID = ensureVisibleAlbumID,
+         !displayedAlbums.contains(where: { $0.id == targetID }),
+         let targetIndex = newAlbums.firstIndex(where: { $0.id == targetID }) {
+        let initialCount = min(
+          newAlbums.count,
+          max(batchSize, targetIndex + 1)
+        )
+        displayedAlbums = Array(newAlbums.prefix(initialCount))
+
+        // Continue appending the rest (if any) while still ensuring we progress
+        // toward the full dataset.
+        if initialCount < newAlbums.count {
+          await appendInBatches(newAlbums, startingAt: initialCount, ensureVisibleIndex: targetIndex)
+        }
+
+        displayedAlbumsUpdateTask = nil
+        return
+      }
+
+      // Large update: avoid single-shot replace to prevent UI freeze.
+      if newAlbums.count > largeUpdateThreshold {
+        displayedAlbums.removeAll()
+        await appendInBatches(newAlbums)
+        displayedAlbumsUpdateTask = nil
+        return
+      }
 
       // Initial large load: progressive append.
       if displayedAlbums.isEmpty, newAlbums.count > batchSize {
         displayedAlbums.removeAll()
-        var idx = 0
-        while idx < newAlbums.count {
-          if Task.isCancelled { displayedAlbumsUpdateTask = nil; return }
-          let end = min(idx + batchSize, newAlbums.count)
-          displayedAlbums.append(contentsOf: newAlbums[idx ..< end])
-          idx = end
-          await Task.yield()
-        }
+        await appendInBatches(newAlbums)
         displayedAlbumsUpdateTask = nil
         return
       }
 
       // Append-only fast path.
-      let oldIDs = displayedAlbums.map(\.id)
-      if oldIDs.count <= newIDs.count, Array(newIDs.prefix(oldIDs.count)) == oldIDs {
-        var idx = oldIDs.count
-        while idx < newIDs.count {
-          if Task.isCancelled { displayedAlbumsUpdateTask = nil; return }
-          let end = min(idx + batchSize, newIDs.count)
-          displayedAlbums.append(contentsOf: newAlbums[idx ..< end])
-          idx = end
-          await Task.yield()
-        }
+      if hasPrefixIDs(prefix: displayedAlbums, full: newAlbums) {
+        await appendInBatches(newAlbums, startingAt: displayedAlbums.count)
         displayedAlbumsUpdateTask = nil
         return
       }
