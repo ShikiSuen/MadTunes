@@ -1,6 +1,18 @@
 {
   "colors" : [
     {
+      "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "idiom" : "universal"
+    },
+    {
       "color" : {
         "color-space" : "srgb",
         "components" : {
@@ -10,7 +22,7 @@
           "red" : "0.000"
         }
       },
-      "idiom" : "universal"
+      "idiom" : "mac"
     },
     {
       "appearances" : [
@@ -28,7 +40,7 @@
           "red" : "0.070"
         }
       },
-      "idiom" : "universal"
+      "idiom" : "mac"
     }
   ],
   "info" : {
