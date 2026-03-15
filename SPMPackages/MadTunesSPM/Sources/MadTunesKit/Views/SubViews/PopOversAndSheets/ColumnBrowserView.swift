@@ -129,9 +129,14 @@ struct ColumnBrowserView: View {
           .listRowBackground(Color.clear)
       }
     }
+    #if os(macOS)
     .contextMenu(forSelectionType: String.self) { _ in } primaryAction: { _ in
       vm.playFilteredTracks()
     }
+    #else
+      // On iOS, we purposely avoid attaching a primary action to prevent "double-tap to play" behavior.
+    .contextMenu(forSelectionType: String.self) { _ in }
+    #endif
     .tableColumnHeaders(.hidden)
     .tableStyle(.inset)
     .contrast(colorScheme == .dark ? 1.5 : 1)
