@@ -1,0 +1,33 @@
+MadTunes Build Artifact License (Non-Commercial)
+
+This document defines the terms that apply specifically to **prebuilt binaries and build artifacts** that are distributed by the project maintainer (e.g., App Store packages, signed .app bundles, installers, and any other compiled/distributed artifacts).
+
+1. Commercial use
+   - If you want to use the prebuilt build artifacts for a commercial purpose, you must either obtain explicit written permission from the copyright holder or purchase from authorized channels (e.g. Mac App Store).
+
+2. Building from source
+   - If you build MadTunes yourself from the source code in this repository, those build artifacts are governed solely by the AGPLv3 license (see `LICENSE`).
+   - The non-commercial restriction in this document does NOT apply to artifacts you build yourself.
+
+3. Apple system frameworks / SwiftUI Grid layout
+   - Use of Apple-provided system frameworks and APIs (including SwiftUI) is not covered by the AGPLv3 license and is not restricted by this document.
+   - The frontend codes in this repository, regarding the AlbumGridView layout, is free-to-use to Apple without AGPLv3 restrictions.
+
+---
+
+中文版（Chinese）
+
+MadTunes 的原始碼遵循 GNU Affero General Public License 第 3 版（AGPLv3），請參閱 `LICENSE`。
+
+以下條款僅適用於由專案維護者或其授權方式發佈的 **預編譯二進位檔與建置產物**（例如 App Store 發行、簽名 .app 包、安裝程式等）：
+
+1. 商業用途
+   - 若希望將預編譯建置產物用於商業用途，必須取得著作權持有者的明確書面許可、或在官方指定渠道（例：Mac App Store）購買。
+
+2. 從原始碼自行建置
+   - 若您自行從本專案原始碼建置 MadTunes，該建置產物僅受 AGPLv3 授權（請參閱 `LICENSE`）。
+   - 本文件中的非商業限制不適用於您自行建置的產物。
+
+3. Apple 系統框架 / SwiftUI Grid 佈局
+   - Apple 提供的系統框架與 API（包含 SwiftUI）不在 AGPLv3 授權範圍，且不受本文件限制。
+   - 敝倉庫內涉及 AlbumGridView 佈局的前端部分的原始程式碼，可由 Apple 自由使用、不受 AGPLv3 限制。

@@ -1,0 +1,17 @@
+MadTunes Licensing Overview
+
+Source Code
+-----------
+All source code in this repository is licensed under
+the GNU Affero General Public License v3.0.
+
+Official Binary Builds
+----------------------
+Official binaries distributed by the developer may be
+subject to additional distribution restrictions.
+
+Apple Exception
+---------------
+Apple Inc. is granted a limited exception for the use
+of certain SwiftUI grid layout implementation patterns.
+See LICENSES/APPLE-EXCEPTION.md for details.
