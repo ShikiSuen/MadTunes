@@ -11,6 +11,8 @@ import SwiftUI
 /// Phase 60: Sub-ViewModel for AlbumTableView.
 /// Extracts column visibility/width persistence, display buffering,
 /// and context-menu state from the View layer.
+///
+/// In-memory track data is managed in MadTunesViewModel.
 @Observable
 @MainActor
 final class AlbumTableViewModel {
@@ -21,6 +23,16 @@ final class AlbumTableViewModel {
   // MARK: Internal
 
   var mainVM: MadTunesViewModel?
+
+  // MARK: - Dedicated Properties
+
+  /// Table view: anchor for Shift+Click/Arrow range selection.
+  var tableSelectionAnchorID: UUID?
+  /// Table view: moving cursor (highlighted row).
+  var tableSelectionCursorID: UUID?
+  /// Phase 42: Set during keyboard navigation to auto-scroll the table.
+  /// Not set on mouse click; reset to nil after the scroll completes.
+  var tableScrollTargetID: UUID?
 
   // MARK: - Display Buffer
 
@@ -61,6 +73,9 @@ final class AlbumTableViewModel {
   var newPlaylistName = ""
   var trackIDsForNewPlaylist: Set<UUID> = []
 
+  /// Phase 44: Table view column sorting (column type, ascending?)
+  var tableSortCriteria: (column: TableColumnType, ascending: Bool)?
+
   /// Returns visible columns in display order.
   /// Playing indicator is always first and always visible.
   var visibleColumns: [TableColumnType] {
@@ -68,6 +83,153 @@ final class AlbumTableViewModel {
       $0 != .playingIndicator && isColumnVisible($0)
     }
     return [.playingIndicator] + (userVisible.isEmpty ? [.name] : userVisible)
+  }
+
+  /// Flat track list for table view (filtered + table-sorted).
+  /// Replaces the old `currentTracks` / `currentTracks(fromAlbums:)`.
+  var currentTracksDisplayed: [Track] {
+    guard let mainVM else { return [] }
+    let tracks = mainVM.filteredTracksBase
+    guard let criteria = tableSortCriteria else { return tracks }
+    return sortedTracks(tracks, by: criteria)
+  }
+
+  /// Whether the currently selected playlist supports drag‑reordering.
+  ///
+  /// Enabled for user static playlists and Favorites, disabled for All Music and
+  /// any dynamic playlists. Also disabled when table sorting is active to avoid
+  /// reordering a sorted view.
+  var canReorderCurrentPlaylist: Bool {
+    guard let mainVM else { return false }
+    guard let playlistID = mainVM.selectedPlaylistID,
+          let index = mainVM.library.playlists.firstIndex(where: { $0.id == playlistID })
+    else {
+      return false
+    }
+    // All Music (index 0) should never be reorderable.
+    if index == 0 { return false }
+
+    let playlist = mainVM.library.playlists[index]
+    let isFavorites = playlist.kind == .system && index == 1
+    let isStatic = playlist.kind == .staticList
+    // Don't allow reordering while the table is sorted or filtered, since the
+    // visible order would not map cleanly back to the playlist order.
+    let canReorder = (isFavorites || isStatic)
+      && tableSortCriteria == nil
+      && mainVM.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      && !mainVM.isColumnBrowserFiltering
+    return canReorder
+  }
+
+  // MARK: - Phase 52: Menu command helpers for track reordering
+
+  /// Whether the selected tracks can be moved up in the current playlist.
+  var canMoveSelectedTracksUp: Bool {
+    guard let mainVM else { return false }
+    guard mainVM.useTableView, canReorderCurrentPlaylist, !mainVM.selectedTrackIDs.isEmpty else { return false }
+    let tracks = currentTracksDisplayed
+    let firstSelectedIdx = tracks.firstIndex { mainVM.selectedTrackIDs.contains($0.id) }
+    return (firstSelectedIdx ?? 0) > 0
+  }
+
+  /// Whether the selected tracks can be moved down in the current playlist.
+  var canMoveSelectedTracksDown: Bool {
+    guard let mainVM else { return false }
+    guard mainVM.useTableView, canReorderCurrentPlaylist, !mainVM.selectedTrackIDs.isEmpty else { return false }
+    let tracks = currentTracksDisplayed
+    let lastSelectedIdx = tracks.lastIndex { mainVM.selectedTrackIDs.contains($0.id) }
+    return (lastSelectedIdx ?? tracks.count - 1) < tracks.count - 1
+  }
+
+  // MARK: - Table Sorting
+
+  // Phase 44: Get sort indicator for column header
+  func sortIndicator(for column: TableColumnType) -> String? {
+    guard let criteria = tableSortCriteria, criteria.column == column else { return nil }
+    return criteria.ascending ? " ▲" : " ▼"
+  }
+
+  // Phase 44: Clear sorting (switch back to album order)
+  func clearTableSorting() {
+    tableSortCriteria = nil
+  }
+
+  // Phase 44: Set or toggle column sort
+  func setTableSort(column: TableColumnType) {
+    if let current = tableSortCriteria, current.column == column {
+      // Toggle direction
+      let newAscending = !current.ascending
+      if newAscending {
+        // Third click: clear sort
+        tableSortCriteria = nil
+      } else {
+        tableSortCriteria = (column: column, ascending: newAscending)
+      }
+    } else {
+      tableSortCriteria = (column: column, ascending: true)
+    }
+  }
+
+  /// Sorts tracks by the given table column criteria.
+  /// Uses pre-computed `Track.folderPath` to avoid repeated URL operations.
+  func sortedTracks(_ tracks: [Track], by criteria: (column: TableColumnType, ascending: Bool)) -> [Track] {
+    let ascending = criteria.ascending
+    return tracks.sorted {
+      switch criteria.column {
+      case .name:
+        return ascending ? $0.title < $1.title : $0.title > $1.title
+      case .length:
+        return ascending ? $0.duration < $1.duration : $0.duration > $1.duration
+      case .artist:
+        return ascending ? $0.artist < $1.artist : $0.artist > $1.artist
+      case .albumTitle:
+        return ascending ? $0.albumTitle < $1.albumTitle : $0.albumTitle > $1.albumTitle
+      case .albumArtist:
+        return ascending ? $0.albumArtist < $1.albumArtist : $0.albumArtist > $1.albumArtist
+      case .trackNumber:
+        let disc0 = $0.discNumber, disc1 = $1.discNumber
+        let track0 = $0.trackNumber, track1 = $1.trackNumber
+        if disc0 != disc1 {
+          return ascending ? disc0 < disc1 : disc0 > disc1
+        }
+        return ascending ? track0 < track1 : track0 > track1
+      case .genre:
+        return ascending ? $0.genre < $1.genre : $0.genre > $1.genre
+      case .year:
+        let y0 = $0.year ?? Int.min, y1 = $1.year ?? Int.min
+        return ascending ? y0 < y1 : y0 > y1
+      case .folder:
+        return ascending ? $0.folderPath < $1.folderPath : $0.folderPath > $1.folderPath
+      case .playingIndicator:
+        return ascending ? $0.title < $1.title : $0.title > $1.title
+      }
+    }
+  }
+
+  // MARK: - Track In-Playlist Position Relocators
+
+  func moveTracksInCurrentPlaylist(trackIDs: [UUID], toIndex: Int) {
+    guard let mainVM else { return }
+    guard canReorderCurrentPlaylist, let playlistID = mainVM.selectedPlaylistID else { return }
+    mainVM.library.moveTracks(trackIDs, inPlaylist: playlistID, toIndex: toIndex)
+  }
+
+  /// Moves selected tracks one position up. Called by menu command (Option+↑).
+  func moveSelectedTracksUp() {
+    guard let mainVM else { return }
+    let tracks = currentTracksDisplayed
+    let orderedSelected = tracks.enumerated().filter { mainVM.selectedTrackIDs.contains($0.element.id) }
+    guard let firstIdx = orderedSelected.first?.offset, firstIdx > 0 else { return }
+    moveTracksInCurrentPlaylist(trackIDs: orderedSelected.map(\.element.id), toIndex: firstIdx - 1)
+  }
+
+  /// Moves selected tracks one position down. Called by menu command (Option+↓).
+  func moveSelectedTracksDown() {
+    guard let mainVM else { return }
+    let tracks = currentTracksDisplayed
+    let orderedSelected = tracks.enumerated().filter { mainVM.selectedTrackIDs.contains($0.element.id) }
+    guard let lastIdx = orderedSelected.last?.offset, lastIdx < tracks.count - 1 else { return }
+    moveTracksInCurrentPlaylist(trackIDs: orderedSelected.map(\.element.id), toIndex: lastIdx + 2)
   }
 
   // MARK: - Column Visibility Methods
@@ -172,7 +334,7 @@ final class AlbumTableViewModel {
   /// This handler intercepts: Cmd+C copy, Cmd+↓/Return/Space to play.
   func handleKeyPress(_ press: KeyPress) -> KeyPress.Result {
     guard let mainVM else { return .ignored }
-    let tracks = mainVM.currentTracksDisplayed
+    let tracks = currentTracksDisplayed
     guard !tracks.isEmpty else { return .ignored }
 
     // CMD+C: Copy selected tracks metadata.

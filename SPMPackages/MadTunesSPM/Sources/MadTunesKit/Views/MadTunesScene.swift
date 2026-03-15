@@ -30,7 +30,7 @@ public struct MadTunesScene: Scene {
         switch OS.isAppKit {
         case true:
           Button {
-            viewModel.isFolderImporterPresented = true
+            vm.isFolderImporterPresented = true
           } label: {
             Label(
               String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle),
@@ -40,7 +40,7 @@ public struct MadTunesScene: Scene {
           .keyboardShortcut("o")
         case false:
           Button {
-            viewModel.isFileImporterPresented = true
+            vm.isFileImporterPresented = true
           } label: {
             Label(
               String(localized: "i18n:Import.ImportFiles", bundle: #bundle),
@@ -49,7 +49,7 @@ public struct MadTunesScene: Scene {
           }
           .keyboardShortcut("o")
           Button {
-            viewModel.isFolderImporterPresented = true
+            vm.isFolderImporterPresented = true
           } label: {
             Label(
               String(localized: "i18n:Import.ImportFolder", bundle: #bundle),
@@ -61,10 +61,10 @@ public struct MadTunesScene: Scene {
         #if DEBUG
         Divider()
         Menu {
-          if !viewModel.library.isImporting, !viewModel.library.albums.isEmpty {
+          if !vm.library.isImporting, !vm.library.albums.isEmpty {
             Button(role: .destructive) {
-              viewModel.player.stop()
-              viewModel.library.clearDatabase()
+              vm.player.stop()
+              vm.library.clearDatabase()
             } label: {
               Label(
                 String(localized: "i18n:Debug.ClearDatabase", bundle: #bundle),
@@ -83,5 +83,5 @@ public struct MadTunesScene: Scene {
 
   // MARK: Private
 
-  @State private var viewModel = MadTunesViewModel.shared
+  @State private var vm = MadTunesViewModel.shared
 }

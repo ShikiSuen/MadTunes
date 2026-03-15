@@ -26,14 +26,12 @@ struct ExpandedAlbumView: View {
     currentTrackID: UUID? = nil,
     containerWidth: CGFloat,
     selectedTrackIDs: Binding<Set<UUID>>,
-    onTrackSelected: @escaping (Track, [Track]) -> Void,
     onClose: @escaping () -> Void
   ) {
     self.album = album
     self.currentTrackID = currentTrackID
     self.containerWidth = containerWidth
     self._selectedTrackIDs = selectedTrackIDs
-    self.onTrackSelected = onTrackSelected
     self.onClose = onClose
   }
 
@@ -59,7 +57,7 @@ struct ExpandedAlbumView: View {
         // Phase 38: Double-click to play album
         let sorted = album.tracks
         if let first = sorted.first {
-          onTrackSelected(first, sorted)
+          vm.gridVM.onTrackDoubleClicked(first, albumTracks: sorted)
         }
       }
       .contextMenu {
@@ -182,7 +180,6 @@ struct ExpandedAlbumView: View {
   private let album: Album
   private var currentTrackID: UUID?
   private let containerWidth: CGFloat
-  private let onTrackSelected: (Track, [Track]) -> Void
   private let onClose: () -> Void
 
   /// Track list width computed deterministically from the parent container width.
@@ -209,7 +206,7 @@ struct ExpandedAlbumView: View {
       Button {
         let sorted = album.tracks
         if let first = sorted.first {
-          onTrackSelected(first, sorted)
+          vm.gridVM.onTrackDoubleClicked(first, albumTracks: sorted)
         }
       } label: {
         Image(systemName: "play.circle.fill")
@@ -269,7 +266,7 @@ struct ExpandedAlbumView: View {
                 // 這樣在執行內層雙擊任務時會連帶觸發單擊的操作。但在當前視圖這是符合需求的行為。
                 .onTapGesture(count: 2) {
                   Task { @MainActor in
-                    onTrackSelected(track, sorted)
+                    vm.gridVM.onTrackDoubleClicked(track, albumTracks: sorted)
                   }
                 }
                 .simultaneousGesture(

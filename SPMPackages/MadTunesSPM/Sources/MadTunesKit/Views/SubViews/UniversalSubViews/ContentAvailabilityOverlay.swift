@@ -22,9 +22,9 @@ struct ContentAvailabilityOverlay: View {
 
   var body: some View {
     Group {
-      if viewModel.library.isImporting {
+      if vm.library.isImporting {
         VStack(spacing: 8) {
-          let progress = viewModel.library.importProgress
+          let progress = vm.library.importProgress
           let hasFileImporting = progress.totalCount > 0
           let finished = progress.finishedCount
           let total = progress.totalCount
@@ -61,7 +61,7 @@ struct ContentAvailabilityOverlay: View {
             .ignoresSafeArea()
         }
         .compositingGroup()
-      } else if !viewModel.library.hasLoadedPersistence {
+      } else if !vm.library.hasLoadedPersistence {
         Gradient.ColorMeshGradient
           .ignoresSafeArea()
           .overlay {
@@ -78,7 +78,7 @@ struct ContentAvailabilityOverlay: View {
             }
           }
           .compositingGroup()
-      } else if viewModel.isSearching {
+      } else if vm.isSearching {
         Gradient.ColorMeshGradient
           .ignoresSafeArea()
           .overlay {
@@ -119,18 +119,18 @@ struct ContentAvailabilityOverlay: View {
                 switch OS.isAppKit {
                 case true:
                   Button(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle)) {
-                    viewModel.isFolderImporterPresented = true
+                    vm.isFolderImporterPresented = true
                   }
                   .buttonStyle(.borderedProminent)
                   .buttonBorderShape(.capsule)
                 case false:
                   Button(String(localized: "i18n:Import.ImportFiles", bundle: #bundle)) {
-                    viewModel.isFileImporterPresented = true
+                    vm.isFileImporterPresented = true
                   }
                   .buttonStyle(.borderedProminent)
                   .buttonBorderShape(.capsule)
                   Button(String(localized: "i18n:Import.ImportFolder", bundle: #bundle)) {
-                    viewModel.isFolderImporterPresented = true
+                    vm.isFolderImporterPresented = true
                   }
                   .buttonStyle(.borderedProminent)
                   .buttonBorderShape(.capsule)
@@ -147,15 +147,15 @@ struct ContentAvailabilityOverlay: View {
           .compositingGroup()
       }
     }
-    .animation(.easeOut(duration: 0.12), value: viewModel.library.hasLoadedPersistence)
-    .animation(.easeOut(duration: 0.12), value: viewModel.isSearching)
-    .animation(.easeOut(duration: 0.12), value: viewModel.library.isImporting)
+    .animation(.easeOut(duration: 0.12), value: vm.library.hasLoadedPersistence)
+    .animation(.easeOut(duration: 0.12), value: vm.isSearching)
+    .animation(.easeOut(duration: 0.12), value: vm.library.isImporting)
     .animation(.easeOut(duration: 0.12), value: hasActiveFilters)
   }
 
   // MARK: Private
 
-  @Environment(MadTunesViewModel.self) private var viewModel
+  @Environment(MadTunesViewModel.self) private var vm
   @State private var currentProcessingFileName: String = ""
   @State private var currentProcessingFileCount: Int = 0
 
@@ -165,20 +165,20 @@ struct ContentAvailabilityOverlay: View {
   /// 是否為「All Music」頁面（playlists[0]）。
   private var isAllMusicPage: Bool {
     guard let playlist = selectedPlaylist else { return true }
-    return playlist.id == viewModel.library.playlists.first?.id
+    return playlist.id == vm.library.playlists.first?.id
   }
 
   /// 是否為「Favorites」頁面。
   private var isFavoritesPage: Bool {
     guard let playlist = selectedPlaylist,
-          viewModel.library.playlists.count > 1 else { return false }
-    return playlist.id == viewModel.library.playlists[1].id
+          vm.library.playlists.count > 1 else { return false }
+    return playlist.id == vm.library.playlists[1].id
   }
 
   /// Phase 51: 是否有活動的篩選條件（搜尋文字或 Column Browser 篩選）。
   private var hasActiveFilters: Bool {
-    let hasSearchText = !searchTokens(from: viewModel.searchText).isEmpty
-    let hasColumnBrowserFilter = viewModel.isColumnBrowserFiltering
+    let hasSearchText = !searchTokens(from: vm.searchText).isEmpty
+    let hasColumnBrowserFilter = vm.isColumnBrowserFiltering
     return hasSearchText || hasColumnBrowserFilter
   }
 

@@ -19,7 +19,7 @@ struct GlobalControlMenuCommands: Commands {
         bundle: #bundle
       )
     ) {
-      if viewModel.useTableView {
+      if vm.useTableView {
         commandsOfControlForAlbumTableView
       } else {
         commandsOfControlForAlbumGridView
@@ -29,7 +29,7 @@ struct GlobalControlMenuCommands: Commands {
 
   // MARK: Private
 
-  @State private var viewModel = MadTunesViewModel.shared
+  @State private var vm = MadTunesViewModel.shared
 
   // MARK: - Grid Mode Commands
 
@@ -37,20 +37,20 @@ struct GlobalControlMenuCommands: Commands {
     // Phase 63: Play / Expand — Cmd+↓
     Section {
       Button {
-        let albums = viewModel.currentAlbumsDisplayed
-        if let expandedID = viewModel.expandedAlbumID,
+        let albums = vm.gridVM.currentAlbumsDisplayed
+        if let expandedID = vm.gridVM.expandedAlbumID,
            let album = albums.first(where: { $0.id == expandedID }) {
-          let selected = album.tracks.filter { viewModel.selectedTrackIDs.contains($0.id) }
+          let selected = album.tracks.filter { vm.selectedTrackIDs.contains($0.id) }
           if !selected.isEmpty {
-            viewModel.player.setQueue(selected, startingAt: 0)
+            vm.player.setQueue(selected, startingAt: 0)
           } else {
             withAnimation(.easeInOut(duration: 0.3)) {
-              viewModel.expandedAlbumID = nil
+              vm.gridVM.expandedAlbumID = nil
             }
           }
-        } else if viewModel.highlightedAlbumIDs.count == 1 {
+        } else if vm.gridVM.highlightedAlbumIDs.count == 1 {
           withAnimation(.easeInOut(duration: 0.3)) {
-            viewModel.expandedAlbumID = viewModel.highlightedAlbumIDs.first
+            vm.gridVM.expandedAlbumID = vm.gridVM.highlightedAlbumIDs.first
           }
         }
       } label: {
@@ -68,7 +68,7 @@ struct GlobalControlMenuCommands: Commands {
       // Collapse — Cmd+↑
       Button {
         withAnimation(.easeInOut(duration: 0.3)) {
-          viewModel.expandedAlbumID = nil
+          vm.gridVM.expandedAlbumID = nil
         }
       } label: {
         Label(
@@ -81,7 +81,7 @@ struct GlobalControlMenuCommands: Commands {
         )
       }
       .keyboardShortcut(.upArrow, modifiers: [.command])
-      .disabled(viewModel.expandedAlbumID == nil)
+      .disabled(vm.gridVM.expandedAlbumID == nil)
     }
   }
 
@@ -91,10 +91,10 @@ struct GlobalControlMenuCommands: Commands {
     // Phase 63: Play selected — Cmd+↓
     Section {
       Button {
-        let tracks = viewModel.currentTracksDisplayed
-        let selected = tracks.filter { viewModel.selectedTrackIDs.contains($0.id) }
+        let tracks = vm.tableVM.currentTracksDisplayed
+        let selected = tracks.filter { vm.selectedTrackIDs.contains($0.id) }
         if !selected.isEmpty {
-          viewModel.player.setQueue(selected, startingAt: 0)
+          vm.player.setQueue(selected, startingAt: 0)
         }
       } label: {
         Label(
@@ -107,12 +107,12 @@ struct GlobalControlMenuCommands: Commands {
         )
       }
       .keyboardShortcut(.downArrow, modifiers: [.command])
-      .disabled(viewModel.selectedTrackIDs.isEmpty)
+      .disabled(vm.selectedTrackIDs.isEmpty)
     }
     // Phase 52: Menu commands for playlist track reordering.
     Section {
       Button {
-        viewModel.moveSelectedTracksUp()
+        vm.tableVM.moveSelectedTracksUp()
       } label: {
         Label(
           String(
@@ -124,9 +124,9 @@ struct GlobalControlMenuCommands: Commands {
         )
       }
       .keyboardShortcut(.upArrow, modifiers: [.option])
-      .disabled(!viewModel.canMoveSelectedTracksUp)
+      .disabled(!vm.tableVM.canMoveSelectedTracksUp)
       Button {
-        viewModel.moveSelectedTracksDown()
+        vm.tableVM.moveSelectedTracksDown()
       } label: {
         Label(
           String(
@@ -138,7 +138,7 @@ struct GlobalControlMenuCommands: Commands {
         )
       }
       .keyboardShortcut(.downArrow, modifiers: [.option])
-      .disabled(!viewModel.canMoveSelectedTracksDown)
+      .disabled(!vm.tableVM.canMoveSelectedTracksDown)
     }
   }
 }

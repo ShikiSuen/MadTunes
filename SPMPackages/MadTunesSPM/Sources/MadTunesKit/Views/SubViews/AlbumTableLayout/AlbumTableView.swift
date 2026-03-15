@@ -95,15 +95,7 @@ struct AlbumTableView: View {
   // MARK: Lifecycle
 
   /// Phase 62: Simplified init — selectedTrackIDs read from vm directly.
-  init(
-    tracks: [Track],
-    currentTrackID: UUID? = nil,
-    onTrackDoubleClicked: @escaping (Track, [Track]) -> Void = { _, _ in }
-  ) {
-    self.tracks = tracks
-    self.currentTrackID = currentTrackID
-    self.onTrackDoubleClicked = onTrackDoubleClicked
-  }
+  init() {}
 
   // MARK: Internal
 
@@ -161,9 +153,14 @@ struct AlbumTableView: View {
 
   @State private var vm: MadTunesViewModel = .shared
 
-  private let tracks: [Track]
-  private let currentTrackID: UUID?
-  private let onTrackDoubleClicked: (Track, [Track]) -> Void
+  // Phase 53: Only show playing indicator when actively playing.
+  private var currentTrackID: UUID? {
+    vm.player.isPlaying ? vm.player.currentTrack?.id : nil
+  }
+
+  private var tracks: [Track] {
+    vm.tableVM.currentTracksDisplayed
+  }
 
   // Phase 60: Sub-ViewModel reference.
   private var tableVM: AlbumTableViewModel { vm.tableVM }
@@ -251,10 +248,10 @@ struct AlbumTableView: View {
       .contentShape(.rect)
     } else {
       Button(action: {
-        vm.setTableSort(column: column)
+        vm.tableVM.setTableSort(column: column)
       }) {
         HStack(spacing: 4) {
-          Text(column.localizedName + (vm.sortIndicator(for: column) ?? ""))
+          Text(column.localizedName + (vm.tableVM.sortIndicator(for: column) ?? ""))
             .font(.system(size: 11, weight: .medium))
             .lineLimit(1)
           Spacer(minLength: 0)
@@ -301,7 +298,7 @@ struct AlbumTableView: View {
 
   @ViewBuilder
   private func trackList(scrollProxy proxy: ScrollViewProxy) -> some View {
-    let canReorder = vm.canReorderCurrentPlaylist
+    let canReorder = vm.tableVM.canReorderCurrentPlaylist
     List(selection: Bindable(vm).selectedTrackIDs) {
       // Phase 52: Conditionally apply .onMove — only for playlists that
       // support reordering. This prevents List from showing drag affordances
@@ -339,18 +336,16 @@ struct AlbumTableView: View {
       }
     }, primaryAction: { ids in
       // Double-click: play starting from the first selected track.
-      guard let firstID = ids.first,
-            let track = tableVM.displayedTracks.first(where: { $0.id == firstID }) else { return }
-      onTrackDoubleClicked(track, tableVM.displayedTracks)
+      onTrackDoubleClicked(ids: ids)
     })
-    .onChange(of: vm.tableScrollTargetID) { _, newID in
+    .onChange(of: vm.tableVM.tableScrollTargetID) { _, newID in
       if let id = newID {
         Task {
           withAnimation(.easeInOut(duration: 0.3)) {
             proxy.scrollTo(id, anchor: .center)
           }
         }
-        vm.tableScrollTargetID = nil
+        vm.tableVM.tableScrollTargetID = nil
       }
     }
   }
@@ -474,11 +469,21 @@ struct AlbumTableView: View {
     )
   }
 
+  private func onTrackDoubleClicked(ids: Set<UUID>) {
+    guard let firstID = ids.first else { return }
+    let track = tableVM.displayedTracks.first(where: { $0.id == firstID })
+    guard let track else { return }
+    // when a user double-clicks in the table we treat it as playing
+    // the full filtered list beginning at that track
+    let startIndex = tracks.firstIndex(where: { $0.id == track.id }) ?? 0
+    vm.player.setQueue(tracks, startingAt: startIndex)
+  }
+
   /// Phase 52: Handles the `.onMove` callback from ForEach drag-reorder.
   /// Translates IndexSet + destination into the `moveTracks` API.
   private func handleOnMove(from source: IndexSet, to destination: Int) {
-    guard vm.canReorderCurrentPlaylist else { return }
+    guard vm.tableVM.canReorderCurrentPlaylist else { return }
     let ids = source.map { tableVM.displayedTracks[$0].id }
-    vm.moveTracksInCurrentPlaylist(trackIDs: ids, toIndex: destination)
+    vm.tableVM.moveTracksInCurrentPlaylist(trackIDs: ids, toIndex: destination)
   }
 }

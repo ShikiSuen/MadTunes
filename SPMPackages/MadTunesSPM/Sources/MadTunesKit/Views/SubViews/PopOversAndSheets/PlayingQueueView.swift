@@ -99,7 +99,7 @@ struct PlayingQueueView: View {
 
   @State private var player: AudioPlayer
 
-  @Environment(MadTunesViewModel.self) private var viewModel
+  @Environment(MadTunesViewModel.self) private var vm
   @State private var highlightedIndex: Int?
 
   private var dynamicHeight: CGFloat? {
@@ -120,8 +120,8 @@ struct PlayingQueueView: View {
   }
 
   private func artworkData(for track: Track) -> Data? {
-    let key = viewModel.library.albumKey(title: track.albumTitle, artist: track.albumArtist)
-    return viewModel.library.artworkCache[key]
+    let key = vm.library.albumKey(title: track.albumTitle, artist: track.albumArtist)
+    return vm.library.artworkCache[key]
   }
 
   private func removeFromQueue(at index: Int) {

@@ -14,12 +14,11 @@ struct MadTunesMainView: View {
   // MARK: Internal
 
   var body: some View {
-    @Bindable var vm = viewModel
     NavigationSplitView(
-      columnVisibility: $vm.screenVM.splitViewVisibility,
+      columnVisibility: Bindable(vm).screenVM.splitViewVisibility,
       preferredCompactColumn: $viewColumn
     ) {
-      SidebarView(library: viewModel.library, selectedPlaylistID: $vm.selectedPlaylistID)
+      SidebarView(library: vm.library, selectedPlaylistID: $vm.selectedPlaylistID)
         .background {
           Group {
             if colorScheme == .dark {
@@ -39,7 +38,7 @@ struct MadTunesMainView: View {
         .environment(\.colorScheme, .dark)
         .navigationSplitViewColumnWidth(min: 210, ideal: 210, max: 210)
     } detail: {
-      let albums = viewModel.currentAlbumsDisplayed
+      let albums = vm.gridVM.currentAlbumsDisplayed
       contentArea(albums: albums)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
@@ -55,7 +54,7 @@ struct MadTunesMainView: View {
                   allowsMultipleSelection: true
                 ) { result in
                   if case let .success(urls) = result {
-                    viewModel.importURLs(urls)
+                    vm.importURLs(urls)
                   }
                 }
             case false:
@@ -66,7 +65,7 @@ struct MadTunesMainView: View {
                   allowsMultipleSelection: true
                 ) { result in
                   if case let .success(urls) = result {
-                    viewModel.importURLs(urls)
+                    vm.importURLs(urls)
                   }
                 }
               Color.clear
@@ -76,7 +75,7 @@ struct MadTunesMainView: View {
                   allowsMultipleSelection: true
                 ) { result in
                   if case let .success(urls) = result {
-                    viewModel.importURLs(urls)
+                    vm.importURLs(urls)
                   }
                 }
             }
@@ -86,7 +85,7 @@ struct MadTunesMainView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
           ZStack {
             BottomBarBackground()
-            PlayerControlsView(player: viewModel.player, artworkData: viewModel.currentTrackArtwork)
+            PlayerControlsView(player: vm.player, artworkData: vm.currentTrackArtwork)
               .fixedSize()
               .frame(maxWidth: .infinity)
               .padding([.horizontal, .bottom], 12)
@@ -105,14 +104,14 @@ struct MadTunesMainView: View {
               Text(String(localized: "i18n:Toolbar.ToggleViewLayout", bundle: #bundle))
             }
             .pickerStyle(.segmented)
-            .onChange(of: viewModel.useTableView) { _, newValue in
+            .onChange(of: vm.useTableView) { _, newValue in
               UserDefaults.standard.set(newValue, forKey: "MadTunes.useTableView")
               Task {
                 if newValue {
                   // when entering table mode we no longer need an expanded album
-                  viewModel.expandedAlbumID = nil
-                  viewModel.highlightedAlbumIDs.removeAll()
-                  viewModel.selectedTrackIDs.removeAll()
+                  vm.gridVM.expandedAlbumID = nil
+                  vm.gridVM.highlightedAlbumIDs.removeAll()
+                  vm.selectedTrackIDs.removeAll()
                 }
               }
             }
@@ -120,23 +119,23 @@ struct MadTunesMainView: View {
           .removeSharedBackgroundVisibility(bypassWhen: OS.isAppKit)
 
           ToolbarItem(placement: .primaryAction) {
-            if !viewModel.library.isImporting, !albums.isEmpty {
+            if !vm.library.isImporting, !albums.isEmpty {
               switch OS.isAppKit {
               case true:
                 Button {
-                  viewModel.isFolderImporterPresented = true
+                  vm.isFolderImporterPresented = true
                 } label: {
                   Label(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle), systemImage: "folder")
                 }
               case false:
                 Menu {
                   Button {
-                    viewModel.isFileImporterPresented = true
+                    vm.isFileImporterPresented = true
                   } label: {
                     Label(String(localized: "i18n:Import.ImportFiles", bundle: #bundle), systemImage: "music.note")
                   }
                   Button {
-                    viewModel.isFolderImporterPresented = true
+                    vm.isFolderImporterPresented = true
                   } label: {
                     Label(String(localized: "i18n:Import.ImportFolder", bundle: #bundle), systemImage: "folder")
                   }
@@ -148,9 +147,9 @@ struct MadTunesMainView: View {
             }
           }
           ToolbarItem(placement: .primaryAction) {
-            if !viewModel.library.isImporting, !albums.isEmpty {
+            if !vm.library.isImporting, !albums.isEmpty {
               Menu {
-                Picker(String(localized: "i18n:Sort.Label", bundle: #bundle), selection: $vm.albumSortOrder) {
+                Picker(String(localized: "i18n:Sort.Label", bundle: #bundle), selection: $vm.gridVM.albumSortOrder) {
                   ForEach(AlbumSortOrder.allCases, id: \.self) { order in
                     Text(order.localizedName).tag(order)
                   }
@@ -163,7 +162,7 @@ struct MadTunesMainView: View {
             }
           }
           ToolbarItem(placement: .primaryAction) {
-            if (!viewModel.library.isImporting && !albums.isEmpty) || !searchTokens(from: vm.searchText).isEmpty {
+            if (!vm.library.isImporting && !albums.isEmpty) || !searchTokens(from: vm.searchText).isEmpty {
               Menu {
                 Picker(
                   String(localized: "i18n:Search.SearchFields", bundle: #bundle),
@@ -187,22 +186,22 @@ struct MadTunesMainView: View {
     }
     #if os(macOS) || targetEnvironment(macCatalyst)
     .onDrop(of: [.fileURL, .folder], isTargeted: $vm.isDropTargeted) { providers in
-      viewModel.handleDrop(providers)
+      vm.handleDrop(providers)
     }
     #endif
     .fontWidth(.condensed)
     .tint(.madTunesAccent)
     .trackScreenVMParameters()
-    .environment(viewModel)
+    .environment(vm)
     .task {
-      await viewModel.library.loadPersistedData()
-      viewModel.selectedPlaylistID = viewModel.library.playlists.first?.id
+      await vm.library.loadPersistedData()
+      vm.selectedPlaylistID = vm.library.playlists.first?.id
     }
   }
 
   // MARK: Private
 
-  @State private var viewModel = MadTunesViewModel.shared
+  @State private var vm = MadTunesViewModel.shared
   @State private var viewColumn: NavigationSplitViewColumn = .content
   @Environment(\.colorScheme) private var colorScheme
   @FocusState private var isContentFocused: Bool
@@ -211,44 +210,23 @@ struct MadTunesMainView: View {
 
   @ViewBuilder
   private func contentArea(albums displayAlbums: [Album]) -> some View {
-    @Bindable var vm = viewModel
     Color.clear
       .overlay(alignment: .leading) {
         if vm.useTableView {
-          AlbumTableView(
-            tracks: vm.currentTracksDisplayed,
-            // Phase 53: Only show playing indicator when actively playing.
-            currentTrackID: viewModel.player.isPlaying ? viewModel.player.currentTrack?.id : nil,
-            onTrackDoubleClicked: { track, tracks in
-              // when a user double-clicks in the table we treat it as playing
-              // the full filtered list beginning at that track
-              let startIndex = tracks.firstIndex(where: { $0.id == track.id }) ?? 0
-              vm.player.setQueue(tracks, startingAt: startIndex)
-            }
-          )
-          // Use selectedPlaylistID as stable identity so SwiftUI fully
-          // recreates the List when switching playlists (avoids an expensive
-          // 5k-item diff) while keeping the view stable for other changes
-          // like selection or playback updates.
-          .id(vm.selectedPlaylistID)
-          .focusable()
-          .focused($isContentFocused)
-          .focusEffectDisabled()
+          AlbumTableView()
+            // Use selectedPlaylistID as stable identity so SwiftUI fully
+            // recreates the List when switching playlists (avoids an expensive
+            // 5k-item diff) while keeping the view stable for other changes
+            // like selection or playback updates.
+            .id(vm.selectedPlaylistID)
+            .focusable()
+            .focused($isContentFocused)
+            .focusEffectDisabled()
         } else {
-          AlbumGridView(
-            albums: displayAlbums,
-            // Phase 53: Only show playing indicator when actively playing.
-            currentTrackID: viewModel.player.isPlaying ? viewModel.player.currentTrack?.id : nil,
-            onTrackSelected: { track, albumTracks in
-              viewModel.onTrackSelected(track, albumTracks)
-            },
-            onAlbumDoubleClicked: { album in
-              viewModel.onAlbumDoubleClicked(album)
-            }
-          )
-          .focusable()
-          .focused($isContentFocused)
-          .focusEffectDisabled()
+          AlbumGridView()
+            .focusable()
+            .focused($isContentFocused)
+            .focusEffectDisabled()
         }
       }
       .searchable(
@@ -261,41 +239,41 @@ struct MadTunesMainView: View {
         // UI can coordinate with the ViewModel's debounced background search.
         do { try await Task.sleep(nanoseconds: 50_000_000) } catch { /* cancelled */ }
       }
-      .environment(viewModel)
+      .environment(vm)
       .onKeyPress { press in
         // Phase 63: Dispatch directly to sub-VMs.
-        if viewModel.useTableView {
-          return viewModel.tableVM.handleKeyPress(press)
+        if vm.useTableView {
+          return vm.tableVM.handleKeyPress(press)
         } else {
-          return viewModel.gridVM.handleKeyPress(press, albums: displayAlbums)
+          return vm.gridVM.handleKeyPress(press, albums: displayAlbums)
         }
       }
       .onModifierKeysChanged { _, new in
-        viewModel.currentModifiers = new
+        vm.currentModifiers = new
       }
-      .onChange(of: viewModel.expandedAlbumID) { _, _ in
-        viewModel.selectedTrackIDs.removeAll()
+      .onChange(of: vm.gridVM.expandedAlbumID) { _, _ in
+        vm.selectedTrackIDs.removeAll()
       }
-      .onChange(of: viewModel.highlightedAlbumIDs) { _, _ in
+      .onChange(of: vm.gridVM.highlightedAlbumIDs) { _, _ in
         isContentFocused = true
       }
-      .onChange(of: viewModel.selectedPlaylistID) { _, _ in
-        if !viewModel.selectedTrackIDs.isEmpty { viewModel.selectedTrackIDs.removeAll() }
-        viewModel.resetColumnBrowserFilters()
-        if !searchTokens(from: viewModel.searchText).isEmpty {
-          viewModel.searchText = ""
+      .onChange(of: vm.selectedPlaylistID) { _, _ in
+        if !vm.selectedTrackIDs.isEmpty { vm.selectedTrackIDs.removeAll() }
+        vm.resetColumnBrowserFilters()
+        if !searchTokens(from: vm.searchText).isEmpty {
+          vm.searchText = ""
         }
       }
       // Phase 43: Ensure artwork is loaded when playing from table view.
-      .onChange(of: viewModel.player.currentTrack?.id) { _, _ in
-        guard let track = viewModel.player.currentTrack else { return }
-        let key = viewModel.library.albumKey(title: track.albumTitle, artist: track.albumArtist)
-        viewModel.library.requestArtworkLoad(forAlbumKey: key, sampleTrackURL: track.fileURL)
+      .onChange(of: vm.player.currentTrack?.id) { _, _ in
+        guard let track = vm.player.currentTrack else { return }
+        let key = vm.library.albumKey(title: track.albumTitle, artist: track.albumArtist)
+        vm.library.requestArtworkLoad(forAlbumKey: key, sampleTrackURL: track.fileURL)
       }
       .overlay {
         ContentAvailabilityOverlay(
           displayAlbums: displayAlbums,
-          selectedPlaylist: viewModel.library.playlists.first(where: { $0.id == viewModel.selectedPlaylistID })
+          selectedPlaylist: vm.library.playlists.first(where: { $0.id == vm.selectedPlaylistID })
         )
       }
   }

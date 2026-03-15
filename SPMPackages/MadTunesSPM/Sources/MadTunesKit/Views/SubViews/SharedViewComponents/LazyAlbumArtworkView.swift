@@ -18,20 +18,20 @@ struct LazyAlbumArtworkView: View {
   // MARK: Internal
 
   var body: some View {
-    let key = viewModel.library.albumKey(title: album.title, artist: album.artist)
-    let cachedArtwork = viewModel.library.artworkCache[key]
+    let key = vm.library.albumKey(title: album.title, artist: album.artist)
+    let cachedArtwork = vm.library.artworkCache[key]
     // let isLoading = viewModel.library.artworkLoadingKeys.contains(key)
 
     ArtworkView(data: cachedArtwork, alwaysGlossy: alwaysGlossy)
       .task {
         guard cachedArtwork == nil, let trackURL = album.tracks.first?.fileURL else { return }
-        viewModel.library.requestArtworkLoad(forAlbumKey: key, sampleTrackURL: trackURL)
+        vm.library.requestArtworkLoad(forAlbumKey: key, sampleTrackURL: trackURL)
       }
   }
 
   // MARK: Private
 
-  @Environment(MadTunesViewModel.self) private var viewModel
+  @Environment(MadTunesViewModel.self) private var vm
 
   private let album: Album
   private let alwaysGlossy: Bool

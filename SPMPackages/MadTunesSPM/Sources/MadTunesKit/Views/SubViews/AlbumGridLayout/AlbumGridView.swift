@@ -12,24 +12,14 @@ struct AlbumGridView: View {
 
   /// Phase 62: Simplified init — shared state (expandedAlbumID,
   /// highlightedAlbumIDs, selectedTrackIDs) is read from vm directly.
-  init(
-    albums: [Album],
-    currentTrackID: UUID? = nil,
-    onTrackSelected: @escaping (Track, [Track]) -> Void,
-    onAlbumDoubleClicked: ((Album) -> Void)? = nil
-  ) {
-    self.albums = albums
-    self.currentTrackID = currentTrackID
-    self.onTrackSelected = onTrackSelected
-    self.onAlbumDoubleClicked = onAlbumDoubleClicked
-  }
+  init() {}
 
   // MARK: Internal
 
   var body: some View {
     mainContent
       // Phase 54: Unify the animated response against `expandedAlbumID` changes.
-      .animation(.easeInOut(duration: 0.3), value: vm.expandedAlbumID)
+      .animation(.easeInOut(duration: 0.3), value: gridVM.expandedAlbumID)
       .animation(canvasAnimation, value: canvasWidth)
       .opacity(screenVM.windowSizeEverObserved ? 1 : 0)
       .sheet(isPresented: Bindable(gridVM).isTrackInfoPresented) {
@@ -72,13 +62,17 @@ struct AlbumGridView: View {
   @State private var vm: MadTunesViewModel = .shared
   @State private var screenVM: ScreenVM = .shared
 
-  private let albums: [Album]
-  private var currentTrackID: UUID?
-  private let onTrackSelected: (Track, [Track]) -> Void
-  private var onAlbumDoubleClicked: ((Album) -> Void)?
-
   private let minItemWidth: CGFloat = 160
   private let spacing: CGFloat = 16
+
+  private var albums: [Album] {
+    gridVM.currentAlbumsDisplayed
+  }
+
+  // Phase 53: Only show playing indicator when actively playing.
+  private var currentTrackID: UUID? {
+    vm.player.isPlaying ? vm.player.currentTrack?.id : nil
+  }
 
   // Phase 60: Sub-ViewModel reference.
   private var gridVM: AlbumGridViewModel { vm.gridVM }
@@ -93,7 +87,7 @@ struct AlbumGridView: View {
 
   /// Whether rubber-band drag selection is allowed (no expanded album).
   private var isDragSelectionEnabled: Bool {
-    vm.expandedAlbumID == nil
+    gridVM.expandedAlbumID == nil
   }
 
   private var canvasAnimation: Animation {
@@ -117,14 +111,13 @@ struct AlbumGridView: View {
             albumRow(row, columnCount: columnCount)
 
             // Expanded detail for the expanded album (if it belongs to this row).
-            if let expandedAlbum = row.first(where: { $0.id == vm.expandedAlbumID }) {
+            if let expandedAlbum = row.first(where: { $0.id == gridVM.expandedAlbumID }) {
               ExpandedAlbumView(
                 album: expandedAlbum,
                 currentTrackID: currentTrackID,
                 containerWidth: canvasWidth,
                 selectedTrackIDs: Bindable(vm).selectedTrackIDs,
-                onTrackSelected: onTrackSelected,
-                onClose: { withAnimation(.easeInOut(duration: 0.3)) { vm.expandedAlbumID = nil } }
+                onClose: { withAnimation(.easeInOut(duration: 0.3)) { gridVM.expandedAlbumID = nil } }
               )
               .drawingGroup()
               .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
@@ -157,7 +150,7 @@ struct AlbumGridView: View {
       .onChange(of: albums) { _, newAlbums in
         gridVM.scheduleDisplayedAlbumsUpdate(to: newAlbums)
       }
-      .onChange(of: vm.expandedAlbumID) { _, newValue in
+      .onChange(of: gridVM.expandedAlbumID) { _, newValue in
         guard let newValue else { return }
         // Ensure the expanded album is included in displayedAlbums quickly.
         gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: newValue)
@@ -168,7 +161,7 @@ struct AlbumGridView: View {
         }
       }
       .onChange(of: canvasWidth) { oldWidth, newWidth in
-        guard oldWidth != newWidth, let expandedID = vm.expandedAlbumID else { return }
+        guard oldWidth != newWidth, let expandedID = gridVM.expandedAlbumID else { return }
         let wasVisible = gridVM.expandedAlbumWasInView
         guard wasVisible else { return }
         gridVM.proxyScrollDebouncer.debounceOnMain {
@@ -177,9 +170,9 @@ struct AlbumGridView: View {
           }
         }
       }
-      .onChange(of: vm.scrollToAlbumID) { _, newValue in
+      .onChange(of: gridVM.scrollToAlbumID) { _, newValue in
         guard let albumID = newValue else { return }
-        vm.scrollToAlbumID = nil
+        gridVM.scrollToAlbumID = nil
         // If the target album isn't yet in displayedAlbums, ask for a quick
         // inclusion so that proxy.scrollTo can find the row.
         if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
@@ -229,7 +222,7 @@ struct AlbumGridView: View {
             let dy = abs(value.translation.height)
             guard dx < 5, dy < 5 else { return }
 
-            guard vm.expandedAlbumID != nil else { return }
+            guard gridVM.expandedAlbumID != nil else { return }
             // if the tap is inside album artwork item or inside the expanded view,
             // ignore it rather than closing.
             if gridVM.albumFrames.values.contains(where: { $0.contains(value.location) }) {
@@ -239,7 +232,7 @@ struct AlbumGridView: View {
               return
             }
 
-            vm.expandedAlbumID = nil
+            gridVM.expandedAlbumID = nil
           }
       )
 
@@ -254,7 +247,7 @@ struct AlbumGridView: View {
                 gridVM.dragOrigin = value.startLocation
                 // Phase 63: Use SwiftUI EventModifiers instead of NSEvent.
                 if vm.currentModifiers.contains(.command) {
-                  gridVM.preDragHighlighted = vm.highlightedAlbumIDs
+                  gridVM.preDragHighlighted = gridVM.highlightedAlbumIDs
                 } else {
                   gridVM.preDragHighlighted = []
                 }
@@ -295,12 +288,12 @@ struct AlbumGridView: View {
   private func albumRow(_ row: [Album], columnCount: Int) -> some View {
     HStack(alignment: .top, spacing: spacing) {
       ForEach(row) { album in
-        let isExpanded = album.id == vm.expandedAlbumID
-        let isSelected = vm.highlightedAlbumIDs.contains(
+        let isExpanded = album.id == gridVM.expandedAlbumID
+        let isSelected = gridVM.highlightedAlbumIDs.contains(
           album.id
         )
-        let isCursor = vm.albumSelectionCursorID == album.id
-        let isMultiSelection = isSelected && vm.highlightedAlbumIDs.count > 1
+        let isCursor = gridVM.albumSelectionCursorID == album.id
+        let isMultiSelection = isSelected && gridVM.highlightedAlbumIDs.count > 1
         AlbumGridItemView(
           album: album,
           isExpanded: isExpanded,
@@ -330,15 +323,15 @@ struct AlbumGridView: View {
         .simultaneousGesture(
           TapGesture(count: 2)
             .onEnded { _ in
-              onAlbumDoubleClicked?(album)
+              gridVM.onAlbumDoubleClicked(album)
               gridVM.albumClickDebouncer.cancelOnMain()
               gridVM.albumClickDebouncer.debounceOnMain(
                 keepFirstAttemptInstead: true
               ) {
-                vm.expandedAlbumID = album.id
-                vm.highlightedAlbumIDs = [album.id]
-                vm.albumSelectionFixedAnchorID = album.id
-                vm.albumSelectionCursorID = album.id
+                gridVM.expandedAlbumID = album.id
+                gridVM.highlightedAlbumIDs = [album.id]
+                gridVM.albumSelectionFixedAnchorID = album.id
+                gridVM.albumSelectionCursorID = album.id
               }
             }
             .simultaneously(
@@ -350,9 +343,9 @@ struct AlbumGridView: View {
                   // Phase 61: For plain clicks, immediately enter "cursor selected"
                   // state so the album visually highlights in place without moving.
                   if !hasModifier {
-                    vm.highlightedAlbumIDs = [album.id]
-                    vm.albumSelectionFixedAnchorID = album.id
-                    vm.albumSelectionCursorID = album.id
+                    gridVM.highlightedAlbumIDs = [album.id]
+                    gridVM.albumSelectionFixedAnchorID = album.id
+                    gridVM.albumSelectionCursorID = album.id
                   }
                   Task {
                     gridVM.albumClickDebouncer.debounceOnMain(
@@ -385,8 +378,8 @@ struct AlbumGridView: View {
 
   @ViewBuilder
   private func albumContextMenu(for album: Album) -> some View {
-    let selectedAlbums = vm.highlightedAlbumIDs.contains(album.id)
-      ? gridVM.displayedAlbums.filter { vm.highlightedAlbumIDs.contains($0.id) }
+    let selectedAlbums = gridVM.highlightedAlbumIDs.contains(album.id)
+      ? gridVM.displayedAlbums.filter { gridVM.highlightedAlbumIDs.contains($0.id) }
       : [album]
     AlbumContextMenu(
       albums: selectedAlbums,

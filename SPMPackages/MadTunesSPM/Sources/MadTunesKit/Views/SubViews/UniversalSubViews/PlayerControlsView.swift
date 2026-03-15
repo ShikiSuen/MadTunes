@@ -86,14 +86,14 @@ struct PlayerControlsView: View {
               if vm.useTableView {
                 // Phase 46: When table view is visible, double-clicking the artwork
                 // should scroll the table to the currently playing track.
-                vm.tableScrollTargetID = track.id
+                vm.tableVM.tableScrollTargetID = track.id
                 return
               }
 
-              if let album = vm.currentAlbumsDisplayed.first(
+              if let album = vm.gridVM.currentAlbumsDisplayed.first(
                 where: { $0.allTrackIDsSet.contains(track.id) }
               ) {
-                vm.scrollToAlbumID = album.id
+                vm.gridVM.scrollToAlbumID = album.id
               } else if vm.isColumnBrowserFiltering || !searchTokens(from: vm.searchText).isEmpty {
                 // Album hidden by filters — reset and defer scroll.
                 let targetAlbum = vm.library.albums.first(
@@ -104,7 +104,7 @@ struct PlayerControlsView: View {
                 vm.searchText = ""
                 Task { @MainActor in
                   try? await Task.sleep(for: .milliseconds(150))
-                  vm.scrollToAlbumID = targetAlbum.id
+                  vm.gridVM.scrollToAlbumID = targetAlbum.id
                 }
               }
             }

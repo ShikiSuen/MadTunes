@@ -37,42 +37,21 @@ final class MadTunesViewModel {
   var gridVM = AlbumGridViewModel()
 
   var selectedPlaylistID: UUID?
-  var expandedAlbumID: UUID?
-  var highlightedAlbumIDs: Set<UUID> = []
   var selectedTrackIDs: Set<UUID> = []
   /// When true the main content area shows AlbumTableView instead of AlbumGridView.
   /// Persisted via UserDefaults.
   var useTableView: Bool = UserDefaults.standard.bool(forKey: "MadTunes.useTableView")
 
-  /// The fixed anchor for Shift+Arrow range selection. Set on click / plain arrow.
-  var albumSelectionFixedAnchorID: UUID?
-  /// The moving cursor for Shift+Arrow range selection.
-  var albumSelectionCursorID: UUID?
-
-  /// Table view: anchor for Shift+Click/Arrow range selection.
-  var tableSelectionAnchorID: UUID?
-  /// Table view: moving cursor (highlighted row).
-  var tableSelectionCursorID: UUID?
-  /// Phase 42: Set during keyboard navigation to auto-scroll the table.
-  /// Not set on mouse click; reset to nil after the scroll completes.
-  var tableScrollTargetID: UUID?
-
-  /// Phase 44: Table view column sorting (column type, ascending?)
-  var tableSortCriteria: (column: TableColumnType, ascending: Bool)?
-
   var isFileImporterPresented = false // Only for non-AppKit targets.
   var isFolderImporterPresented = false // Also used on macOS AppKit as File Importer.
   var isDropTargeted = false
-  var albumSortOrder: AlbumSortOrder = .artistYearTitle
   var screenVM = ScreenVM.shared
 
   var searchFilterMode: SearchFilterMode = .either
-
-  var displayedTracksCache: [Track] = []
-  var displayedAlbumsCache: [Album] = []
   var isSearching: Bool = false
-  // Scroll-to-album trigger (set by artwork double-click, consumed by AlbumGridView)
-  var scrollToAlbumID: UUID?
+
+  // This property should stay in this mainVM since it is required by both view layouts.
+  var displayedTracksCache: [Track] = []
 
   // Phase 63: SwiftUI-tracked modifier key state, replacing NSEvent.modifierFlags.
   var currentModifiers: EventModifiers = []
@@ -92,42 +71,6 @@ final class MadTunesViewModel {
     }
   }
 
-  var gridColumnCount: Int {
-    let width = screenVM.mainColumnCanvasSizeObserved.width
-    return max(1, Int((width - gridSpacing) / (minItemWidth + gridSpacing)))
-  }
-
-  /// Number of albums to scroll per page (PgUp/PgDown).
-  /// Estimates visible rows based on screen height and item dimensions.
-  var gridPageSize: Int {
-    let canvasHeight = screenVM.mainColumnCanvasSizeObserved.height
-    // Approximate item height: scaled artwork (160 * 0.92) + text area (~50) + padding
-    let approximateRowHeight: CGFloat = 160 + 50 + gridSpacing
-    let visibleRows = max(1, Int((canvasHeight - 100) / approximateRowHeight)) // 100 for player controls
-    return visibleRows * gridColumnCount
-  }
-
-  /// Flat track list for table view (filtered + table-sorted).
-  /// Replaces the old `currentTracks` / `currentTracks(fromAlbums:)`.
-  var currentTracksDisplayed: [Track] {
-    let tracks = filteredTracksBase
-    guard let criteria = tableSortCriteria else { return tracks }
-    return sortedTracks(tracks, by: criteria)
-  }
-
-  /// Albums for grid view, derived from filtered tracks.
-  /// Each album contains ONLY the tracks that passed all filters.
-  /// Replaces the old `currentAlbums`.
-  var currentAlbumsDisplayed: [Album] {
-    let tokens = searchTokens(from: searchText)
-    // When search is active and cache is ready, use cached albums.
-    if !tokens.isEmpty, !displayedAlbumsCache.isEmpty || isSearching {
-      return displayedAlbumsCache
-    }
-
-    return buildAlbumsFromFilteredTracks(filteredTracksBase)
-  }
-
   /// Whether any column browser filter is active.
   var isColumnBrowserFiltering: Bool {
     !columnBrowserSelectedGenres.isEmpty
@@ -138,14 +81,14 @@ final class MadTunesViewModel {
 
   /// All unique genres from the currently visible playlist (before column browser filter).
   var columnBrowserGenres: [String] {
-    let genres = Set(unfilteredAlbums.flatMap { $0.tracks.map(\.genre) })
+    let genres = Set(gridVM.unfilteredAlbums.flatMap { $0.tracks.map(\.genre) })
     return genres.filter { !$0.isEmpty }.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
   }
 
   /// Unique artists available given the current genre filter.
   /// Album–level artists available given current genre filter.
   var columnBrowserAlbumArtists: [String] {
-    var source = unfilteredAlbums
+    var source = gridVM.unfilteredAlbums
     if !columnBrowserSelectedGenres.isEmpty {
       source = source.filter { album in
         album.tracks.contains { columnBrowserSelectedGenres.contains($0.genre) }
@@ -162,7 +105,7 @@ final class MadTunesViewModel {
 
   /// Track-level artists (song artists) given current genre + album artist filters.
   var columnBrowserSongArtists: [String] {
-    var source = unfilteredAlbums
+    var source = gridVM.unfilteredAlbums
     if !columnBrowserSelectedGenres.isEmpty {
       source = source.filter { album in
         album.tracks.contains { columnBrowserSelectedGenres.contains($0.genre) }
@@ -178,7 +121,7 @@ final class MadTunesViewModel {
 
   /// Unique album titles available given the current genre + artist filter.
   var columnBrowserAlbumTitles: [String] {
-    var source = unfilteredAlbums
+    var source = gridVM.unfilteredAlbums
     if !columnBrowserSelectedGenres.isEmpty {
       source = source.filter { album in
         album.tracks.contains { columnBrowserSelectedGenres.contains($0.genre) }
@@ -202,48 +145,21 @@ final class MadTunesViewModel {
     return library.artworkCache[key]
   }
 
-  /// Whether the currently selected playlist supports drag‑reordering.
-  ///
-  /// Enabled for user static playlists and Favorites, disabled for All Music and
-  /// any dynamic playlists. Also disabled when table sorting is active to avoid
-  /// reordering a sorted view.
-  var canReorderCurrentPlaylist: Bool {
-    guard let playlistID = selectedPlaylistID,
-          let index = library.playlists.firstIndex(where: { $0.id == playlistID })
-    else {
-      return false
+  /// Single source of truth: all displayable tracks after applying all filters.
+  /// Does NOT apply table sort — call `currentTracksDisplayed` for the sorted version.
+  var filteredTracksBase: [Track] {
+    let tokens = searchTokens(from: searchText)
+
+    // When search is active and cache is ready, use cache (produced by async debounce).
+    if !tokens.isEmpty, !displayedTracksCache.isEmpty || isSearching {
+      return displayedTracksCache
     }
-    // All Music (index 0) should never be reorderable.
-    if index == 0 { return false }
 
-    let playlist = library.playlists[index]
-    let isFavorites = playlist.kind == .system && index == 1
-    let isStatic = playlist.kind == .staticList
-    // Don't allow reordering while the table is sorted or filtered, since the
-    // visible order would not map cleanly back to the playlist order.
-    let canReorder = (isFavorites || isStatic)
-      && tableSortCriteria == nil
-      && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-      && !isColumnBrowserFiltering
-    return canReorder
-  }
+    let base = baseTracks
+    // No filters at all → return as-is.
+    if tokens.isEmpty, !isColumnBrowserFiltering { return base }
 
-  // MARK: - Phase 52: Menu command helpers for track reordering
-
-  /// Whether the selected tracks can be moved up in the current playlist.
-  var canMoveSelectedTracksUp: Bool {
-    guard useTableView, canReorderCurrentPlaylist, !selectedTrackIDs.isEmpty else { return false }
-    let tracks = currentTracksDisplayed
-    let firstSelectedIdx = tracks.firstIndex { selectedTrackIDs.contains($0.id) }
-    return (firstSelectedIdx ?? 0) > 0
-  }
-
-  /// Whether the selected tracks can be moved down in the current playlist.
-  var canMoveSelectedTracksDown: Bool {
-    guard useTableView, canReorderCurrentPlaylist, !selectedTrackIDs.isEmpty else { return false }
-    let tracks = currentTracksDisplayed
-    let lastSelectedIdx = tracks.lastIndex { selectedTrackIDs.contains($0.id) }
-    return (lastSelectedIdx ?? tracks.count - 1) < tracks.count - 1
+    return base.filter { trackPassesAllFilters($0, tokens: tokens, mode: searchFilterMode) }
   }
 
   // MARK: - Phase 58: Shared Per-Track Search Filter
@@ -280,27 +196,6 @@ final class MadTunesViewModel {
     return trackMatchesSearch(track, tokens: tokens, mode: mode)
   }
 
-  func moveTracksInCurrentPlaylist(trackIDs: [UUID], toIndex: Int) {
-    guard canReorderCurrentPlaylist, let playlistID = selectedPlaylistID else { return }
-    library.moveTracks(trackIDs, inPlaylist: playlistID, toIndex: toIndex)
-  }
-
-  /// Moves selected tracks one position up. Called by menu command (Option+↑).
-  func moveSelectedTracksUp() {
-    let tracks = currentTracksDisplayed
-    let orderedSelected = tracks.enumerated().filter { selectedTrackIDs.contains($0.element.id) }
-    guard let firstIdx = orderedSelected.first?.offset, firstIdx > 0 else { return }
-    moveTracksInCurrentPlaylist(trackIDs: orderedSelected.map(\.element.id), toIndex: firstIdx - 1)
-  }
-
-  /// Moves selected tracks one position down. Called by menu command (Option+↓).
-  func moveSelectedTracksDown() {
-    let tracks = currentTracksDisplayed
-    let orderedSelected = tracks.enumerated().filter { selectedTrackIDs.contains($0.element.id) }
-    guard let lastIdx = orderedSelected.last?.offset, lastIdx < tracks.count - 1 else { return }
-    moveTracksInCurrentPlaylist(trackIDs: orderedSelected.map(\.element.id), toIndex: lastIdx + 2)
-  }
-
   /// Resets column browser filters.
   func resetColumnBrowserFilters() {
     if !columnBrowserSelectedGenres.isEmpty { columnBrowserSelectedGenres = [] }
@@ -314,82 +209,6 @@ final class MadTunesViewModel {
     let tracks = filteredTracksBase
     guard !tracks.isEmpty else { return }
     player.setQueue(tracks, startingAt: 0)
-  }
-
-  // MARK: - Sorting
-
-  func sortedAlbums(_ albums: [Album]) -> [Album] {
-    albums.sorted { a, b in
-      switch albumSortOrder {
-      case .artistYearTitle:
-        let cmp = a.artist.localizedCaseInsensitiveCompare(b.artist)
-        if cmp != .orderedSame { return cmp == .orderedAscending }
-        let y1 = a.year ?? Int.max, y2 = b.year ?? Int.max
-        if y1 != y2 { return y1 < y2 }
-        return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
-      case .artistTitleYear:
-        let cmp = a.artist.localizedCaseInsensitiveCompare(b.artist)
-        if cmp != .orderedSame { return cmp == .orderedAscending }
-        let cmp2 = a.title.localizedCaseInsensitiveCompare(b.title)
-        if cmp2 != .orderedSame { return cmp2 == .orderedAscending }
-        let y1 = a.year ?? Int.max, y2 = b.year ?? Int.max
-        return y1 < y2
-      case .yearArtistTitle:
-        let y1 = a.year ?? Int.max, y2 = b.year ?? Int.max
-        if y1 != y2 { return y1 < y2 }
-        let cmp = a.artist.localizedCaseInsensitiveCompare(b.artist)
-        if cmp != .orderedSame { return cmp == .orderedAscending }
-        return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
-      }
-    }
-  }
-
-  /// Sorts tracks by the given table column criteria.
-  /// Uses pre-computed `Track.folderPath` to avoid repeated URL operations.
-  func sortedTracks(_ tracks: [Track], by criteria: (column: TableColumnType, ascending: Bool)) -> [Track] {
-    let ascending = criteria.ascending
-    return tracks.sorted {
-      switch criteria.column {
-      case .name:
-        return ascending ? $0.title < $1.title : $0.title > $1.title
-      case .length:
-        return ascending ? $0.duration < $1.duration : $0.duration > $1.duration
-      case .artist:
-        return ascending ? $0.artist < $1.artist : $0.artist > $1.artist
-      case .albumTitle:
-        return ascending ? $0.albumTitle < $1.albumTitle : $0.albumTitle > $1.albumTitle
-      case .albumArtist:
-        return ascending ? $0.albumArtist < $1.albumArtist : $0.albumArtist > $1.albumArtist
-      case .trackNumber:
-        let disc0 = $0.discNumber, disc1 = $1.discNumber
-        let track0 = $0.trackNumber, track1 = $1.trackNumber
-        if disc0 != disc1 {
-          return ascending ? disc0 < disc1 : disc0 > disc1
-        }
-        return ascending ? track0 < track1 : track0 > track1
-      case .genre:
-        return ascending ? $0.genre < $1.genre : $0.genre > $1.genre
-      case .year:
-        let y0 = $0.year ?? Int.min, y1 = $1.year ?? Int.min
-        return ascending ? y0 < y1 : y0 > y1
-      case .folder:
-        return ascending ? $0.folderPath < $1.folderPath : $0.folderPath > $1.folderPath
-      case .playingIndicator:
-        return ascending ? $0.title < $1.title : $0.title > $1.title
-      }
-    }
-  }
-
-  func onTrackSelected(_ track: Track, _ albumTracks: [Track]) {
-    player.setQueue(albumTracks, startingAt: albumTracks.firstIndex(of: track) ?? 0)
-  }
-
-  func onAlbumDoubleClicked(_ album: Album) {
-    // Album passed here is already filtered (contains only matching tracks).
-    let tracks = album.tracks
-    guard !tracks.isEmpty else { return }
-    player.setQueue(tracks, startingAt: 0)
-    highlightedAlbumIDs = [album.id]
   }
 
   func importURLs(_ urls: [URL]) {
@@ -467,7 +286,9 @@ final class MadTunesViewModel {
 
   /// 選中所有肉眼可見的專輯（受 Column Browser 與搜尋篩選影響）
   func selectAllVisibleAlbums() {
-    highlightedAlbumIDs = Set(currentAlbumsDisplayed.map(\.id))
+    gridVM.highlightedAlbumIDs = Set(
+      gridVM.currentAlbumsDisplayed.map(\.id)
+    )
   }
 
   /// 獲取指定專輯中經過篩選的曲目。
@@ -501,43 +322,11 @@ final class MadTunesViewModel {
     #endif
   }
 
-  // MARK: - Phase 44: Table Sorting
-
-  // Phase 44: Clear sorting (switch back to album order)
-  func clearTableSorting() {
-    tableSortCriteria = nil
-  }
-
-  // Phase 44: Set or toggle column sort
-  func setTableSort(column: TableColumnType) {
-    if let current = tableSortCriteria, current.column == column {
-      // Toggle direction
-      let newAscending = !current.ascending
-      if newAscending {
-        // Third click: clear sort
-        tableSortCriteria = nil
-      } else {
-        tableSortCriteria = (column: column, ascending: newAscending)
-      }
-    } else {
-      tableSortCriteria = (column: column, ascending: true)
-    }
-  }
-
-  // Phase 44: Get sort indicator for column header
-  func sortIndicator(for column: TableColumnType) -> String? {
-    guard let criteria = tableSortCriteria, criteria.column == column else { return nil }
-    return criteria.ascending ? " ▲" : " ▼"
-  }
-
   // MARK: Private
 
   // --- Async search/cache (Phase 57):
   // Cached filtered results produced by the debounced async search task.
   private var searchTask: Task<Void, Never>?
-
-  private let minItemWidth: CGFloat = 160
-  private let gridSpacing: CGFloat = 16
 
   // MARK: - Phase 58: New Data Pipeline (Single-Filter)
 
@@ -552,52 +341,7 @@ final class MadTunesViewModel {
     return library.tracks
   }
 
-  /// Single source of truth: all displayable tracks after applying all filters.
-  /// Does NOT apply table sort — call `currentTracksDisplayed` for the sorted version.
-  private var filteredTracksBase: [Track] {
-    let tokens = searchTokens(from: searchText)
-
-    // When search is active and cache is ready, use cache (produced by async debounce).
-    if !tokens.isEmpty, !displayedTracksCache.isEmpty || isSearching {
-      return displayedTracksCache
-    }
-
-    let base = baseTracks
-    // No filters at all → return as-is.
-    if tokens.isEmpty, !isColumnBrowserFiltering { return base }
-
-    return base.filter { trackPassesAllFilters($0, tokens: tokens, mode: searchFilterMode) }
-  }
-
   // MARK: - Computed Helpers
-
-  /// Albums from the current playlist, before column browser filtering.
-  private var unfilteredAlbums: [Album] {
-    if let playlistID = selectedPlaylistID,
-       let playlist = library.playlists.first(where: { $0.id == playlistID }),
-       playlist.id != library.playlists.first?.id {
-      return library.albums(for: playlist)
-    }
-    return library.albums
-  }
-
-  /// Groups a flat filtered track list back into Album objects, preserving
-  /// original album metadata (id, artworkData) via `unfilteredAlbums`.
-  private func buildAlbumsFromFilteredTracks(_ filteredTracks: [Track]) -> [Album] {
-    let filteredIDs = Set(filteredTracks.map(\.id))
-    let albums = unfilteredAlbums.compactMap { album -> Album? in
-      let matching = album.tracks.filter { filteredIDs.contains($0.id) }
-      guard !matching.isEmpty else { return nil }
-      return Album(
-        id: album.id,
-        title: album.title,
-        artist: album.artist,
-        tracks: matching,
-        artworkData: album.artworkData
-      )
-    }
-    return sortedAlbums(albums)
-  }
 
   /// Schedule a debounced asynchronous search. Cancels prior pending search.
   private func scheduleSearch() {
@@ -609,7 +353,7 @@ final class MadTunesViewModel {
     let trimmed = textSnapshot.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmed.isEmpty {
       displayedTracksCache = []
-      displayedAlbumsCache = []
+      gridVM.displayedAlbumsCache = []
       isSearching = false
       return
     }
@@ -644,7 +388,7 @@ final class MadTunesViewModel {
         await MainActor.run {
           if self.searchText == textSnapshot {
             self.displayedTracksCache = []
-            self.displayedAlbumsCache = []
+            self.gridVM.displayedAlbumsCache = []
             self.isSearching = false
           }
         }
@@ -669,7 +413,7 @@ final class MadTunesViewModel {
       if Task.isCancelled { return }
 
       // Build albums from filtered tracks using unfilteredAlbums for metadata.
-      let unfilteredAlbumsSnapshot: [Album] = await MainActor.run { self.unfilteredAlbums }
+      let unfilteredAlbumsSnapshot: [Album] = await MainActor.run { self.gridVM.unfilteredAlbums }
       if Task.isCancelled { return }
 
       let filteredIDs = Set(tracksResult.map(\.id))
@@ -690,7 +434,8 @@ final class MadTunesViewModel {
 
       if Task.isCancelled { return }
 
-      let sortedAlbumsResult = await MainActor.run { self.sortedAlbums(albumsResult) }
+      let sortedAlbumsResult = await MainActor.run { self.gridVM.sortedAlbums(albumsResult)
+      }
 
       if Task.isCancelled { return }
 
@@ -698,7 +443,7 @@ final class MadTunesViewModel {
       await MainActor.run {
         if self.searchText == textSnapshot {
           self.displayedTracksCache = tracksResult
-          self.displayedAlbumsCache = sortedAlbumsResult
+          self.gridVM.displayedAlbumsCache = sortedAlbumsResult
           self.isSearching = false
         }
       }
