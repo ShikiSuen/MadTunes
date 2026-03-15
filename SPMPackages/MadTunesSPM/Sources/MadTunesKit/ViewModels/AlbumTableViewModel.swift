@@ -271,35 +271,66 @@ final class AlbumTableViewModel {
     persistColumnWidths()
   }
 
-  // MARK: - Display Buffer Methods
-
-  /// Coalesced/batched update (Phase 56). Progressively appends tracks
-  /// in batches to keep the UI responsive during large imports.
   func scheduleDisplayedTracksUpdate(to newTracks: [Track]) {
+    displayedTracksUpdateTask?.cancel()
+
     let batchSize = 50
-    Task { @MainActor in
-      if newTracks.map(\.id) == displayedTracks.map(\.id) { return }
+    let largeUpdateThreshold = 2_000 // Threshold to avoid one-shot full replace on huge lists.
+
+    /// Fast path: compare IDs without allocating temporary arrays.
+    func isSameTrackSequence(_ a: [Track], _ b: [Track]) -> Bool {
+      guard a.count == b.count else { return false }
+      for (aTrack, bTrack) in zip(a, b) where aTrack.id != bTrack.id {
+        return false
+      }
+      return true
+    }
+
+    /// Fast path: checks if `prefix` is a prefix of `full` by comparing IDs.
+    func hasPrefixTrackIDs(prefix: [Track], full: [Track]) -> Bool {
+      guard prefix.count <= full.count else { return false }
+      for (aTrack, bTrack) in zip(prefix, full) where aTrack.id != bTrack.id {
+        return false
+      }
+      return true
+    }
+
+    func appendInBatches(_ tracks: [Track]) async {
+      var idx = 0
+      while idx < tracks.count {
+        if Task.isCancelled { return }
+        let end = min(idx + batchSize, tracks.count)
+        displayedTracks.append(contentsOf: tracks[idx ..< end])
+        idx = end
+        await Task.yield()
+      }
+    }
+
+    displayedTracksUpdateTask = Task { @MainActor in
+      // Fast reject: identical sequence.
+      if isSameTrackSequence(newTracks, displayedTracks) { return }
+
+      // Huge list update: avoid a single massive replacement that causes a UI freeze.
+      if newTracks.count > largeUpdateThreshold {
+        displayedTracks.removeAll()
+        await appendInBatches(newTracks)
+        return
+      }
 
       // Empty → large: progressive append.
       if displayedTracks.isEmpty, newTracks.count > batchSize {
         displayedTracks.removeAll()
-        var idx = 0
-        while idx < newTracks.count {
-          let end = min(idx + batchSize, newTracks.count)
-          displayedTracks.append(contentsOf: newTracks[idx ..< end])
-          idx = end
-          await Task.yield()
-        }
+        await appendInBatches(newTracks)
         return
       }
 
       // Append-only: new list starts with old list.
-      let oldIDs = displayedTracks.map(\.id)
-      let newIDs = newTracks.map(\.id)
-      if oldIDs.count <= newIDs.count, Array(newIDs.prefix(oldIDs.count)) == oldIDs {
-        var idx = oldIDs.count
-        while idx < newIDs.count {
-          let end = min(idx + batchSize, newIDs.count)
+      if hasPrefixTrackIDs(prefix: displayedTracks, full: newTracks) {
+        let startIndex = displayedTracks.count
+        var idx = startIndex
+        while idx < newTracks.count {
+          if Task.isCancelled { return }
+          let end = min(idx + batchSize, newTracks.count)
           displayedTracks.append(contentsOf: newTracks[idx ..< end])
           idx = end
           await Task.yield()
@@ -373,6 +404,12 @@ final class AlbumTableViewModel {
   }
 
   // MARK: Private
+
+  // MARK: - Display Buffer Methods
+
+  /// Coalesced/batched update (Phase 56). Progressively appends tracks
+  /// in batches to keep the UI responsive during large imports.
+  private var displayedTracksUpdateTask: Task<Void, Never>?
 
   private func persistColumnWidths() {
     if let data = try? JSONEncoder().encode(columnWidths) {
