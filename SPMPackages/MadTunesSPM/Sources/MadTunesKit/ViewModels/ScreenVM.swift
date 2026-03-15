@@ -124,6 +124,7 @@ public final class ScreenVM {
   private static let splitViewVisibilityKey = "MadTunes.splitViewVisibility"
 
   private static func getInitialOrientation() -> Orientation {
+    guard OS.type != .macOS else { return .landscape }
     #if os(iOS) && !targetEnvironment(macCatalyst)
     if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
       return windowScene.interfaceOrientation.screenVMOrientation

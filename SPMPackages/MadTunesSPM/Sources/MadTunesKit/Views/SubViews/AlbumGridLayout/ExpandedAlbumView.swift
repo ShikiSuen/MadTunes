@@ -44,13 +44,13 @@ struct ExpandedAlbumView: View {
         header
         trackList
         songCountAndLengthView
-          .padding(.top, 8)
+          .padding(.top, 8 * vm.uiFactor)
       }
 
       // Large album artwork
       VStack {
         LazyAlbumArtworkView(album: album)
-          .frame(width: 200, height: 200)
+          .frame(width: 200 * vm.uiFactor, height: 200 * vm.uiFactor)
       }
       .fixedSize()
       .onTapGesture(count: 2) {
@@ -93,12 +93,12 @@ struct ExpandedAlbumView: View {
         )
       }
     }
-    .padding(16)
+    .padding(16 * vm.uiFactor)
     .background(
       RoundedRectangle(cornerRadius: 12)
         .fill(.secondary.opacity(0.1))
     )
-    .padding(.horizontal, 4)
+    .padding(.horizontal, 4 * vm.uiFactor)
     .background(
       GeometryReader { geo in
         Color.clear.preference(
@@ -155,6 +155,7 @@ struct ExpandedAlbumView: View {
   // MARK: Private
 
   @Binding private var selectedTrackIDs: Set<UUID>
+
   @State private var vm: MadTunesViewModel = .shared
 
   // Track Info Sheet state
@@ -186,7 +187,8 @@ struct ExpandedAlbumView: View {
   /// Subtracts: LazyVStack padding (2×16=32), .padding(.horizontal,4) (2×4=8),
   /// inner .padding(16) (2×16=32), artwork (200), HStack spacing (20).
   private var trackListWidth: CGFloat {
-    max(300, containerWidth - 292)
+    let factor = vm.uiFactor * vm.uiFactor
+    return Swift.max(300 * factor, containerWidth - 292 * factor)
   }
 
   // MARK: - Subviews
@@ -222,7 +224,7 @@ struct ExpandedAlbumView: View {
       }
       .buttonStyle(.plain)
     }
-    .padding(.bottom, 8)
+    .padding(.bottom, 8 * vm.uiFactor)
   }
 
   @ViewBuilder private var trackList: some View {
@@ -425,7 +427,6 @@ struct ExpandedAlbumView: View {
   private func handleDragSelection(
     startLocation: CGPoint, currentLocation: CGPoint, sorted: [Track]
   ) {
-    #if canImport(AppKit) && !canImport(UIKit)
     // Phase 63: Use SwiftUI EventModifiers instead of NSEvent.
     let modifiers = vm.currentModifiers
     // 僅在摁住 Shift 或 Command 時才啟用拖拽選擇，
@@ -453,7 +454,6 @@ struct ExpandedAlbumView: View {
       newSelection.insert(sorted[i].id)
     }
     selectedTrackIDs = newSelection
-    #endif
   }
 
   private func trackIDAtLocation(_ point: CGPoint) -> UUID? {
@@ -482,22 +482,16 @@ struct TrackRow: View {
 
   // MARK: Internal
 
-  let track: Track
-  var hideArtist: Bool = false
-  var showDiscNumber: Bool = false
-  var isPlaying: Bool = false
-  var isSelected: Bool = false
-
   var body: some View {
     HStack(spacing: 8) {
       if isPlaying {
         Image(systemName: "speaker.wave.2.fill")
-          .frame(width: 32, alignment: .trailing)
+          .frame(width: 32 * vm.uiFactor, alignment: .trailing)
           .foregroundStyle(Color.madTunesAccent)
           .font(.caption)
       } else {
         Text(trackNumberLabel)
-          .frame(width: 32, alignment: .trailing)
+          .frame(width: 32 * vm.uiFactor, alignment: .trailing)
           .foregroundStyle(.secondary)
           .font(.callout.monospacedDigit())
       }
@@ -519,10 +513,10 @@ struct TrackRow: View {
       Text(formatDuration(track.duration))
         .font(.callout.monospacedDigit())
         .foregroundStyle(.secondary)
-        .frame(width: 52, alignment: .trailing)
+        .frame(width: 52 * vm.uiFactor, alignment: .trailing)
     }
-    .padding(.vertical, 6)
-    .padding(.horizontal, 8)
+    .padding(.vertical, 6 * vm.uiFactor)
+    .padding(.horizontal, 8 * vm.uiFactor)
     .background(
       RoundedRectangle(cornerRadius: 4).fill(trackRowBackground)
     )
@@ -536,6 +530,13 @@ struct TrackRow: View {
   // MARK: Private
 
   @State private var isHovered: Bool = false
+  @State private var vm: MadTunesViewModel = .shared
+
+  private let track: Track
+  private var hideArtist: Bool = false
+  private var showDiscNumber: Bool = false
+  private var isPlaying: Bool = false
+  private var isSelected: Bool = false
 
   private var trackRowBackground: Color {
     if isSelected {

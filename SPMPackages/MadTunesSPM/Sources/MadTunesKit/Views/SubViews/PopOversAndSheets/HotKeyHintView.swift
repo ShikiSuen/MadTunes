@@ -92,10 +92,13 @@ struct HotKeyHintView: View {
         systemImage: "questionmark"
       )
     }
+    .tint(.primary)
     .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
-      popoverContent
-        .padding(12)
-        .frame(minWidth: 260)
+      ScrollView {
+        popoverContent
+          .padding(12)
+          .frame(minWidth: 260)
+      }
     }
   }
 
@@ -213,54 +216,40 @@ extension HotKeyHintView {
           bundle: #bundle
         )
       }
-      // ── Mouse/Pointer selection ──
-      // ⌘ + Click: Multi-select / deselect tracks.
-      HotKeyHintRecord(
-        modifiers: [.command],
-        keyPress: .return,
-        keyLabel: String(
-          localized: "i18n:HotKeyHint.KeyLabel.Click",
-          defaultValue: "Click",
-          bundle: #bundle
-        )
-      ) {
-        String(
-          localized: "i18n:HotKeyHint.Record.TableView.CmdClickSelect",
-          defaultValue: "Multi-select/deselect tracks",
-          bundle: #bundle
-        )
-      }
-      // Shift + Click: Range select tracks.
-      HotKeyHintRecord(
-        modifiers: [.shift],
-        keyPress: .return,
-        keyLabel: String(
-          localized: "i18n:HotKeyHint.KeyLabel.Click",
-          defaultValue: "Click",
-          bundle: #bundle
-        )
-      ) {
-        String(
-          localized: "i18n:HotKeyHint.Record.TableView.ShiftClickRangeSelect",
-          defaultValue: "Range select tracks",
-          bundle: #bundle
-        )
-      }
-      // Shift + Drag: Select multiple tracks.
-      HotKeyHintRecord(
-        modifiers: [.shift],
-        keyPress: .return,
-        keyLabel: String(
-          localized: "i18n:HotKeyHint.KeyLabel.Drag",
-          defaultValue: "Drag",
-          bundle: #bundle
-        )
-      ) {
-        String(
-          localized: "i18n:HotKeyHint.Record.TableView.ShiftDragSelect",
-          defaultValue: "Shift+Drag selects multiple tracks",
-          bundle: #bundle
-        )
+      // ── Mouse/Pointer selection (macOS only) ──
+      if OS.isAppKit {
+        // ⌘ + Click: Multi-select / deselect tracks.
+        HotKeyHintRecord(
+          modifiers: [.command],
+          keyPress: .return,
+          keyLabel: String(
+            localized: "i18n:HotKeyHint.KeyLabel.Click",
+            defaultValue: "Click",
+            bundle: #bundle
+          )
+        ) {
+          String(
+            localized: "i18n:HotKeyHint.Record.TableView.CmdClickSelect",
+            defaultValue: "Multi-select/deselect tracks",
+            bundle: #bundle
+          )
+        }
+        // Shift + Click: Range select tracks.
+        HotKeyHintRecord(
+          modifiers: [.shift],
+          keyPress: .return,
+          keyLabel: String(
+            localized: "i18n:HotKeyHint.KeyLabel.Click",
+            defaultValue: "Click",
+            bundle: #bundle
+          )
+        ) {
+          String(
+            localized: "i18n:HotKeyHint.Record.TableView.ShiftClickRangeSelect",
+            defaultValue: "Range select tracks",
+            bundle: #bundle
+          )
+        }
       }
     case false:
       // ── Commands ──
@@ -474,27 +463,6 @@ extension HotKeyHintView {
         String(
           localized: "i18n:HotKeyHint.Record.GridView.DragSelectAlbums",
           defaultValue: "Rubber-band select multiple albums (hold ⌘ to append)",
-          bundle: #bundle
-        )
-        String(
-          localized: "i18n:HotKeyHint.Record.GridView.DragSelectAlbums.Condition",
-          defaultValue: "(Only effective when no album is expanded)\n(Tap the grid gaps to initiate the Rubber-band selection)",
-          bundle: #bundle
-        )
-      }
-      // Shift + Drag: Select multiple tracks (hold ⌘ to append).
-      HotKeyHintRecord(
-        modifiers: [.shift],
-        keyPress: .return,
-        keyLabel: String(
-          localized: "i18n:HotKeyHint.KeyLabel.Drag",
-          defaultValue: "Drag",
-          bundle: #bundle
-        )
-      ) {
-        String(
-          localized: "i18n:HotKeyHint.Record.GridView.ShiftDragSelectTracks",
-          defaultValue: "Shift+Drag selects multiple tracks (hold ⌘ to append)",
           bundle: #bundle
         )
         String(

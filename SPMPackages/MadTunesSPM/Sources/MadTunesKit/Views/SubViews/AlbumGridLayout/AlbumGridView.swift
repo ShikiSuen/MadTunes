@@ -62,8 +62,9 @@ struct AlbumGridView: View {
   @State private var vm: MadTunesViewModel = .shared
   @State private var screenVM: ScreenVM = .shared
 
-  private let minItemWidth: CGFloat = 160
-  private let spacing: CGFloat = 16
+  private var spacing: CGFloat { 16 * vm.uiFactor }
+
+  private var minItemWidth: CGFloat { 160 * vm.uiFactor }
 
   private var albums: [Album] {
     gridVM.currentAlbumsDisplayed
@@ -236,7 +237,6 @@ struct AlbumGridView: View {
           }
       )
 
-    #if canImport(AppKit) && !canImport(UIKit)
     if isDragSelectionEnabled {
       Color.clear
         .contentShape(Rectangle())
@@ -261,13 +261,11 @@ struct AlbumGridView: View {
             }
         )
     }
-    #endif
   }
 
   // MARK: - Rubber-Band Rect Overlay (visual only — not hit-testable)
 
   @ViewBuilder private var rubberBandRectOverlay: some View {
-    #if canImport(AppKit) && !canImport(UIKit)
     if let rect = selectionRect {
       Rectangle()
         .fill(Color.accentColor.opacity(0.15))
@@ -279,7 +277,6 @@ struct AlbumGridView: View {
         .position(x: rect.midX, y: rect.midY)
         .allowsHitTesting(false)
     }
-    #endif
   }
 
   // MARK: - Row

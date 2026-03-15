@@ -700,11 +700,13 @@ final class AlbumGridViewModel {
       else { return .handled }
 
       let maxRowsPerColumn = 7
-      let trackListWidth = max(300, mainVM.screenVM.mainColumnCanvasSizeObserved.width - 292)
-      let minColumnWidth: CGFloat = 300
-      let maxPossibleColumns = max(1, Int(trackListWidth / minColumnWidth))
+      let factor = mainVM.uiFactor * mainVM.uiFactor
+      let minColumnWidth: CGFloat = 300 * factor
+      let containerWidth = mainVM.screenVM.mainColumnCanvasSizeObserved.width
+      let trackListWidth = Swift.max(minColumnWidth, containerWidth - 292 * factor)
+      let maxPossibleColumns = Swift.max(1, Int(trackListWidth / minColumnWidth))
       let desiredColumns = sorted.count > maxRowsPerColumn ? maxPossibleColumns : 1
-      let columnCount = max(1, min(sorted.count, desiredColumns))
+      let columnCount = Swift.max(1, Swift.min(sorted.count, desiredColumns))
       let itemsPerColumn = sorted.isEmpty ? 0 : Int(ceil(Double(sorted.count) / Double(columnCount)))
 
       switch press.key {

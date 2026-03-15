@@ -23,7 +23,14 @@ public struct MadTunesScene: Scene {
   public var body: some Scene {
     WindowGroup {
       MadTunesMainView()
-        .frame(minHeight: 514)
+        .frame(
+          minWidth: OS.type == .macOS ? 852 * vm.uiFactor : 720,
+          minHeight: OS.type == .macOS ? 574 * vm.uiFactor : 720
+        )
+        // Phase 69: Handle files opened via "Open In" / Share sheet / Finder.
+        .onOpenURL { url in
+          vm.importURLs([url])
+        }
     }
     .commands {
       CommandGroup(replacing: .newItem) {
@@ -47,7 +54,7 @@ public struct MadTunesScene: Scene {
               systemImage: "music.note"
             )
           }
-          .keyboardShortcut("o")
+          .keyboardShortcut("o", modifiers: [.command, .shift, .option])
           Button {
             vm.isFolderImporterPresented = true
           } label: {
@@ -98,6 +105,7 @@ public struct MadTunesScene: Scene {
         }
       }
     }
+    .windowResizability(.contentSize)
   }
 
   // MARK: Private

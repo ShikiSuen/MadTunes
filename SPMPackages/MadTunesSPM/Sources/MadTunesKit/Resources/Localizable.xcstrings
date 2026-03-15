@@ -589,6 +589,34 @@
         }
       }
     },
+    "i18n:Common.Edit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編集"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編輯"
+          }
+        }
+      }
+    },
     "i18n:Common.OK" : {
       "localizations" : {
         "en" : {
@@ -1319,7 +1347,7 @@
       }
     },
     "i18n:HotKeyHint.KeyLabel.Drag" : {
-      "extractionState" : "extracted_with_value",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1696,7 +1724,7 @@
       }
     },
     "i18n:HotKeyHint.Record.GridView.ShiftDragSelectTracks" : {
-      "extractionState" : "extracted_with_value",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1928,7 +1956,7 @@
       }
     },
     "i18n:HotKeyHint.Record.TableView.ShiftDragSelect" : {
-      "extractionState" : "extracted_with_value",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

@@ -68,7 +68,7 @@ struct PlayerControlsView: View {
 
   @ViewBuilder var coreComponent: some View {
     HStack(spacing: 16) {
-      let artWorkViewHeight: Double = sansBezel ? 28 : 40
+      let artWorkViewHeight: Double = (sansBezel ? 28 : 40) * vm.uiFactor
       ArtworkView(data: artworkData, alwaysGlossy: true)
         .background {
           ZStack {
@@ -142,21 +142,39 @@ struct PlayerControlsView: View {
           duration: player.duration,
           onSeek: { player.seek(to: $0) }
         )
-        HStack(spacing: 16) {
+        HStack(spacing: 16 * vm.uiFactor) {
           // Now-playing info (left)
           nowPlayingInfo
             .frame(maxWidth: .infinity, alignment: .leading)
 
-          HStack(spacing: 4) {
+          HStack(spacing: 4 * vm.uiFactor * vm.uiFactor) {
             transportControls
-            queueToggleButton
-            columnBrowserToggleButton
-            playLoopBehaviorButton
+              .toolbar {
+                if vm.screenVM.orientation != .landscape {
+                  ToolbarItem(placement: .confirmationAction) {
+                    queueToggleButton
+                  }
+                  ToolbarItem(placement: .confirmationAction) {
+                    columnBrowserToggleButton
+                  }
+                  ToolbarItem(placement: .confirmationAction) {
+                    playLoopBehaviorButton
+                  }
+                }
+              }
+            if vm.screenVM.orientation == .landscape {
+              Group {
+                queueToggleButton
+                columnBrowserToggleButton
+                playLoopBehaviorButton
+              }
+              .buttonStyle(.plain)
+            }
             volumeControls
           }
           .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .frame(height: sansBezel ? 26 : 34)
+        .frame(height: (sansBezel ? 26 : 34) * vm.uiFactor)
         HStack {
           Button {
             showRemainingTime.toggle()
@@ -179,7 +197,7 @@ struct PlayerControlsView: View {
         }
         .frame(maxWidth: .infinity)
       }
-      .frame(width: 480)
+      .frame(width: 480 * (vm.screenVM.orientation == .landscape ? vm.uiFactor : 1))
     }
     .fixedSize(horizontal: false, vertical: true)
     .frame(minHeight: 40, alignment: .center)
@@ -267,23 +285,23 @@ struct PlayerControlsView: View {
   }
 
   @ViewBuilder private var transportControls: some View {
-    HStack(spacing: 4) {
+    HStack(spacing: 4 * vm.uiFactor) {
       Button { player.previous() } label: {
         Image(systemName: "backward.fill")
           .font(.title3)
-          .frame(width: 32, height: 32)
+          .frame(width: 32 * vm.uiFactor, height: 32)
           .contentShape(.rect)
       }
       Button { player.togglePlayPause() } label: {
         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
           .font(.title)
-          .frame(width: 32, height: 32)
+          .frame(width: 32 * vm.uiFactor, height: 32)
           .contentShape(.rect)
       }
       Button { player.next() } label: {
         Image(systemName: "forward.fill")
           .font(.title3)
-          .frame(width: 32, height: 32)
+          .frame(width: 32 * vm.uiFactor, height: 32)
           .contentShape(.rect)
       }
     }
@@ -307,7 +325,6 @@ struct PlayerControlsView: View {
         .contentShape(.rect)
         .foregroundStyle(isActive ? Color.madTunesAccent : .secondary)
     }
-    .buttonStyle(.plain)
     .help(loopBehaviorTooltip)
   }
 
@@ -328,7 +345,6 @@ struct PlayerControlsView: View {
         .contentShape(.rect)
         .foregroundStyle(iconColor)
     }
-    .buttonStyle(.plain)
     .popover(isPresented: $isColumnBrowserPopoverPresented) {
       ColumnBrowserView()
     }
@@ -345,7 +361,6 @@ struct PlayerControlsView: View {
         .contentShape(.rect)
         .foregroundStyle(isQueuePopoverPresented ? Color.madTunesAccent : .secondary)
     }
-    .buttonStyle(.plain)
     .popover(isPresented: $isQueuePopoverPresented) {
       PlayingQueueView(player: player)
         .environment(vm)
@@ -357,7 +372,7 @@ struct PlayerControlsView: View {
     HStack(spacing: 8) {
       Image(systemName: volumeIcon)
         .font(.caption)
-        .frame(width: 28, height: 28)
+        .frame(width: 28 * vm.uiFactor, height: 28)
 
       Slider(
         value: Binding<Double>(
@@ -366,7 +381,7 @@ struct PlayerControlsView: View {
         ),
         in: 0 ... 1
       )
-      .frame(width: 80)
+      .frame(width: 80 * vm.uiFactor)
       .controlSize(.mini)
     }
   }

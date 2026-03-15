@@ -331,10 +331,7 @@ struct AlbumTableView: View {
       if !selected.isEmpty {
         trackContextMenu(forTracks: selected)
       }
-    }, primaryAction: { ids in
-      // Double-click: play starting from the first selected track.
-      onTrackDoubleClicked(ids: ids)
-    })
+    }, primaryAction: givePrimaryTableAction())
     .onChange(of: vm.tableVM.tableScrollTargetID) { _, newID in
       if let id = newID {
         Task {
@@ -345,6 +342,19 @@ struct AlbumTableView: View {
         vm.tableVM.tableScrollTargetID = nil
       }
     }
+    #if !(canImport(AppKit) && !canImport(UIKit))
+    .simultaneousGesture(
+      TapGesture(count: 2).onEnded {
+        // Double-click: play starting from the first selected track.
+        onTrackDoubleClicked(vm.selectedTrackIDs)
+      }
+    )
+    // Phase 69: Enable iOS multi-select when edit mode is active.
+    .environment(\.editMode, .init(
+      get: { tableVM.isEditModeActive ? .active : .inactive },
+      set: { tableVM.isEditModeActive = ($0 == .active) }
+    ))
+    #endif
   }
 
   // MARK: - Row
@@ -466,7 +476,15 @@ struct AlbumTableView: View {
     )
   }
 
-  private func onTrackDoubleClicked(ids: Set<UUID>) {
+  private func givePrimaryTableAction() -> ((Set<UUID>) -> Void)? {
+    #if canImport(AppKit) && !canImport(UIKit)
+    return onTrackDoubleClicked
+    #else
+    return nil
+    #endif
+  }
+
+  private func onTrackDoubleClicked(_ ids: Set<UUID>) {
     guard let firstID = ids.first else { return }
     let track = tableVM.displayedTracks.first(where: { $0.id == firstID })
     guard let track else { return }

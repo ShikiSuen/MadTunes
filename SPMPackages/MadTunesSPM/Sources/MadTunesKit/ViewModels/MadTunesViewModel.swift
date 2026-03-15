@@ -5,14 +5,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-#if canImport(AppKit)
-import AppKit
-#endif
-
-#if canImport(UIKit)
-import UIKit
-#endif
-
 // MARK: - MadTunesViewModel
 
 @Observable
@@ -28,6 +20,10 @@ final class MadTunesViewModel {
   // MARK: Internal
 
   static let shared = MadTunesViewModel()
+
+  let uiFactor: CGFloat = OS.isAppKit ? 1 : 1.3
+
+  let modifierKeyMonitor = ModifierKeyMonitor.shared
 
   var library = MusicLibrary()
   var player = AudioPlayer()
@@ -53,9 +49,6 @@ final class MadTunesViewModel {
   // This property should stay in this mainVM since it is required by both view layouts.
   var displayedTracksCache: [Track] = []
 
-  // Phase 63: SwiftUI-tracked modifier key state, replacing NSEvent.modifierFlags.
-  var currentModifiers: EventModifiers = []
-
   // Column Browser filter state (empty set = "All")
   var columnBrowserSelectedGenres: Set<String> = []
   /// Newly split from previous `Artists`; refers to the album-level artist.
@@ -63,6 +56,12 @@ final class MadTunesViewModel {
   /// Separate song-artist filter (tracks' artist field).
   var columnBrowserSelectedSongArtists: Set<String> = []
   var columnBrowserSelectedAlbumTitles: Set<String> = []
+
+  // Phase 63: SwiftUI-tracked modifier key state, replacing NSEvent.modifierFlags.
+
+  var currentModifiers: EventModifiers {
+    modifierKeyMonitor.currentModifiers
+  }
 
   // Keyword search
   var searchText: String = "" {

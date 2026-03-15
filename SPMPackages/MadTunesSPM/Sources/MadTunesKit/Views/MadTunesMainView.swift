@@ -19,36 +19,6 @@ struct MadTunesMainView: View {
       preferredCompactColumn: $viewColumn
     ) {
       SidebarView(library: vm.library, selectedPlaylistID: $vm.selectedPlaylistID)
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            if !vm.library.isImporting {
-              switch OS.isAppKit {
-              case true:
-                Button {
-                  vm.isFolderImporterPresented = true
-                } label: {
-                  Label(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle), systemImage: "folder")
-                }
-              case false:
-                Menu {
-                  Button {
-                    vm.isFileImporterPresented = true
-                  } label: {
-                    Label(String(localized: "i18n:Import.ImportFiles", bundle: #bundle), systemImage: "music.note")
-                  }
-                  Button {
-                    vm.isFolderImporterPresented = true
-                  } label: {
-                    Label(String(localized: "i18n:Import.ImportFolder", bundle: #bundle), systemImage: "folder")
-                  }
-                } label: {
-                  Label(String(localized: "i18n:Import.ImportMusic", bundle: #bundle), systemImage: "plus")
-                    .tint(.primary)
-                }
-              }
-            }
-          }
-        }
         .background {
           Group {
             if colorScheme == .dark {
@@ -66,7 +36,11 @@ struct MadTunesMainView: View {
           }
         }
         .environment(\.colorScheme, .dark)
-        .navigationSplitViewColumnWidth(min: 210, ideal: 210, max: 210)
+        .navigationSplitViewColumnWidth(
+          min: 210 * vm.uiFactor,
+          ideal: 210 * vm.uiFactor,
+          max: 210 * vm.uiFactor
+        )
     } detail: {
       let albums = vm.gridVM.currentAlbumsDisplayed
       contentArea(albums: albums)
@@ -123,6 +97,66 @@ struct MadTunesMainView: View {
           .fixedSize(horizontal: false, vertical: true)
         }
         .toolbar {
+          ToolbarItem(placement: .navigation) {
+            if !vm.library.isImporting {
+              switch OS.isAppKit {
+              case true:
+                Button {
+                  vm.isFolderImporterPresented = true
+                } label: {
+                  Label(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle), systemImage: "folder")
+                    .tint(.primary)
+                }
+                .tint(.primary)
+              case false:
+                Menu {
+                  Button {
+                    vm.isFileImporterPresented = true
+                  } label: {
+                    Label(String(localized: "i18n:Import.ImportFiles", bundle: #bundle), systemImage: "music.note")
+                  }
+                  Button {
+                    vm.isFolderImporterPresented = true
+                  } label: {
+                    Label(String(localized: "i18n:Import.ImportFolder", bundle: #bundle), systemImage: "folder")
+                  }
+                } label: {
+                  Label(String(localized: "i18n:Import.ImportMusic", bundle: #bundle), systemImage: "plus")
+                    .tint(.primary)
+                }
+                .tint(.primary)
+              }
+            }
+          }
+
+          // Phase 69: Edit/Done button for iOS multi-select on static playlists.
+          #if !(canImport(AppKit) && !canImport(UIKit))
+
+          if #available(iOS 26.0, macCatalyst 26.0, macOS 26.0, *) {
+            ToolbarSpacer(.flexible, placement: .navigation)
+          }
+
+          ToolbarItem(placement: .navigation) {
+            if vm.useTableView, vm.tableVM.canEnterEditMode {
+              Button {
+                withAnimation {
+                  vm.tableVM.isEditModeActive.toggle()
+                }
+              } label: {
+                Label(
+                  vm.tableVM.isEditModeActive
+                    ? String(localized: "i18n:Common.Done", bundle: #bundle)
+                    : String(localized: "i18n:Common.Edit", bundle: #bundle),
+
+                  systemImage: "square.and.pencil"
+                )
+                .tint(.primary)
+              }
+              .tint(.primary)
+            }
+          }
+          #endif
+
           // Phase 68: Button for showing the popover of hotkey hints
           ToolbarItem(placement: .automatic) {
             HotKeyHintView()
@@ -139,9 +173,11 @@ struct MadTunesMainView: View {
               Text(String(localized: "i18n:Toolbar.ToggleViewLayout", bundle: #bundle))
             }
             .pickerStyle(.segmented)
+            .tint(.primary)
             .fixedSize()
             .onChange(of: vm.useTableView) { _, newValue in
               UserDefaults.standard.set(newValue, forKey: "MadTunes.useTableView")
+              vm.tableVM.isEditModeActive = false
               Task {
                 if newValue {
                   // when entering table mode we no longer need an expanded album
@@ -153,6 +189,7 @@ struct MadTunesMainView: View {
             }
           }
           .removeSharedBackgroundVisibility(bypassWhen: OS.isAppKit)
+
           ToolbarItem(placement: .primaryAction) {
             if !vm.library.tracks.isEmpty {
               switch vm.useTableView {
@@ -174,6 +211,7 @@ struct MadTunesMainView: View {
                   )
                   .tint(.primary)
                 }
+                .tint(.primary)
                 .disabled(vm.library.isImporting)
               case true:
                 Menu {
@@ -190,9 +228,15 @@ struct MadTunesMainView: View {
                   )
                   .tint(.primary)
                 }
+                .tint(.primary)
               }
             }
           }
+
+          if #available(iOS 26.0, macCatalyst 26.0, macOS 26.0, *) {
+            ToolbarSpacer(.flexible, placement: .primaryAction)
+          }
+
           ToolbarItem(placement: .primaryAction) {
             if (!vm.library.isImporting && !albums.isEmpty) || !searchTokens(from: vm.searchText).isEmpty {
               Menu {
@@ -212,6 +256,7 @@ struct MadTunesMainView: View {
                 )
                 .tint(.primary)
               }
+              .tint(.primary)
             }
           }
         }
@@ -280,11 +325,6 @@ struct MadTunesMainView: View {
           return vm.gridVM.handleKeyPress(press, albums: displayAlbums)
         }
       }
-    #if os(macOS)
-      .onModifierKeysChanged { _, new in
-        vm.currentModifiers = new
-      }
-    #endif
       .onChange(of: vm.gridVM.expandedAlbumID) { _, _ in
         vm.selectedTrackIDs.removeAll()
       }
@@ -293,6 +333,7 @@ struct MadTunesMainView: View {
       }
       .onChange(of: vm.selectedPlaylistID) { _, _ in
         if !vm.selectedTrackIDs.isEmpty { vm.selectedTrackIDs.removeAll() }
+        vm.tableVM.isEditModeActive = false
         vm.resetColumnBrowserFilters()
         if !searchTokens(from: vm.searchText).isEmpty {
           vm.searchText = ""

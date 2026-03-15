@@ -76,6 +76,9 @@ final class AlbumTableViewModel {
   /// Phase 44: Table view column sorting (column type, ascending?)
   var tableSortCriteria: (column: TableColumnType, ascending: Bool)?
 
+  /// Phase 69: Whether iOS edit mode (multi-select) is active.
+  var isEditModeActive = false
+
   /// Returns visible columns in display order.
   /// Playing indicator is always first and always visible.
   var visibleColumns: [TableColumnType] {
@@ -119,6 +122,22 @@ final class AlbumTableViewModel {
       && mainVM.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       && !mainVM.isColumnBrowserFiltering
     return canReorder
+  }
+
+  /// Phase 69: Whether the current playlist supports iOS edit mode (multi-select).
+  /// Enabled for Favorites and user static playlists on non-AppKit platforms.
+  var canEnterEditMode: Bool {
+    guard !OS.isAppKit else { return false }
+    guard let mainVM else { return false }
+    guard let playlistID = mainVM.selectedPlaylistID,
+          let index = mainVM.library.playlists.firstIndex(where: { $0.id == playlistID })
+    else {
+      return false
+    }
+    if index == 0 { return false }
+    let playlist = mainVM.library.playlists[index]
+    let isFavorites = playlist.kind == .system && index == 1
+    return isFavorites || playlist.kind == .staticList
   }
 
   // MARK: - Phase 52: Menu command helpers for track reordering
