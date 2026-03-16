@@ -16,7 +16,12 @@ import UniformTypeIdentifiers
 public struct MadTunesScene: Scene {
   // MARK: Lifecycle
 
-  public init() {}
+  public init() {
+    // Phase 71: Disable tab bar for single-window app on AppKit targets.
+    #if canImport(AppKit) && !targetEnvironment(macCatalyst)
+    NSWindow.allowsAutomaticWindowTabbing = false
+    #endif
+  }
 
   // MARK: Public
 
