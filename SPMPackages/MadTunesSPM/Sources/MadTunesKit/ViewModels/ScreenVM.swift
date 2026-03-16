@@ -347,17 +347,8 @@ extension ScreenVM {
     private let debounceDelay: TimeInterval
 
     private func pushTrackedPropertiesToScreenVM() async {
-      defer {
-        syncLayoutParamsToBackend()
-      }
       // This is not The Latte Helper, hence no need to lock the sidebar visibility here.
-      guard OS.type != .macOS else { return }
-      switch screenVM.orientation {
-      case .landscape where horizontalSizeClass ?? .regular != .compact:
-        screenVM.splitViewVisibility = .all
-      default:
-        screenVM.splitViewVisibility = .detailOnly
-      }
+      syncLayoutParamsToBackend()
     }
 
     private func syncLayoutParamsToBackend() {
