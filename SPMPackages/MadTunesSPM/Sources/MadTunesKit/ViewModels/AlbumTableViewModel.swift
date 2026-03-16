@@ -22,6 +22,10 @@ final class AlbumTableViewModel {
 
   // MARK: Internal
 
+  // MARK: - Phase 74: Page/Endpoint Navigation (public for menu commands)
+
+  enum PageNavigationTarget { case pageUp, pageDown, home, end }
+
   var mainVM: MadTunesViewModel?
 
   // MARK: - Dedicated Properties
@@ -158,6 +162,14 @@ final class AlbumTableViewModel {
     let tracks = currentTracksDisplayed
     let lastSelectedIdx = tracks.lastIndex { mainVM.selectedTrackIDs.contains($0.id) }
     return (lastSelectedIdx ?? tracks.count - 1) < tracks.count - 1
+  }
+
+  /// Phase 74: Estimated visible rows for page-based scrolling.
+  var tablePageSize: Int {
+    guard let mainVM else { return 20 }
+    let canvasHeight = mainVM.screenVM.mainColumnCanvasSizeObserved.height
+    // Row height is ~20pt content + insets; estimate ~24pt per row.
+    return max(1, Int((canvasHeight - 80) / 24))
   }
 
   // MARK: - Table Sorting
@@ -379,9 +391,10 @@ final class AlbumTableViewModel {
   // MARK: - Phase 63: Keyboard Navigation (moved from MadTunesViewModel)
 
   /// Handles keyboard input when the table view is active.
-  /// Arrow keys, Shift+Arrow, PgUp/PgDn are handled natively by the List.
+  /// Arrow keys, Shift+Arrow, PgUp/PgDn are handled natively by the List on macOS.
   /// Track reorder (Option+↑/↓) is handled via menu commands.
-  /// This handler intercepts: Cmd+C copy, Cmd+↓/Return/Space to play.
+  /// This handler intercepts: Cmd+C copy, Cmd+↓/Return/Space to play,
+  /// and (UIKit only) PgUp/PgDn/Home/End for scroll+selection.
   func handleKeyPress(_ press: KeyPress) -> KeyPress.Result {
     guard let mainVM else { return .ignored }
     let tracks = currentTracksDisplayed
@@ -419,7 +432,57 @@ final class AlbumTableViewModel {
       return .ignored
     }
 
+    // Phase 74: PgUp/PgDn/Home/End for UIKit targets (macOS List handles these natively).
+    if !OS.isAppKit, press.isPageKey || press.key == .home || press.key == .end {
+      return handlePageOrEndpointKey(press, tracks: tracks, mainVM: mainVM)
+    }
+
     return .ignored
+  }
+
+  /// Called from menu commands (macCatalyst) or .onKeyPress fallback (iPadOS).
+  /// Menu commands bypass UICollectionView's key command interception.
+  func navigateToPage(_ target: PageNavigationTarget, isShift: Bool) {
+    guard let mainVM else { return }
+    let tracks = currentTracksDisplayed
+    guard !tracks.isEmpty else { return }
+
+    let referenceID = tableSelectionCursorID ?? mainVM.selectedTrackIDs.first
+    let refIdx = referenceID.flatMap { id in tracks.firstIndex(where: { $0.id == id }) }
+
+    let targetIdx: Int
+    switch target {
+    case .home: targetIdx = 0
+    case .end: targetIdx = tracks.count - 1
+    case .pageUp: targetIdx = max((refIdx ?? 0) - tablePageSize, 0)
+    case .pageDown: targetIdx = min((refIdx ?? 0) + tablePageSize, tracks.count - 1)
+    }
+
+    let targetID = tracks[targetIdx].id
+
+    if isShift {
+      let anchorID: UUID
+      if let existing = tableSelectionAnchorID {
+        anchorID = existing
+      } else if let first = mainVM.selectedTrackIDs.first,
+                tracks.contains(where: { $0.id == first }) {
+        anchorID = first
+        tableSelectionAnchorID = anchorID
+      } else {
+        anchorID = targetID
+        tableSelectionAnchorID = anchorID
+      }
+      if let anchorIdx = tracks.firstIndex(where: { $0.id == anchorID }) {
+        let lo = min(anchorIdx, targetIdx)
+        let hi = max(anchorIdx, targetIdx)
+        mainVM.selectedTrackIDs = Set(tracks[lo ... hi].map(\.id))
+      }
+    } else {
+      mainVM.selectedTrackIDs = [targetID]
+      tableSelectionAnchorID = targetID
+    }
+    tableSelectionCursorID = targetID
+    tableScrollTargetID = targetID
   }
 
   // MARK: Private
@@ -429,6 +492,23 @@ final class AlbumTableViewModel {
   /// Coalesced/batched update (Phase 56). Progressively appends tracks
   /// in batches to keep the UI responsive during large imports.
   private var displayedTracksUpdateTask: Task<Void, Never>?
+
+  /// Phase 74: PgUp/PgDn/Home/End handler for UIKit targets (.onKeyPress fallback).
+  private func handlePageOrEndpointKey(
+    _ press: KeyPress, tracks: [Track], mainVM: MadTunesViewModel
+  )
+    -> KeyPress.Result {
+    let target: PageNavigationTarget
+    switch press.key {
+    case .home: target = .home
+    case .end: target = .end
+    case .pageUp: target = .pageUp
+    case .pageDown: target = .pageDown
+    default: return .ignored
+    }
+    navigateToPage(target, isShift: press.modifiers.contains(.shift))
+    return .handled
+  }
 
   private func persistColumnWidths() {
     if let data = try? JSONEncoder().encode(columnWidths) {

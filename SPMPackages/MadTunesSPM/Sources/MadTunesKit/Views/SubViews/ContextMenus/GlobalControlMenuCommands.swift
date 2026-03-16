@@ -140,5 +140,60 @@ struct GlobalControlMenuCommands: Commands {
       .keyboardShortcut(.downArrow, modifiers: [.option])
       .disabled(!vm.tableVM.canMoveSelectedTracksDown)
     }
+    // Phase 74: PgUp/PgDn/Home/End for UIKit targets.
+    // Menu commands bypass UICollectionView's key command interception on macCatalyst.
+    #if !canImport(AppKit) || targetEnvironment(macCatalyst)
+    Section {
+      Button { vm.tableVM.navigateToPage(.pageUp, isShift: false) } label: {
+        Text(String(localized: "i18n:Menu.PageUp", defaultValue: "Page Up", bundle: #bundle))
+      }
+      .keyboardShortcut(.pageUp, modifiers: [])
+      Button { vm.tableVM.navigateToPage(.pageDown, isShift: false) } label: {
+        Text(String(localized: "i18n:Menu.PageDown", defaultValue: "Page Down", bundle: #bundle))
+      }
+      .keyboardShortcut(.pageDown, modifiers: [])
+      Button { vm.tableVM.navigateToPage(.home, isShift: false) } label: {
+        Text(String(localized: "i18n:Menu.Home", defaultValue: "Home", bundle: #bundle))
+      }
+      .keyboardShortcut(.home, modifiers: [])
+      Button { vm.tableVM.navigateToPage(.end, isShift: false) } label: {
+        Text(String(localized: "i18n:Menu.End", defaultValue: "End", bundle: #bundle))
+      }
+      .keyboardShortcut(.end, modifiers: [])
+      Button { vm.tableVM.navigateToPage(.pageUp, isShift: true) } label: {
+        Text(String(
+          localized: "i18n:Menu.ExtendSelectionPageUp",
+          defaultValue: "Extend Selection Page Up",
+          bundle: #bundle
+        ))
+      }
+      .keyboardShortcut(.pageUp, modifiers: [.shift])
+      Button { vm.tableVM.navigateToPage(.pageDown, isShift: true) } label: {
+        Text(String(
+          localized: "i18n:Menu.ExtendSelectionPageDown",
+          defaultValue: "Extend Selection Page Down",
+          bundle: #bundle
+        ))
+      }
+      .keyboardShortcut(.pageDown, modifiers: [.shift])
+      Button { vm.tableVM.navigateToPage(.home, isShift: true) } label: {
+        Text(String(
+          localized: "i18n:Menu.ExtendSelectionToStart",
+          defaultValue: "Extend Selection to Start",
+          bundle: #bundle
+        ))
+      }
+      .keyboardShortcut(.home, modifiers: [.shift])
+      Button { vm.tableVM.navigateToPage(.end, isShift: true) } label: {
+        Text(String(
+          localized: "i18n:Menu.ExtendSelectionToEnd",
+          defaultValue: "Extend Selection to End",
+          bundle: #bundle
+        ))
+      }
+      .keyboardShortcut(.end, modifiers: [.shift])
+    }
+    .disabled(vm.tableVM.currentTracksDisplayed.isEmpty)
+    #endif
   }
 }
