@@ -58,7 +58,13 @@ struct SidebarView: View {
         .onDelete { indexSet in
           // Offset by 2 because dropFirst(2) removes "All Music" and "Favorites"
           for index in indexSet {
-            library.removePlaylist(at: index + 2)
+            // Phase 86: Reset selectedPlaylistID if the swipe-to-deleted playlist was selected.
+            let actualIndex = index + 2
+            if actualIndex < library.playlists.count,
+               selectedPlaylistID == library.playlists[actualIndex].id {
+              selectedPlaylistID = library.playlists.first?.id
+            }
+            library.removePlaylist(at: actualIndex)
           }
         }
 

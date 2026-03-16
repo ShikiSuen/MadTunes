@@ -54,7 +54,13 @@ struct WPPlaylistsSection: View {
                 Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
               }
               Button(role: .destructive) {
+                // Phase 86: Reset selectedPlaylistID if pointing to the deleted playlist,
+                // and pop navigation to prevent stale playlist detail views.
+                if vm.selectedPlaylistID == playlist.id {
+                  vm.selectedPlaylistID = vm.library.playlists.first?.id
+                }
                 vm.library.removePlaylist(id: playlist.id)
+                phoneVM.popNavigationIfDataInvalid(library: vm.library)
               } label: {
                 Label(String(localized: "i18n:Common.Delete", bundle: #bundle), systemImage: "trash")
               }

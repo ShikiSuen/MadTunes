@@ -374,6 +374,15 @@ final class WPPhoneViewModel {
     return recent.map(\.1) + rest
   }
 
+  /// Phase 86: Pop navigation stack entries that reference deleted albums or playlists.
+  func popNavigationIfDataInvalid(library: MusicLibrary) {
+    guard !navigationPath.isEmpty else { return }
+    // NavigationPath doesn't support inspection of individual entries,
+    // so we reset to root when deletion happens during drill-down.
+    // This is the safest approach to avoid stale-snapshot views.
+    navigationPath = NavigationPath()
+  }
+
   // MARK: Private
 
   // MARK: Persistence

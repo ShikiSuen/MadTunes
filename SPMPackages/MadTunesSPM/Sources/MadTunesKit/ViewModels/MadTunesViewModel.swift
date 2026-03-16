@@ -219,6 +219,8 @@ final class MadTunesViewModel {
 
   /// Removes tracks from the library and ensures they are also removed from
   /// playback state (queue/current track) and any cached filter results.
+  /// Phase 86: Also cleans up cross-UI state (WPUI selection, recent album keys,
+  /// expanded album, highlighted albums) to prevent stale references.
   func removeTracksFromLibrary(_ ids: Set<UUID>) {
     guard !ids.isEmpty else { return }
 
@@ -238,6 +240,40 @@ final class MadTunesViewModel {
 
     // Update caches used by various views.
     invalidateSearchCacheForRemovedTracks(ids)
+
+    // Phase 86: Collapse expanded album if all its tracks were removed.
+    if let expandedID = gridVM.expandedAlbumID,
+       !library.albums.contains(where: { $0.id == expandedID }) {
+      gridVM.expandedAlbumID = nil
+    }
+
+    // Phase 86: Purge deleted albums from Grid highlighted selection.
+    let validAlbumIDs = Set(library.albums.map(\.id))
+    if !gridVM.highlightedAlbumIDs.isEmpty {
+      gridVM.highlightedAlbumIDs = gridVM.highlightedAlbumIDs.intersection(validAlbumIDs)
+    }
+    if let anchor = gridVM.albumSelectionFixedAnchorID, !validAlbumIDs.contains(anchor) {
+      gridVM.albumSelectionFixedAnchorID = nil
+    }
+    if let cursor = gridVM.albumSelectionCursorID, !validAlbumIDs.contains(cursor) {
+      gridVM.albumSelectionCursorID = nil
+    }
+
+    // Phase 86: Purge WPUI selection state referencing deleted albums.
+    if !phoneVM.wpSelectedAlbumIDs.isEmpty {
+      phoneVM.wpSelectedAlbumIDs = phoneVM.wpSelectedAlbumIDs.intersection(validAlbumIDs)
+    }
+
+    // Phase 86: Remove stale keys from recent album tracking.
+    let validAlbumKeys = Set(library.albums.map { library.albumKey(title: $0.title, artist: $0.artist) })
+    let oldCount = phoneVM.recentAlbumKeys.count
+    phoneVM.recentAlbumKeys.removeAll { !validAlbumKeys.contains($0) }
+    if phoneVM.recentAlbumKeys.count != oldCount {
+      UserDefaults.standard.set(phoneVM.recentAlbumKeys, forKey: "MadTunes.WPUI.recentAlbumKeys")
+    }
+
+    // Phase 86: Pop WPUI navigation if the user is viewing a now-deleted album or playlist.
+    phoneVM.popNavigationIfDataInvalid(library: library)
   }
 
   /// Resets column browser filters.

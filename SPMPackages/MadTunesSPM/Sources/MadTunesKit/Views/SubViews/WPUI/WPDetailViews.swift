@@ -8,88 +8,102 @@ import SwiftUI
 
 /// Phase 75: Album detail view pushed via NavigationStack.
 /// Shows artwork, album info, and track list.
+/// Phase 86: Uses live album lookup to prevent stale-data access after deletion.
 struct WPAlbumDetailView: View {
   @Environment(MadTunesViewModel.self) private var vm
   @Environment(WPPhoneViewModel.self) private var phoneVM
 
   let album: Album
 
+  /// Phase 86: Live lookup — returns the current album from the library (reflecting deletions),
+  /// falling back to the navigation-snapshot only if the album still exists.
+  private var currentAlbum: Album {
+    vm.library.albums.first { $0.id == album.id } ?? album
+  }
+
   var body: some View {
-    ScrollView(.vertical, showsIndicators: false) {
-      VStack(spacing: 16) {
-        // Artwork.
-        LazyAlbumArtworkView(album: album)
-          .frame(width: 200, height: 200)
-          .clipShape(.rect)
-          .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 6)
-          .padding(.top, 16)
+    let liveAlbum = currentAlbum
+    // Phase 86: If the album has no tracks left (all deleted), show nothing.
+    // The navigation pop is handled centrally by removeTracksFromLibrary.
+    if liveAlbum.tracks.isEmpty {
+      Color.black.ignoresSafeArea()
+    } else {
+      ScrollView(.vertical, showsIndicators: false) {
+        VStack(spacing: 16) {
+          // Artwork.
+          LazyAlbumArtworkView(album: liveAlbum)
+            .frame(width: 200, height: 200)
+            .clipShape(.rect)
+            .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 6)
+            .padding(.top, 16)
 
-        // Album info.
-        VStack(spacing: 4) {
-          Text(verbatim: album.title)
-            .font(.system(size: 22, weight: .bold))
-            .foregroundStyle(.white)
-            .multilineTextAlignment(.center)
-          Text(verbatim: album.artist)
-            .font(.system(size: 16))
-            .foregroundStyle(.white.opacity(0.7))
-          if let year = album.year {
-            Text(verbatim: "\(year)")
-              .font(.system(size: 14))
-              .foregroundStyle(.white.opacity(0.5))
+          // Album info.
+          VStack(spacing: 4) {
+            Text(verbatim: liveAlbum.title)
+              .font(.system(size: 22, weight: .bold))
+              .foregroundStyle(.white)
+              .multilineTextAlignment(.center)
+            Text(verbatim: liveAlbum.artist)
+              .font(.system(size: 16))
+              .foregroundStyle(.white.opacity(0.7))
+            if let year = liveAlbum.year {
+              Text(verbatim: "\(year)")
+                .font(.system(size: 14))
+                .foregroundStyle(.white.opacity(0.5))
+            }
           }
+          .padding(.horizontal, 20)
+
+          // Play / Shuffle buttons.
+          HStack(spacing: 16) {
+            Button {
+              vm.player.setQueue(liveAlbum.tracks, startingAt: 0)
+            } label: {
+              Label(
+                String(localized: "i18n:WP.Play", bundle: #bundle),
+                systemImage: "play.fill"
+              )
+              .font(.system(size: 15, weight: .semibold))
+              .foregroundStyle(.white)
+              .padding(.horizontal, 20)
+              .padding(.vertical, 10)
+              .background(phoneVM.wpAccentColor.color)
+              .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+
+            Button {
+              let shuffled = liveAlbum.tracks.shuffled()
+              vm.player.setQueue(shuffled, startingAt: 0)
+            } label: {
+              Label(
+                String(localized: "i18n:WP.Shuffle", bundle: #bundle),
+                systemImage: "shuffle"
+              )
+              .font(.system(size: 15, weight: .semibold))
+              .foregroundStyle(.white)
+              .padding(.horizontal, 20)
+              .padding(.vertical, 10)
+              .background(Color.white.opacity(0.15))
+              .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+          }
+          .padding(.top, 4)
+
+          // Track list.
+          Divider().background(Color.white.opacity(0.1))
+
+          WPTrackListView(tracks: liveAlbum.tracks)
+            .frame(minHeight: CGFloat(liveAlbum.tracks.count) * 50)
         }
-        .padding(.horizontal, 20)
-
-        // Play / Shuffle buttons.
-        HStack(spacing: 16) {
-          Button {
-            vm.player.setQueue(album.tracks, startingAt: 0)
-          } label: {
-            Label(
-              String(localized: "i18n:WP.Play", bundle: #bundle),
-              systemImage: "play.fill"
-            )
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(phoneVM.wpAccentColor.color)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-          }
-          .buttonStyle(.plain)
-
-          Button {
-            let shuffled = album.tracks.shuffled()
-            vm.player.setQueue(shuffled, startingAt: 0)
-          } label: {
-            Label(
-              String(localized: "i18n:WP.Shuffle", bundle: #bundle),
-              systemImage: "shuffle"
-            )
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(Color.white.opacity(0.15))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-          }
-          .buttonStyle(.plain)
-        }
-        .padding(.top, 4)
-
-        // Track list.
-        Divider().background(Color.white.opacity(0.1))
-
-        WPTrackListView(tracks: album.tracks)
-          .frame(minHeight: CGFloat(album.tracks.count) * 50)
       }
+      .background(Color.black.ignoresSafeArea())
+      #if !os(macOS)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+      #endif
     }
-    .background(Color.black.ignoresSafeArea())
-    #if !os(macOS)
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbarBackground(.hidden, for: .navigationBar)
-    #endif
   }
 }
 
@@ -187,6 +201,7 @@ struct WPArtistDetailView: View {
 
 /// Phase 75: Playlist detail view showing tracks in a specific playlist.
 /// Phase 76: EditMode support for reorderable playlists (staticList / Favorites).
+/// Phase 86: Guards against deleted playlists to prevent stale-data rendering.
 struct WPPlaylistDetailView: View {
   @Environment(MadTunesViewModel.self) private var vm
   @Environment(WPPhoneViewModel.self) private var phoneVM
@@ -196,120 +211,130 @@ struct WPPlaylistDetailView: View {
 
   let playlist: Playlist
 
+  /// Phase 86: Whether this playlist still exists in the library.
+  private var playlistExists: Bool {
+    vm.library.playlists.contains { $0.id == playlist.id }
+  }
+
   var body: some View {
-    VStack(spacing: 0) {
-      // Header.
-      VStack(spacing: 8) {
-        HStack {
-          Spacer()
-          Text(verbatim: currentPlaylist.name)
-            .font(.system(size: 24, weight: .bold))
-            .foregroundStyle(.white)
-          Spacer()
-        }
-        Text(verbatim: "\(currentPlaylist.trackIDs.count) tracks")
-          .font(.system(size: 14))
-          .foregroundStyle(.white.opacity(0.5))
-
-        // Play / Shuffle / Edit buttons.
-        HStack(spacing: 16) {
-          Button {
-            let tracks = playlistTracks
-            guard !tracks.isEmpty else { return }
-            vm.player.setQueue(tracks, startingAt: 0)
-          } label: {
-            Label(
-              String(localized: "i18n:WP.Play", bundle: #bundle),
-              systemImage: "play.fill"
-            )
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(phoneVM.wpAccentColor.color)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+    // Phase 86: If playlist was deleted, show empty view (nav pop handles the rest).
+    if !playlistExists {
+      Color.black.ignoresSafeArea()
+    } else {
+      VStack(spacing: 0) {
+        // Header.
+        VStack(spacing: 8) {
+          HStack {
+            Spacer()
+            Text(verbatim: currentPlaylist.name)
+              .font(.system(size: 24, weight: .bold))
+              .foregroundStyle(.white)
+            Spacer()
           }
-          .buttonStyle(.plain)
+          Text(verbatim: "\(currentPlaylist.trackIDs.count) tracks")
+            .font(.system(size: 14))
+            .foregroundStyle(.white.opacity(0.5))
 
-          Button {
-            let tracks = playlistTracks.shuffled()
-            guard !tracks.isEmpty else { return }
-            vm.player.setQueue(tracks, startingAt: 0)
-          } label: {
-            Label(
-              String(localized: "i18n:WP.Shuffle", bundle: #bundle),
-              systemImage: "shuffle"
-            )
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(Color.white.opacity(0.15))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-          }
-          .buttonStyle(.plain)
-
-          #if !(canImport(AppKit) && !canImport(UIKit))
-          if canReorder {
+          // Play / Shuffle / Edit buttons.
+          HStack(spacing: 16) {
             Button {
-              withAnimation {
-                editMode = editMode == .active ? .inactive : .active
-              }
+              let tracks = playlistTracks
+              guard !tracks.isEmpty else { return }
+              vm.player.setQueue(tracks, startingAt: 0)
             } label: {
-              Text(
-                editMode == .active
-                  ? String(localized: "i18n:Common.Done", bundle: #bundle)
-                  : String(localized: "i18n:Common.Edit", bundle: #bundle)
+              Label(
+                String(localized: "i18n:WP.Play", bundle: #bundle),
+                systemImage: "play.fill"
               )
               .font(.system(size: 15, weight: .semibold))
               .foregroundStyle(.white)
               .padding(.horizontal, 20)
               .padding(.vertical, 10)
-              .background(
-                editMode == .active
-                  ? phoneVM.wpAccentColor.color
-                  : Color.white.opacity(0.15)
-              )
+              .background(phoneVM.wpAccentColor.color)
               .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
-          }
-          #endif
-        }
-        .padding(.top, 4)
-      }
-      .padding(.vertical, 16)
 
-      Divider().background(Color.white.opacity(0.1))
+            Button {
+              let tracks = playlistTracks.shuffled()
+              guard !tracks.isEmpty else { return }
+              vm.player.setQueue(tracks, startingAt: 0)
+            } label: {
+              Label(
+                String(localized: "i18n:WP.Shuffle", bundle: #bundle),
+                systemImage: "shuffle"
+              )
+              .font(.system(size: 15, weight: .semibold))
+              .foregroundStyle(.white)
+              .padding(.horizontal, 20)
+              .padding(.vertical, 10)
+              .background(Color.white.opacity(0.15))
+              .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            .buttonStyle(.plain)
 
-      // Track list — use List with .onMove when in edit mode for reordering.
-      #if !(canImport(AppKit) && !canImport(UIKit))
-      if editMode == .active {
-        List {
-          ForEach(playlistTracks) { track in
-            WPEditableTrackRow(track: track, isPlaying: vm.player.currentTrack?.id == track.id && vm.player.isPlaying)
+            #if !(canImport(AppKit) && !canImport(UIKit))
+            if canReorder {
+              Button {
+                withAnimation {
+                  editMode = editMode == .active ? .inactive : .active
+                }
+              } label: {
+                Text(
+                  editMode == .active
+                    ? String(localized: "i18n:Common.Done", bundle: #bundle)
+                    : String(localized: "i18n:Common.Edit", bundle: #bundle)
+                )
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(
+                  editMode == .active
+                    ? phoneVM.wpAccentColor.color
+                    : Color.white.opacity(0.15)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+              }
+              .buttonStyle(.plain)
+            }
+            #endif
           }
-          .onMove { source, destination in
-            let ids = source.map { playlistTracks[$0].id }
-            vm.library.moveTracks(ids, inPlaylist: playlist.id, toIndex: destination)
-          }
-          .listRowBackground(Color.black)
+          .padding(.top, 4)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .environment(\.editMode, .constant(.active))
-      } else {
+        .padding(.vertical, 16)
+
+        Divider().background(Color.white.opacity(0.1))
+
+        // Track list — use List with .onMove when in edit mode for reordering.
+        #if !(canImport(AppKit) && !canImport(UIKit))
+        if editMode == .active {
+          List {
+            ForEach(playlistTracks) { track in
+              WPEditableTrackRow(track: track, isPlaying: vm.player.currentTrack?.id == track.id && vm.player.isPlaying)
+            }
+            .onMove { source, destination in
+              let ids = source.map { playlistTracks[$0].id }
+              vm.library.moveTracks(ids, inPlaylist: playlist.id, toIndex: destination)
+            }
+            .listRowBackground(Color.black)
+          }
+          .listStyle(.plain)
+          .scrollContentBackground(.hidden)
+          .environment(\.editMode, .constant(.active))
+        } else {
+          WPTrackListView(tracks: playlistTracks, currentPlaylistID: playlist.id)
+        }
+        #else
         WPTrackListView(tracks: playlistTracks, currentPlaylistID: playlist.id)
+        #endif
       }
-      #else
-      WPTrackListView(tracks: playlistTracks, currentPlaylistID: playlist.id)
+      .background(Color.black.ignoresSafeArea())
+      #if !os(macOS)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
       #endif
-    }
-    .background(Color.black.ignoresSafeArea())
-    #if !os(macOS)
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbarBackground(.hidden, for: .navigationBar)
-    #endif
+    } // Phase 86: end of `if playlistExists` else branch.
   }
 
   /// Look up the current playlist from the library to reflect reorder changes.
