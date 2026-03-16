@@ -151,7 +151,7 @@ struct PlayerControlsView: View {
           HStack(spacing: 4 * vm.uiFactor * vm.uiFactor) {
             transportControls
               .toolbar {
-                if vm.screenVM.orientation != .landscape {
+                if useTouchScreenCompact {
                   ToolbarItem(placement: .confirmationAction) {
                     queueToggleButton
                   }
@@ -163,7 +163,7 @@ struct PlayerControlsView: View {
                   }
                 }
               }
-            if vm.screenVM.orientation == .landscape {
+            if !useTouchScreenCompact {
               Group {
                 queueToggleButton
                 columnBrowserToggleButton
@@ -198,7 +198,7 @@ struct PlayerControlsView: View {
         }
         .frame(maxWidth: .infinity)
       }
-      .frame(width: 480 * (vm.screenVM.orientation == .landscape ? vm.uiFactor : 1))
+      .frame(width: panelFrameWidth)
     }
     .fixedSize(horizontal: false, vertical: true)
     .frame(minHeight: 40, alignment: .center)
@@ -224,6 +224,20 @@ struct PlayerControlsView: View {
   private var player: AudioPlayer
   private var artworkData: Data?
   private var sansBezel = false
+
+  private var useTouchScreenCompact: Bool {
+    OS.type != .macOS
+      && (vm.screenVM.orientation == .portrait || vm.screenVM.isHorizontallyCompact)
+  }
+
+  private var panelFrameWidth: CGFloat {
+    let base: CGFloat = 480
+    if useTouchScreenCompact {
+      return base
+    } else {
+      return base * vm.uiFactor
+    }
+  }
 
   private var volumeIcon: String {
     if player.volume <= 0 { return "speaker.slash.fill" }
