@@ -231,6 +231,36 @@ struct AlbumTableView: View {
     }
   }
 
+  // Phase 71: Extracted helper to avoid type-checker explosion in trackList body.
+  @ViewBuilder
+  private func alternatingRowBackground(at index: Int, trackID: UUID) -> some View {
+    if !OS.isAppKit {
+      let isHighlighted = vm.selectedTrackIDs.contains(trackID)
+      if isHighlighted {
+        Color.accentColor
+          .clipShape(.capsule)
+          .allowsHitTesting(false)
+      } else if !index.isMultiple(of: 2) {
+        LinearGradient(
+          colors: [
+            .clear,
+            .secondary,
+            .secondary,
+            .secondary,
+            .secondary,
+            .secondary,
+            .secondary,
+            .clear,
+          ],
+          startPoint: .leading,
+          endPoint: .trailing
+        ).opacity(0.08)
+          .clipShape(.capsule)
+          .allowsHitTesting(false)
+      }
+    }
+  }
+
   // Phase 44: Sortable column header button
   @ViewBuilder
   // Phase 45: Column header button with speaker icon for playing indicator
@@ -302,11 +332,13 @@ struct AlbumTableView: View {
       // Phase 52: Conditionally apply .onMove — only for playlists that
       // support reordering. This prevents List from showing drag affordances
       // on All Music, dynamic playlists, or when sorting/filtering is active.
-      ForEach(Array(tableVM.displayedTracks.enumerated()), id: \.offset) { _, track in
+      ForEach(Array(tableVM.displayedTracks.enumerated()), id: \.offset) { index, track in
         trackRow(track)
           .id(track.id)
           .tag(track.id)
           .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+          // Phase 71: Manual alternating row backgrounds for UIKit targets.
+          .listRowBackground(alternatingRowBackground(at: index, trackID: track.id))
       }
       .onMove(perform: onRowMoveActionProvider(canReorder: canReorder))
     }
