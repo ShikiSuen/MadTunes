@@ -1346,35 +1346,6 @@
         }
       }
     },
-    "i18n:HotKeyHint.KeyLabel.Drag" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Drag"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ドラッグ"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "拖拽"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "拖曳"
-          }
-        }
-      }
-    },
     "i18n:HotKeyHint.KeyLabel.DragSelection" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -1607,6 +1578,64 @@
         }
       }
     },
+    "i18n:HotKeyHint.Record.GridView.HomeEnd" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Jump to first/last album"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "先頭/末尾のアルバムへ移動"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳转到首个/末个专辑"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳至首個/末個專輯"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.PageUpDown" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Scroll up/down by one page"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1ページ分上下にスクロール"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向上/向下翻页"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向上/向下翻頁"
+          }
+        }
+      }
+    },
     "i18n:HotKeyHint.Record.GridView.ReturnExpand" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -1723,31 +1752,60 @@
         }
       }
     },
-    "i18n:HotKeyHint.Record.GridView.ShiftDragSelectTracks" : {
-      "extractionState" : "stale",
+    "i18n:HotKeyHint.Record.GridView.ShiftHomeEnd" : {
+      "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Shift+Drag selects multiple tracks (hold ⌘ to append)"
+            "value" : "Range select to first/last album"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shift+ドラッグで複数トラックを選択（⌘を押すと追加選択）"
+            "value" : "先頭/末尾のアルバムまで範囲選択"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shift+拖拽选择多个曲目（按住⌘追加选择）"
+            "value" : "范围选择至首个/末个专辑"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shift+拖曳選取多個曲目（按住⌘追加選取）"
+            "value" : "範圍選取至首個/末個專輯"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.ShiftPageUpDown" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Range select to previous/next page"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前/次のページまで範囲選択"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "范围选择到上一页/下一页"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "範圍選擇到上一頁/下一頁"
           }
         }
       }
@@ -1897,6 +1955,64 @@
         }
       }
     },
+    "i18n:HotKeyHint.Record.TableView.HomeEnd" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Jump to first/last track"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "先頭/末尾のトラックへ移動"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳转到首个/末个曲目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳至首個/末個曲目"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.TableView.PageUpDown" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Scroll up/down by one page"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1ページ分上下にスクロール"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向上/向下翻页"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向上/向下翻頁"
+          }
+        }
+      }
+    },
     "i18n:HotKeyHint.Record.TableView.ReturnPlay" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -1955,31 +2071,60 @@
         }
       }
     },
-    "i18n:HotKeyHint.Record.TableView.ShiftDragSelect" : {
-      "extractionState" : "stale",
+    "i18n:HotKeyHint.Record.TableView.ShiftHomeEnd" : {
+      "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Shift+Drag selects multiple tracks"
+            "value" : "Range select to first/last track"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shift+ドラッグで複数トラックを選択"
+            "value" : "先頭/末尾のトラックまで範囲選択"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shift+拖拽选择多个曲目"
+            "value" : "范围选择至首个/末个曲目"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shift+拖曳選取多個曲目"
+            "value" : "範圍選取至首個/末個曲目"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.TableView.ShiftPageUpDown" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Range select to previous/next page"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前後ページまで範囲選択"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "范围选择至上一页/下一页"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "範圍選擇至上一頁/下一頁"
           }
         }
       }

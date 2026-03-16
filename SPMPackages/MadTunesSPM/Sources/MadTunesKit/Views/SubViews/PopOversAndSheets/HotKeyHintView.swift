@@ -61,6 +61,8 @@ private struct HotKeyHintRecord: Hashable, Identifiable {
       case .rightArrow: return "→"
       case .pageUp: return "PgUp"
       case .pageDown: return "PgDn"
+      case .home: return "Home"
+      case .end: return "End"
       default:
         return String(keyPress.character).uppercased()
       }
@@ -216,6 +218,51 @@ extension HotKeyHintView {
           bundle: #bundle
         )
       }
+      // Phase 74: PgUp/PgDn/Home/End hints.
+      HotKeyHintRecord(
+        modifiers: [],
+        keyPress: .pageUp,
+        keyLabel: "PgUp PgDn"
+      ) {
+        String(
+          localized: "i18n:HotKeyHint.Record.TableView.PageUpDown",
+          defaultValue: "Scroll up/down by one page",
+          bundle: #bundle
+        )
+      }
+      HotKeyHintRecord(
+        modifiers: [.shift],
+        keyPress: .pageUp,
+        keyLabel: "PgUp PgDn"
+      ) {
+        String(
+          localized: "i18n:HotKeyHint.Record.TableView.ShiftPageUpDown",
+          defaultValue: "Range select to previous/next page",
+          bundle: #bundle
+        )
+      }
+      HotKeyHintRecord(
+        modifiers: [],
+        keyPress: .home,
+        keyLabel: "Home End"
+      ) {
+        String(
+          localized: "i18n:HotKeyHint.Record.TableView.HomeEnd",
+          defaultValue: "Jump to first/last track",
+          bundle: #bundle
+        )
+      }
+      HotKeyHintRecord(
+        modifiers: [.shift],
+        keyPress: .home,
+        keyLabel: "Home End"
+      ) {
+        String(
+          localized: "i18n:HotKeyHint.Record.TableView.ShiftHomeEnd",
+          defaultValue: "Range select to first/last track",
+          bundle: #bundle
+        )
+      }
       // ── Mouse/Pointer selection (macOS only) ──
       if OS.isAppKit {
         // ⌘ + Click: Multi-select / deselect tracks.
@@ -341,6 +388,51 @@ extension HotKeyHintView {
         String(
           localized: "i18n:HotKeyHint.Record.GridView.ShiftArrowRangeSelect",
           defaultValue: "Range select albums (anchor-based)",
+          bundle: #bundle
+        )
+      }
+      // Phase 74: PgUp/PgDn/Home/End for grid.
+      HotKeyHintRecord(
+        modifiers: [],
+        keyPress: .pageUp,
+        keyLabel: "PgUp PgDn"
+      ) {
+        String(
+          localized: "i18n:HotKeyHint.Record.GridView.PageUpDown",
+          defaultValue: "Scroll up/down by one page",
+          bundle: #bundle
+        )
+      }
+      HotKeyHintRecord(
+        modifiers: [.shift],
+        keyPress: .pageUp,
+        keyLabel: "PgUp PgDn"
+      ) {
+        String(
+          localized: "i18n:HotKeyHint.Record.GridView.ShiftPageUpDown",
+          defaultValue: "Range select to previous/next page",
+          bundle: #bundle
+        )
+      }
+      HotKeyHintRecord(
+        modifiers: [],
+        keyPress: .home,
+        keyLabel: "Home End"
+      ) {
+        String(
+          localized: "i18n:HotKeyHint.Record.GridView.HomeEnd",
+          defaultValue: "Jump to first/last album",
+          bundle: #bundle
+        )
+      }
+      HotKeyHintRecord(
+        modifiers: [.shift],
+        keyPress: .home,
+        keyLabel: "Home End"
+      ) {
+        String(
+          localized: "i18n:HotKeyHint.Record.GridView.ShiftHomeEnd",
+          defaultValue: "Range select to first/last album",
           bundle: #bundle
         )
       }
