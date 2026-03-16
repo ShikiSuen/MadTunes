@@ -173,6 +173,14 @@ struct AlbumTableView: View {
     tableVM.visibleColumns
   }
 
+  private var listSyleProvided: some ListStyle {
+    #if os(macOS)
+    .inset(alternatesRowBackgrounds: true)
+    #else
+    .inset
+    #endif
+  }
+
   // MARK: - Header
 
   @ViewBuilder private var columnNameRow: some View {
@@ -287,8 +295,6 @@ struct AlbumTableView: View {
       }
   }
 
-  // MARK: - List
-
   @ViewBuilder
   private func trackList(scrollProxy proxy: ScrollViewProxy) -> some View {
     let canReorder = vm.tableVM.canReorderCurrentPlaylist
@@ -296,30 +302,15 @@ struct AlbumTableView: View {
       // Phase 52: Conditionally apply .onMove — only for playlists that
       // support reordering. This prevents List from showing drag affordances
       // on All Music, dynamic playlists, or when sorting/filtering is active.
-      if canReorder {
-        ForEach(tableVM.displayedTracks) { track in
-          trackRow(track)
-            .id(track.id)
-            .tag(track.id)
-            .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
-        }
-        .onMove { from, to in
-          handleOnMove(from: from, to: to)
-        }
-      } else {
-        ForEach(tableVM.displayedTracks) { track in
-          trackRow(track)
-            .id(track.id)
-            .tag(track.id)
-            .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
-        }
+      ForEach(Array(tableVM.displayedTracks.enumerated()), id: \.offset) { _, track in
+        trackRow(track)
+          .id(track.id)
+          .tag(track.id)
+          .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
       }
+      .onMove(perform: onRowMoveActionProvider(canReorder: canReorder))
     }
-    #if os(macOS)
-    .listStyle(.inset(alternatesRowBackgrounds: true))
-    #else
-    .listStyle(.inset)
-    #endif
+    .listStyle(listSyleProvided)
     .onAppear {
       tableVM.scheduleDisplayedTracksUpdate(to: tracks)
     }
@@ -476,6 +467,13 @@ struct AlbumTableView: View {
     )
   }
 
+  // MARK: - List
+
+  private func onRowMoveActionProvider(canReorder: Bool? = nil) -> ((IndexSet, Int) -> Void)? {
+    guard canReorder ?? vm.tableVM.canReorderCurrentPlaylist else { return nil }
+    return handleOnMove
+  }
+
   private func givePrimaryTableAction() -> ((Set<UUID>) -> Void)? {
     #if canImport(AppKit) && !canImport(UIKit)
     return onTrackDoubleClicked
@@ -496,7 +494,7 @@ struct AlbumTableView: View {
 
   /// Phase 52: Handles the `.onMove` callback from ForEach drag-reorder.
   /// Translates IndexSet + destination into the `moveTracks` API.
-  private func handleOnMove(from source: IndexSet, to destination: Int) {
+  private func handleOnMove(_ source: IndexSet, _ destination: Int) {
     guard vm.tableVM.canReorderCurrentPlaylist else { return }
     let ids = source.map { tableVM.displayedTracks[$0].id }
     vm.tableVM.moveTracksInCurrentPlaylist(trackIDs: ids, toIndex: destination)
