@@ -34,8 +34,9 @@ struct WPMainView: View {
         VStack(spacing: 0) {
           // Phase 75: Global title with parallax hint.
           HStack {
-            Text(verbatim: "MadTunes")
-              .font(.system(size: 44, weight: .bold))
+            Text(verbatim: "MadTunes".lowercased())
+              .font(.system(size: 44, weight: .light))
+              .fontWidth(.standard)
               .foregroundStyle(.white.opacity(0.4))
               .offset(x: parallaxOffset)
             Spacer()
@@ -293,7 +294,7 @@ struct WPSectionTitlesBar: View {
   var body: some View {
     ScrollViewReader { proxy in
       ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 28) {
+        HStack(spacing: 20) {
           ForEach(WPPhoneViewModel.PanoramaSection.allCases) { section in
             Button {
               withAnimation(.easeInOut(duration: 0.25)) {
@@ -301,11 +302,8 @@ struct WPSectionTitlesBar: View {
               }
             } label: {
               VStack(spacing: 4) {
-                Text(section.localizedTitle)
-                  .font(.system(
-                    size: currentSection == section ? 22 : 18,
-                    weight: currentSection == section ? .bold : .regular
-                  ))
+                Text(section.localizedTitle.lowercased())
+                  .font(.system(size: 22, weight: .regular))
                   .foregroundStyle(currentSection == section ? .white : .white.opacity(0.5))
                   .id(section)
 

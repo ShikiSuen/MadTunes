@@ -86,7 +86,7 @@ struct WPPivotBar: View {
               }
             } label: {
               VStack(spacing: 2) {
-                Text(pivot.localizedTitle)
+                Text(pivot.localizedTitle.lowercased())
                   .font(.system(
                     size: currentPivot == pivot ? 16 : 14,
                     weight: currentPivot == pivot ? .bold : .regular
