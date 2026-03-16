@@ -39,6 +39,34 @@ struct WPLibrarySection: View {
         }
         .buttonStyle(.plain)
         .padding(.trailing, 16)
+
+        // Import menu (shown when library has content)
+        if !vm.library.tracks.isEmpty {
+          Menu {
+            Button {
+              vm.isFileImporterPresented = true
+            } label: {
+              Label(
+                String(localized: "i18n:Import.ImportFiles", bundle: #bundle),
+                systemImage: "music.note"
+              )
+            }
+            Button {
+              vm.isFolderImporterPresented = true
+            } label: {
+              Label(
+                String(localized: "i18n:Import.ImportFolder", bundle: #bundle),
+                systemImage: "folder"
+              )
+            }
+          } label: {
+            Image(systemName: "square.and.arrow.down")
+              .font(.system(size: 20))
+              .foregroundStyle(.white.opacity(0.5))
+          }
+          .buttonStyle(.plain)
+          .padding(.trailing, 16)
+        }
       }
 
       // Pivot content.
