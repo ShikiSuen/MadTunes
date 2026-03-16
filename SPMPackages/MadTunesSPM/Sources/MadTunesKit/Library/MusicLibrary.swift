@@ -148,7 +148,12 @@ public final class MusicLibrary {
       for await optionalTrack in group {
         importFinishedFileCount += 1
         // Skip voice memos (tracks that returned nil)
-        guard let track = optionalTrack else { continue }
+        guard var track = optionalTrack else { continue }
+
+        // Phase 79: Create per-file bookmark for sandbox persistence across app relaunches.
+        if track.bookmarkData == nil {
+          track.bookmarkData = Self.createBookmark(for: track.fileURL)
+        }
 
         currentProcessingFileName = track.fileURL.lastPathComponent
         if existingURLs.contains(track.fileURL) {
@@ -168,6 +173,10 @@ public final class MusicLibrary {
             tracks[idx].year = track.year
             tracks[idx].fallbackFields = track.fallbackFields
             // totalPlayCount intentionally not modified
+            // Phase 79: Backfill bookmark if previously missing.
+            if tracks[idx].bookmarkData == nil {
+              tracks[idx].bookmarkData = track.bookmarkData
+            }
           }
         } else {
           existingURLs.insert(track.fileURL)
