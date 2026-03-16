@@ -386,7 +386,7 @@ struct AlbumTableView: View {
   @ViewBuilder
   private func trackRow(_ track: Track) -> some View {
     // Phase 44: Use HStack to match header layout exactly
-    let baseRow = Color.clear
+    Color.clear
       .frame(height: 20)
       .overlay(alignment: .leading) {
         HStack(spacing: 0) {
@@ -408,8 +408,7 @@ struct AlbumTableView: View {
       .clipShape(.rect)
       .contentShape(.rect)
       .frame(minWidth: 1, maxWidth: .infinity, alignment: .leading)
-
-    baseRow
+      .drawingGroup()
   }
 
   // Phase 42/46: All user data uses Text(verbatim:) to prevent String Catalog pollution.
@@ -420,7 +419,9 @@ struct AlbumTableView: View {
       // Phase 45: Playing indicator column shows speaker icon for current track
       if track.id == currentTrackID {
         Image(systemName: "speaker.wave.2.fill")
-          .foregroundStyle(Color.primary)
+          .foregroundStyle(
+            vm.selectedTrackIDs.contains(track.id) ? Color.white : Color.primary
+          )
           .font(.caption)
           .frame(width: 16)
       } else {
