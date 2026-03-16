@@ -35,7 +35,7 @@ struct MadTunesMainView: View {
             vm.screenVM.actualSidebarWidthObserved = newValue
           }
         }
-        .environment(\.colorScheme, .dark)
+        .environment(\.colorScheme, OS.liquidGlassThemeSuspected ? .dark : colorScheme)
         .navigationSplitViewColumnWidth(
           min: 210 * vm.uiFactor,
           ideal: 210 * vm.uiFactor,
