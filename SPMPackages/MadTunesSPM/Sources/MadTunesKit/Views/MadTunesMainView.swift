@@ -343,7 +343,11 @@ struct MadTunesMainView: View {
       .onChange(of: vm.player.currentTrack?.id) { _, _ in
         guard let track = vm.player.currentTrack else { return }
         let key = vm.library.albumKey(title: track.albumTitle, artist: track.albumArtist)
-        vm.library.requestArtworkLoad(forAlbumKey: key, sampleTrackURL: track.fileURL)
+        vm.library.requestArtworkLoad(
+          forAlbumKey: key,
+          sampleTrackURL: track.fileURL,
+          sampleTrackBookmark: track.bookmarkData
+        )
       }
       .overlay {
         ContentAvailabilityOverlay(

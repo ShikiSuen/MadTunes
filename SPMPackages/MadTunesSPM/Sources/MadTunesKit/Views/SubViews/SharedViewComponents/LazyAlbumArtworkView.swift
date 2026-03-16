@@ -24,8 +24,12 @@ struct LazyAlbumArtworkView: View {
 
     ArtworkView(data: cachedArtwork, alwaysGlossy: alwaysGlossy)
       .task {
-        guard cachedArtwork == nil, let trackURL = album.tracks.first?.fileURL else { return }
-        vm.library.requestArtworkLoad(forAlbumKey: key, sampleTrackURL: trackURL)
+        guard cachedArtwork == nil, let track = album.tracks.first else { return }
+        vm.library.requestArtworkLoad(
+          forAlbumKey: key,
+          sampleTrackURL: track.fileURL,
+          sampleTrackBookmark: track.bookmarkData
+        )
       }
   }
 

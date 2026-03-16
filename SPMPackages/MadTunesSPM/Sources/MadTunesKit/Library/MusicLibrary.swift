@@ -283,13 +283,32 @@ public final class MusicLibrary {
   // MARK: - Lazy Artwork Loading
 
   /// Request lazy artwork loading for an album. Called by views on appear.
-  public func requestArtworkLoad(forAlbumKey key: String, sampleTrackURL: URL) {
+  public func requestArtworkLoad(
+    forAlbumKey key: String,
+    sampleTrackURL: URL,
+    sampleTrackBookmark: Data?
+  ) {
     if artworkCache[key] != nil { return }
     if artworkAttemptedKeys.contains(key) { return }
     artworkAttemptedKeys.insert(key)
     artworkLoadingKeys.insert(key)
     Task {
-      var data = await MetadataReader.readArtwork(from: sampleTrackURL)
+      var trackURL = sampleTrackURL
+
+      // Phase 80: In sandbox environments (e.g. iOS Simulator), the stored
+      // file URL may not remain directly readable after relaunch. If the URL
+      // is not readable, but we have a per-track bookmark, resolve it and
+      // use the resolved URL to load artwork.
+      if !FileManager.default.isReadableFile(atPath: trackURL.path),
+         let bookmark = sampleTrackBookmark,
+         let resolved = Self.resolveBookmark(bookmark) {
+        if resolved.startAccessingSecurityScopedResource() {
+          activeSecurityScopedURLs.append(resolved)
+          trackURL = resolved
+        }
+      }
+
+      var data = await MetadataReader.readArtwork(from: trackURL)
       artworkLoadingKeys.remove(key)
 
       // Attempt to resize artwork to 512×512 px before caching

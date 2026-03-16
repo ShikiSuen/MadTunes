@@ -32,7 +32,11 @@ public protocol MusicLibraryProviding: AnyObject {
 
   // MARK: - Lazy Artwork
 
-  func requestArtworkLoad(forAlbumKey key: String, sampleTrackURL: URL)
+  func requestArtworkLoad(
+    forAlbumKey key: String,
+    sampleTrackURL: URL,
+    sampleTrackBookmark: Data?
+  )
 
   // MARK: - Playlist CRUD
 
