@@ -125,6 +125,7 @@ struct AlbumTableView: View {
       Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
         let trackIDs = Set(tableVM.tracksToDelete.map(\.id))
         vm.library.removeTracks(ids: trackIDs)
+        vm.invalidateSearchCacheForRemovedTracks(trackIDs)
         tableVM.tracksToDelete = []
       }
     } message: {

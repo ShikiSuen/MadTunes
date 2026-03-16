@@ -128,6 +128,7 @@ struct AlbumContextMenu: View {
       Divider()
       Button(role: .destructive) {
         library.removeTracksFromPlaylist(trackIDs, playlistID: playlistID)
+        MadTunesViewModel.shared.invalidateSearchCacheForRemovedTracks(trackIDs)
       } label: {
         Label(String(localized: "i18n:ContextMenu.RemoveFromPlaylist", bundle: #bundle), systemImage: "minus.circle")
       }

@@ -195,6 +195,24 @@ final class MadTunesViewModel {
     return trackMatchesSearch(track, tokens: tokens, mode: mode)
   }
 
+  // Phase 71: Purge stale entries from search caches after track removal.
+  func invalidateSearchCacheForRemovedTracks(_ removedIDs: Set<UUID>) {
+    guard !removedIDs.isEmpty else { return }
+    if !displayedTracksCache.isEmpty {
+      displayedTracksCache.removeAll { removedIDs.contains($0.id) }
+    }
+    if !gridVM.displayedAlbumsCache.isEmpty {
+      gridVM.displayedAlbumsCache = gridVM.displayedAlbumsCache.compactMap { album in
+        let remaining = album.tracks.filter { !removedIDs.contains($0.id) }
+        guard !remaining.isEmpty else { return nil }
+        return Album(
+          id: album.id, title: album.title, artist: album.artist,
+          tracks: remaining, artworkData: album.artworkData
+        )
+      }
+    }
+  }
+
   /// Resets column browser filters.
   func resetColumnBrowserFilters() {
     if !columnBrowserSelectedGenres.isEmpty { columnBrowserSelectedGenres = [] }

@@ -41,6 +41,7 @@ struct PlayerControlsView: View {
       Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
         if let id = player.currentTrack?.id {
           vm.library.removeTracks(ids: [id])
+          vm.invalidateSearchCacheForRemovedTracks([id])
         }
       }
     } message: {
