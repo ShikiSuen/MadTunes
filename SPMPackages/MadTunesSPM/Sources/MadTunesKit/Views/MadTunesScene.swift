@@ -51,15 +51,9 @@ public struct MadTunesScene: Scene {
           }
           .keyboardShortcut("o")
         case false:
-          Button {
-            vm.isFileImporterPresented = true
-          } label: {
-            Label(
-              String(localized: "i18n:Import.ImportFiles", bundle: #bundle),
-              systemImage: "music.note"
-            )
-          }
-          .keyboardShortcut("o", modifiers: [.command, .shift, .option])
+          // 此處不設定熱鍵。熱鍵全權交給 `MadTunesAppDelegate` 處理。
+          // 另外，此處也不需要系統判斷，不然 iPadOS 會出現兩個「開啟單個檔案」的命令。
+          // 總之，這裡只需要這個 CMD+Shift+O 的命令就行。
           Button {
             vm.isFolderImporterPresented = true
           } label: {
@@ -73,7 +67,7 @@ public struct MadTunesScene: Scene {
         #if DEBUG
         Divider()
         Menu {
-          if !vm.library.isImporting, !vm.library.albums.isEmpty {
+          if !vm.library.isImporting {
             Button(role: .destructive) {
               vm.player.stop()
               vm.library.clearDatabase()
