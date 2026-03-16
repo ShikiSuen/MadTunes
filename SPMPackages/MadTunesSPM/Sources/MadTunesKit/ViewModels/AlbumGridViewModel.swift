@@ -630,6 +630,45 @@ final class AlbumGridViewModel {
       return .handled
     }
 
+    // Phase 74: Home / End — jump to first / last album.
+    handleHomeEndKey: if press.key == .home || press.key == .end {
+      let isShift = press.modifiers.contains(.shift)
+      let targetIdx = press.key == .home ? 0 : albums.count - 1
+      let targetID = albums[targetIdx].id
+
+      if isShift {
+        let anchorID: UUID
+        if let existing = albumSelectionFixedAnchorID {
+          anchorID = existing
+        } else if let first = highlightedAlbumIDs.first {
+          anchorID = first
+          albumSelectionFixedAnchorID = anchorID
+        } else {
+          highlightedAlbumIDs = [targetID]
+          albumSelectionFixedAnchorID = targetID
+          albumSelectionCursorID = targetID
+          scrollToAlbumID = targetID
+          break handleHomeEndKey
+        }
+
+        guard let anchorIdx = albums.firstIndex(where: { $0.id == anchorID }) else {
+          break handleHomeEndKey
+        }
+
+        albumSelectionCursorID = targetID
+        let lo = min(anchorIdx, targetIdx)
+        let hi = max(anchorIdx, targetIdx)
+        highlightedAlbumIDs = Set(albums[lo ... hi].map(\.id))
+        expandedAlbumID = nil
+      } else {
+        highlightedAlbumIDs = [targetID]
+        albumSelectionFixedAnchorID = targetID
+        albumSelectionCursorID = targetID
+      }
+      scrollToAlbumID = targetID
+      return .handled
+    }
+
     if press.isAlbumExpansionAssignmentKey {
       if highlightedAlbumIDs.count == 1 {
         withAnimation(.easeInOut(duration: 0.3)) {
