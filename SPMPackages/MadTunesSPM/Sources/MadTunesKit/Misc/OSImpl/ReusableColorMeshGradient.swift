@@ -22,7 +22,7 @@ extension Gradient {
     )
   }
 
-  @ViewBuilder public static var ColorMeshGradient: some View {
+  @ViewBuilder public static var colorMeshGradient: some View {
     if #available(macOS 15.0, iOS 18.0, *) {
       MeshGradient(
         width: 2,

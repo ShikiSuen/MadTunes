@@ -57,12 +57,12 @@ struct ContentAvailabilityOverlay: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
-          Gradient.ColorMeshGradient
+          Gradient.colorMeshGradient
             .ignoresSafeArea()
         }
         .compositingGroup()
       } else if !vm.library.hasLoadedPersistence {
-        Gradient.ColorMeshGradient
+        Gradient.colorMeshGradient
           .ignoresSafeArea()
           .overlay {
             ContentUnavailableView {
@@ -79,7 +79,7 @@ struct ContentAvailabilityOverlay: View {
           }
           .compositingGroup()
       } else if vm.isSearching {
-        Gradient.ColorMeshGradient
+        Gradient.colorMeshGradient
           .ignoresSafeArea()
           .overlay {
             ContentUnavailableView {
@@ -96,7 +96,7 @@ struct ContentAvailabilityOverlay: View {
           }
           .compositingGroup()
       } else if displayAlbums.isEmpty {
-        Gradient.ColorMeshGradient
+        Gradient.colorMeshGradient
           .ignoresSafeArea()
           .overlay {
             if hasActiveFilters {
