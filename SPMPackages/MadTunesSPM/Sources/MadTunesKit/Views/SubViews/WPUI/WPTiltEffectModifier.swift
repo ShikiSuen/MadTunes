@@ -8,6 +8,10 @@ import SwiftUI
 
 /// Phase 75: Windows Phone-style tilt effect on touch.
 /// Applies a subtle 3D rotation that follows the touch position.
+///
+/// Phase 79: Replaced DragGesture(minimumDistance: 0) with
+/// onLongPressGesture(pressing:) to avoid intercepting ScrollView
+/// vertical scrolling when tiles fill the entire viewport.
 struct WPTiltEffectModifier: ViewModifier {
   // MARK: Internal
 
@@ -15,34 +19,19 @@ struct WPTiltEffectModifier: ViewModifier {
     content
       .rotation3DEffect(
         .degrees(isTilted ? 3 : 0),
-        axis: (x: tiltAxisX, y: tiltAxisY, z: 0),
+        axis: (x: -0.5, y: 0.5, z: 0),
         perspective: 0.5
       )
       .scaleEffect(isTilted ? 0.97 : 1.0)
       .animation(.easeOut(duration: 0.15), value: isTilted)
-      .simultaneousGesture(
-        DragGesture(minimumDistance: 0)
-          .onChanged { value in
-            if !isTilted {
-              // Compute tilt axis from touch position relative to center.
-              let dx = value.location.x - value.startLocation.x
-              let dy = value.location.y - value.startLocation.y
-              tiltAxisX = dy < 0 ? 1 : -1
-              tiltAxisY = dx < 0 ? -1 : 1
-              isTilted = true
-            }
-          }
-          .onEnded { _ in
-            isTilted = false
-          }
-      )
+      .onLongPressGesture(minimumDuration: .infinity, pressing: { pressing in
+        isTilted = pressing
+      }, perform: {})
   }
 
   // MARK: Private
 
   @State private var isTilted = false
-  @State private var tiltAxisX: CGFloat = 0
-  @State private var tiltAxisY: CGFloat = 0
 }
 
 extension View {
