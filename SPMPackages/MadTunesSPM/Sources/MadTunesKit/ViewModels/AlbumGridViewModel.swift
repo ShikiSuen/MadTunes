@@ -22,7 +22,7 @@ final class AlbumGridViewModel {
 
   // MARK: Internal
 
-  var mainVM: MadTunesViewModel?
+  weak var mainVM: MadTunesViewModel?
 
   // MARK: - Dedicated Properties (Stored)
 

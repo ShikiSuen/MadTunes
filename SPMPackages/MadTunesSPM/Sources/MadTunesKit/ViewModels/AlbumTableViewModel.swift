@@ -26,7 +26,7 @@ final class AlbumTableViewModel {
 
   enum PageNavigationTarget { case pageUp, pageDown, home, end }
 
-  var mainVM: MadTunesViewModel?
+  weak var mainVM: MadTunesViewModel?
 
   // MARK: - Dedicated Properties
 
