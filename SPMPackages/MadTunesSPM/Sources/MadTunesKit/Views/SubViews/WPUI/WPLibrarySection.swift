@@ -14,21 +14,72 @@ struct WPLibrarySection: View {
   var body: some View {
     @Bindable var pvm = phoneVM
     VStack(spacing: 0) {
-      // Phase 78: Pivot bar + Column Browser filter button.
+      // Phase 78: Pivot bar + Phase 84: Hamburger menu (replaces Column Filter button).
       HStack(spacing: 0) {
         WPPivotBar(
           currentPivot: $pvm.currentPivot,
           accentColor: phoneVM.wpAccentColor.color
         )
 
-        // Column Browser filter button.
-        Button {
-          phoneVM.isColumnBrowserPresented = true
+        // Phase 84: Hamburger menu combining Column Filter, Import, and Selection Mode.
+        Menu {
+          // Column Browser filter.
+          Button {
+            phoneVM.isColumnBrowserPresented = true
+          } label: {
+            Label(
+              String(localized: "i18n:ColumnBrowser.Title", bundle: #bundle),
+              systemImage: vm.isColumnBrowserFiltering
+                ? "line.3.horizontal.decrease.circle.fill"
+                : "line.3.horizontal.decrease.circle"
+            )
+          }
+
+          Divider()
+
+          // Import Files.
+          Button {
+            vm.isFileImporterPresented = true
+          } label: {
+            Label(
+              String(localized: "i18n:Import.ImportFiles", bundle: #bundle),
+              systemImage: "music.note"
+            )
+          }
+
+          // Import Folder.
+          Button {
+            vm.isFolderImporterPresented = true
+          } label: {
+            Label(
+              String(localized: "i18n:Import.ImportFolder", bundle: #bundle),
+              systemImage: "folder"
+            )
+          }
+
+          Divider()
+
+          // Selection Mode toggle.
+          Button {
+            if phoneVM.isWPSelectionModeActive {
+              phoneVM.wpSelectedAlbumIDs = []
+            } else if let firstID = vm.gridVM.currentAlbumsDisplayed.first?.id {
+              phoneVM.wpSelectedAlbumIDs = [firstID]
+            }
+          } label: {
+            Label(
+              phoneVM.isWPSelectionModeActive
+                ? String(localized: "i18n:WP.Menu.ExitSelect", bundle: #bundle)
+                : String(localized: "i18n:WP.Menu.SelectAlbums", bundle: #bundle),
+              systemImage: phoneVM.isWPSelectionModeActive
+                ? "xmark.circle" : "checkmark.circle"
+            )
+          }
         } label: {
           Image(
             systemName: vm.isColumnBrowserFiltering
-              ? "line.3.horizontal.decrease.circle.fill"
-              : "line.3.horizontal.decrease.circle"
+              ? "line.3.horizontal.circle.fill"
+              : "line.3.horizontal.circle"
           )
           .font(.system(size: 20))
           .foregroundStyle(
@@ -39,34 +90,11 @@ struct WPLibrarySection: View {
         }
         .buttonStyle(.plain)
         .padding(.trailing, 16)
+      }
 
-        // Import menu (shown when library has content)
-        if !vm.library.tracks.isEmpty {
-          Menu {
-            Button {
-              vm.isFileImporterPresented = true
-            } label: {
-              Label(
-                String(localized: "i18n:Import.ImportFiles", bundle: #bundle),
-                systemImage: "music.note"
-              )
-            }
-            Button {
-              vm.isFolderImporterPresented = true
-            } label: {
-              Label(
-                String(localized: "i18n:Import.ImportFolder", bundle: #bundle),
-                systemImage: "folder"
-              )
-            }
-          } label: {
-            Image(systemName: "square.and.arrow.down")
-              .font(.system(size: 20))
-              .foregroundStyle(.white.opacity(0.5))
-          }
-          .buttonStyle(.plain)
-          .padding(.trailing, 16)
-        }
+      // Phase 84: Selection mode inline bar.
+      if phoneVM.isWPSelectionModeActive {
+        WPLibrarySelectionBar()
       }
 
       // Pivot content.
@@ -87,6 +115,107 @@ struct WPLibrarySection: View {
       .tabViewStyle(.page(indexDisplayMode: .never))
       #endif
     }
+  }
+
+  // MARK: Private
+
+  @Environment(MadTunesViewModel.self) private var vm
+  @Environment(WPPhoneViewModel.self) private var phoneVM
+}
+
+// MARK: - WPLibrarySelectionBar
+
+/// Phase 84: Inline selection bar displayed within Library when selection mode is active.
+/// Replaces WPAppBar's selection-mode actions.
+struct WPLibrarySelectionBar: View {
+  // MARK: Internal
+
+  var body: some View {
+    let selectionCount = phoneVM.wpSelectedAlbumIDs.count
+    let allVisibleSelected = selectionCount > 0
+      && selectionCount == vm.gridVM.currentAlbumsDisplayed.count
+
+    HStack(spacing: 16) {
+      // Selection count.
+      Text(verbatim: "\(selectionCount)")
+        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+        .foregroundStyle(.white)
+
+      Spacer(minLength: 0)
+
+      // Select All / Deselect All.
+      Button {
+        if allVisibleSelected {
+          phoneVM.wpSelectedAlbumIDs = []
+        } else {
+          phoneVM.wpSelectedAlbumIDs = Set(vm.gridVM.currentAlbumsDisplayed.map(\.id))
+        }
+      } label: {
+        Image(systemName: allVisibleSelected ? "xmark.circle" : "checkmark.circle")
+          .font(.system(size: 18))
+          .foregroundStyle(.white.opacity(0.8))
+      }
+      .buttonStyle(.plain)
+
+      // Phase 85: Add to Playlist — menu listing existing playlists + New Playlist option.
+      Menu {
+        Button {
+          let selectedAlbums = vm.gridVM.currentAlbumsDisplayed.filter {
+            phoneVM.wpSelectedAlbumIDs.contains($0.id)
+          }
+          let trackIDs = Set(selectedAlbums.flatMap { $0.tracks.map(\.id) })
+          phoneVM.trackIDsForNewPlaylist = trackIDs
+          phoneVM.newPlaylistName = ""
+          phoneVM.showNewPlaylistAlert = true
+        } label: {
+          Label(String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle), systemImage: "plus")
+        }
+        Divider()
+        ForEach(Array(vm.library.playlists.dropFirst(2))) { playlist in
+          Button {
+            let selectedAlbums = vm.gridVM.currentAlbumsDisplayed.filter {
+              phoneVM.wpSelectedAlbumIDs.contains($0.id)
+            }
+            let trackIDs = Set(selectedAlbums.flatMap { $0.tracks.map(\.id) })
+            vm.library.addTracks(trackIDs, toPlaylist: playlist.id)
+          } label: {
+            Text(playlist.name)
+          }
+        }
+      } label: {
+        Image(systemName: "text.badge.plus")
+          .font(.system(size: 18))
+          .foregroundStyle(.white.opacity(0.8))
+      }
+      .buttonStyle(.plain)
+
+      // Delete.
+      Button {
+        let selectedAlbums = vm.gridVM.currentAlbumsDisplayed.filter {
+          phoneVM.wpSelectedAlbumIDs.contains($0.id)
+        }
+        phoneVM.albumsToDelete = selectedAlbums
+        phoneVM.showDeleteConfirmation = true
+      } label: {
+        Image(systemName: "trash")
+          .font(.system(size: 18))
+          .foregroundStyle(.white.opacity(0.8))
+      }
+      .buttonStyle(.plain)
+
+      // Done.
+      Button {
+        phoneVM.wpSelectedAlbumIDs = []
+      } label: {
+        Image(systemName: "checkmark")
+          .font(.system(size: 18, weight: .semibold))
+          .foregroundStyle(.white)
+      }
+      .buttonStyle(.plain)
+    }
+    .padding(.horizontal, 20)
+    .padding(.vertical, 8)
+    .background(Color.white.opacity(0.1))
   }
 
   // MARK: Private
@@ -155,8 +284,9 @@ struct WPAlbumTilesView: View {
       let tileUnit = (geo.size.width - CGFloat(columns + 1) * spacing) / CGFloat(columns)
 
       ScrollView(.vertical, showsIndicators: false) {
+        // Phase 84: Reorder albums so recently played/imported ones appear first.
         WPTileLayoutView(
-          albums: vm.gridVM.currentAlbumsDisplayed,
+          albums: phoneVM.albumsWithRecentFirst(vm.gridVM.currentAlbumsDisplayed),
           tileUnit: tileUnit,
           spacing: spacing,
           phoneVM: phoneVM
@@ -266,10 +396,29 @@ struct WPTileItemView: View {
     case .small: tileUnit
     }
 
+    // Phase 82: Live tile indicator for currently playing album.
+    let isPlayingAlbum: Bool = {
+      guard let current = vm.player.currentTrack else { return false }
+      return album.allTrackIDsSet.contains(current.id)
+    }()
+
+    // Phase 83: Use phoneVM.wpSelectedAlbumIDs (not gridVM.highlightedAlbumIDs)
+    // to avoid cross-UI contamination with macOS Grid selection.
+    let isSelectionModeActive = phoneVM.isWPSelectionModeActive
+    let isSelected = phoneVM.wpSelectedAlbumIDs.contains(album.id)
+
     Button {
-      phoneVM.navigationPath.append(
-        WPNavigationDestination.albumDetail(album)
-      )
+      if isSelectionModeActive {
+        if isSelected {
+          phoneVM.wpSelectedAlbumIDs.remove(album.id)
+        } else {
+          phoneVM.wpSelectedAlbumIDs.insert(album.id)
+        }
+      } else {
+        phoneVM.navigationPath.append(
+          WPNavigationDestination.albumDetail(album)
+        )
+      }
     } label: {
       ZStack(alignment: .bottomLeading) {
         // Artwork.
@@ -298,6 +447,58 @@ struct WPTileItemView: View {
           }
         }
         .padding(6)
+
+        if isPlayingAlbum {
+          // Live tile badge for playing album. Updating progress once per second.
+          TimelineView(.periodic(from: .now, by: 1.0)) { _ in
+            let progress: Double = {
+              guard vm.player.duration > 0 else { return 0 }
+              return min(max(vm.player.currentTime / vm.player.duration, 0), 1)
+            }()
+
+            VStack {
+              HStack {
+                ZStack {
+                  Circle()
+                    .strokeBorder(Color.white.opacity(0.8), lineWidth: 1.5)
+                    .background(Circle().foregroundStyle(Color.black.opacity(0.6)))
+                    .frame(width: 24, height: 24)
+
+                  Image(systemName: "play.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white)
+                }
+                .overlay(
+                  Circle()
+                    .trim(from: 0, to: CGFloat(progress))
+                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                )
+
+                Spacer()
+              }
+              Spacer()
+            }
+            .padding(8)
+          }
+        }
+
+        if isSelected {
+          // Selection overlay (WPUI select mode)
+          Color.black.opacity(0.25)
+            .overlay(
+              VStack {
+                HStack {
+                  Spacer()
+                  Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(8)
+                }
+                Spacer()
+              }
+            )
+        }
       }
       .frame(width: width, height: height)
       .clipShape(Rectangle())

@@ -106,6 +106,21 @@ struct WPMainView: View {
         )
       }
       .animation(.easeInOut(duration: 0.25), value: phoneVM.currentSection)
+      // Phase 83: Persist section via .onChange (didSet is silently overridden by @Observable).
+      .onChange(of: phoneVM.currentSection) { _, newValue in
+        WPPhoneViewModel.saveLastSection(newValue)
+      }
+      // Phase 84: Track album play activity for recent-first tile ordering.
+      .onChange(of: vm.player.currentTrack?.id) { _, newID in
+        guard newID != nil, let track = vm.player.currentTrack else { return }
+        phoneVM.recordAlbumActivity(title: track.albumTitle, artist: track.albumArtist)
+      }
+      // Phase 84: Record newly imported albums for recent-first tile ordering.
+      .onChange(of: vm.library.isImporting) { oldValue, newValue in
+        if oldValue, !newValue {
+          phoneVM.recordNewlyImportedAlbums(from: vm.gridVM.currentAlbumsDisplayed)
+        }
+      }
       .preferredColorScheme(.dark)
       .environment(vm)
       .environment(phoneVM)

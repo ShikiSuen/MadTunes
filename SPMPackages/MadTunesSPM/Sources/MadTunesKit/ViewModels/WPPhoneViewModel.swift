@@ -120,7 +120,16 @@ final class WPPhoneViewModel {
   weak var mainVM: MadTunesViewModel?
 
   /// Currently displayed Panorama section.
-  var currentSection: PanoramaSection = .library
+  ///
+  /// Phase 83: Persisted via `UserDefaults`. Note: `@Observable` overrides `didSet`,
+  /// so persistence is handled via `.onChange` in `WPMainView`.
+  var currentSection: PanoramaSection = WPPhoneViewModel.loadLastSection()
+
+  // MARK: - WPUI Selection Mode (Phase 83)
+
+  /// Album IDs selected in WPUI multi-select mode.
+  /// Separate from `AlbumGridViewModel.highlightedAlbumIDs` to avoid cross-UI contamination.
+  var wpSelectedAlbumIDs: Set<UUID> = []
 
   var currentPivot: LibraryPivot = .albums
 
@@ -181,6 +190,16 @@ final class WPPhoneViewModel {
   var isCreatePlaylistAlertPresented = false
   var createPlaylistName = ""
 
+  // MARK: - Phase 84: Recent Album Tracking
+
+  /// Album keys recently played or imported, in most-recent-first order (max 10).
+  /// Used to determine the display priority of tiles in WPUI Library → Albums.
+  var recentAlbumKeys: [String] = UserDefaults.standard.stringArray(
+    forKey: WPPhoneViewModel.recentAlbumKeysKey
+  ) ?? []
+
+  var isWPSelectionModeActive: Bool { !wpSelectedAlbumIDs.isEmpty }
+
   var wpAccentColor: WPAccentColor = {
     if let raw = UserDefaults.standard.string(forKey: "MadTunes.wpAccentColor"),
        let accent = WPAccentColor(rawValue: raw) {
@@ -237,6 +256,19 @@ final class WPPhoneViewModel {
     }.sorted { $0.artist.localizedCaseInsensitiveCompare($1.artist) == .orderedAscending }
 
     return (albums, matchingTracks)
+  }
+
+  static func loadLastSection() -> PanoramaSection {
+    guard let raw = UserDefaults.standard.string(forKey: lastSectionKey),
+          let value = Int(raw),
+          let section = PanoramaSection(rawValue: value) else {
+      return .library
+    }
+    return section
+  }
+
+  static func saveLastSection(_ section: PanoramaSection) {
+    UserDefaults.standard.set(section.rawValue, forKey: lastSectionKey)
   }
 
   /// Whether WPUI should be used (iPhone always, compact iPad in portrait).
@@ -301,4 +333,51 @@ final class WPPhoneViewModel {
     renamePlaylistID = nil
     renamePlaylistName = ""
   }
+
+  /// Record album activity (play or import) for recent-first tile ordering.
+  func recordAlbumActivity(title: String, artist: String) {
+    let key = "\(title):::\(artist)"
+    recentAlbumKeys.removeAll { $0 == key }
+    recentAlbumKeys.insert(key, at: 0)
+    if recentAlbumKeys.count > 10 {
+      recentAlbumKeys = Array(recentAlbumKeys.prefix(10))
+    }
+    UserDefaults.standard.set(recentAlbumKeys, forKey: Self.recentAlbumKeysKey)
+  }
+
+  /// Record newly imported albums that aren't yet in the recent list.
+  func recordNewlyImportedAlbums(from albums: [Album]) {
+    let knownKeys = Set(recentAlbumKeys)
+    let newAlbums = albums.filter { !knownKeys.contains("\($0.title):::\($0.artist)") }
+    for album in newAlbums {
+      recordAlbumActivity(title: album.title, artist: album.artist)
+    }
+  }
+
+  /// Reorder albums so recently played/imported ones appear first.
+  func albumsWithRecentFirst(_ albums: [Album]) -> [Album] {
+    guard !recentAlbumKeys.isEmpty else { return albums }
+    let keyToIndex = Dictionary(
+      uniqueKeysWithValues: recentAlbumKeys.enumerated().map { ($1, $0) }
+    )
+    var recent: [(Int, Album)] = []
+    var rest: [Album] = []
+    for album in albums {
+      let key = "\(album.title):::\(album.artist)"
+      if let idx = keyToIndex[key] {
+        recent.append((idx, album))
+      } else {
+        rest.append(album)
+      }
+    }
+    recent.sort { $0.0 < $1.0 }
+    return recent.map(\.1) + rest
+  }
+
+  // MARK: Private
+
+  // MARK: Persistence
+
+  private static let lastSectionKey = "MadTunes.WPUI.lastSection"
+  private static let recentAlbumKeysKey = "MadTunes.WPUI.recentAlbumKeys"
 }

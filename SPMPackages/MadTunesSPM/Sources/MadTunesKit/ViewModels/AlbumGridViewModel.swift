@@ -27,6 +27,7 @@ final class AlbumGridViewModel {
   // MARK: - Dedicated Properties (Stored)
 
   var albumSortOrder: AlbumSortOrder = .artistYearTitle
+
   var expandedAlbumID: UUID?
   var displayedAlbumsCache: [Album] = []
   var highlightedAlbumIDs: Set<UUID> = []
