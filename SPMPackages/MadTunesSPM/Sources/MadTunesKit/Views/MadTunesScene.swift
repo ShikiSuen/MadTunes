@@ -27,15 +27,26 @@ public struct MadTunesScene: Scene {
 
   public var body: some Scene {
     WindowGroup {
-      MadTunesMainView()
-        .frame(
-          minWidth: OS.type == .macOS ? 852 * vm.uiFactor : 720,
-          minHeight: OS.type == .macOS ? 574 * vm.uiFactor : 720
-        )
-        // Phase 69: Handle files opened via "Open In" / Share sheet / Finder.
-        .onOpenURL { url in
-          vm.importURLs([url])
+      Group {
+        // Phase 75: Use WP Metro-style UI for iPhone / compact layout.
+        if WPPhoneViewModel.shouldUseWPUI(screenVM: vm.screenVM) {
+          WPMainView()
+            .frame(
+              minWidth: 320,
+              minHeight: 568
+            )
+        } else {
+          MadTunesMainView()
+            .frame(
+              minWidth: OS.type == .macOS ? 852 * vm.uiFactor : 320,
+              minHeight: OS.type == .macOS ? 574 * vm.uiFactor : 568
+            )
         }
+      }
+      // Phase 69: Handle files opened via "Open In" / Share sheet / Finder.
+      .onOpenURL { url in
+        vm.importURLs([url])
+      }
     }
     .commands {
       CommandGroup(replacing: .newItem) {

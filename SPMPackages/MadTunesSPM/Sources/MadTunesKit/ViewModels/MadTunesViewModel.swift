@@ -15,6 +15,7 @@ final class MadTunesViewModel {
   init() {
     gridVM.mainVM = self
     tableVM.mainVM = self
+    phoneVM.mainVM = self
   }
 
   // MARK: Internal
@@ -31,6 +32,9 @@ final class MadTunesViewModel {
   // Phase 60: Sub-ViewModels for table and grid views.
   var tableVM = AlbumTableViewModel()
   var gridVM = AlbumGridViewModel()
+
+  // Phase 75: Sub-ViewModel for WP Metro-style phone UI.
+  var phoneVM = WPPhoneViewModel()
 
   var selectedPlaylistID: UUID?
   var selectedTrackIDs: Set<UUID> = []
