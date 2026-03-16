@@ -32,8 +32,7 @@ struct AlbumGridView: View {
         Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
         Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
           let trackIDs = Set(gridVM.albumsToDelete.flatMap { $0.tracks.map(\.id) })
-          vm.library.removeTracks(ids: trackIDs)
-          vm.invalidateSearchCacheForRemovedTracks(trackIDs)
+          vm.removeTracksFromLibrary(trackIDs)
           gridVM.albumsToDelete = []
         }
       } message: {

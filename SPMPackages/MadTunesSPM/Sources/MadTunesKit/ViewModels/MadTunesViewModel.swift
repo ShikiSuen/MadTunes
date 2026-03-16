@@ -217,6 +217,29 @@ final class MadTunesViewModel {
     }
   }
 
+  /// Removes tracks from the library and ensures they are also removed from
+  /// playback state (queue/current track) and any cached filter results.
+  func removeTracksFromLibrary(_ ids: Set<UUID>) {
+    guard !ids.isEmpty else { return }
+
+    // If the currently playing track is being removed, stop playback.
+    if let current = player.currentTrack, ids.contains(current.id) {
+      player.stop()
+    }
+
+    // Remove from the play queue (and adjust current index if needed).
+    player.removeFromQueue(trackIDs: ids)
+
+    // Keep selection state consistent.
+    selectedTrackIDs.subtract(ids)
+
+    // Remove from library and all playlists.
+    library.removeTracks(ids: ids)
+
+    // Update caches used by various views.
+    invalidateSearchCacheForRemovedTracks(ids)
+  }
+
   /// Resets column browser filters.
   func resetColumnBrowserFilters() {
     if !columnBrowserSelectedGenres.isEmpty { columnBrowserSelectedGenres = [] }

@@ -127,8 +127,7 @@ struct ExpandedAlbumView: View {
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
       Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
         let trackIDs = Set(tracksToDelete.map(\.id))
-        vm.library.removeTracks(ids: trackIDs)
-        vm.invalidateSearchCacheForRemovedTracks(trackIDs)
+        vm.removeTracksFromLibrary(trackIDs)
         tracksToDelete = []
       }
     } message: {

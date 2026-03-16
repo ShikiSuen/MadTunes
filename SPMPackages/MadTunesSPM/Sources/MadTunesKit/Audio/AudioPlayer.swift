@@ -160,6 +160,33 @@ public final class AudioPlayer {
     isPlaying = false
   }
 
+  /// Remove tracks from the current queue.
+  ///
+  /// If the currently playing track is removed, playback stops.
+  /// Otherwise, the queue is updated preserving the current track position.
+  public func removeFromQueue(trackIDs: Set<UUID>) {
+    guard !trackIDs.isEmpty else { return }
+
+    // If the current track is being removed, stop playback entirely.
+    if let current = currentTrack, trackIDs.contains(current.id) {
+      stop()
+      queue.removeAll { trackIDs.contains($0.id) }
+      currentIndex = 0
+      return
+    }
+
+    // Otherwise, remove the tracks from the queue while keeping playback
+    // position aligned with the currently playing track.
+    let currentID = currentTrack?.id
+    queue.removeAll { trackIDs.contains($0.id) }
+    if let currentID,
+       let idx = queue.firstIndex(where: { $0.id == currentID }) {
+      currentIndex = idx
+    } else {
+      currentIndex = 0
+    }
+  }
+
   public func next() {
     guard !queue.isEmpty else { return }
     switch loopBehavior {
