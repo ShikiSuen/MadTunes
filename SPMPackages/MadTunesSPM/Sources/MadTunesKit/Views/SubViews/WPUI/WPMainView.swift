@@ -424,9 +424,8 @@ struct WPImportingOverlay: View {
   var body: some View {
     VStack(spacing: 12) {
       let progress = vm.library.importProgress
-      ProgressView()
-        .tint(.white)
-        .scaleEffect(1.5)
+      WinUI3ProgressRing()
+        .frame(width: 48, height: 48)
       Text(String(localized: "i18n:Import.ImportingMusic", bundle: #bundle))
         .font(.system(size: 16, weight: .semibold))
         .foregroundStyle(.white)
@@ -457,9 +456,8 @@ struct WPImportingOverlay: View {
 struct WPLoadingOverlay: View {
   var body: some View {
     VStack(spacing: 12) {
-      ProgressView()
-        .tint(.white)
-        .scaleEffect(1.5)
+      WinUI3ProgressRing()
+        .frame(width: 48, height: 48)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
