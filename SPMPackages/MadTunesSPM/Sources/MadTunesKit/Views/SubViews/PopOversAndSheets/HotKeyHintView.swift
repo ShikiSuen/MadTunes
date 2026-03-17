@@ -152,14 +152,45 @@ extension HotKeyHintView {
   private func prepareHotKeyHints() -> [HotKeyHintRecord] {
     switch vm.useTableView {
     case true:
-      // ⌘↓: Play selected tracks immediately.
+      // Phase 91: Space alone = toggle play/pause.
+      HotKeyHintRecord(
+        modifiers: [],
+        keyPress: .space
+      ) {
+        String(
+          localized: "i18n:HotKeyHint.Record.TableView.SpaceTogglePlayPause",
+          defaultValue: "Toggle play/pause",
+          bundle: #bundle
+        )
+      }
+      // Phase 91: ⇧Space / ↩ / ⌘↓ = Play from selected (like double-click).
+      HotKeyHintRecord(
+        modifiers: [.shift],
+        keyPress: .space
+      ) {
+        String(
+          localized: "i18n:HotKeyHint.Record.TableView.PlayFromSelected",
+          defaultValue: "Play from selected (like double-click)",
+          bundle: #bundle
+        )
+      }
+      HotKeyHintRecord(
+        modifiers: [],
+        keyPress: .return
+      ) {
+        String(
+          localized: "i18n:HotKeyHint.Record.TableView.PlayFromSelected",
+          defaultValue: "Play from selected (like double-click)",
+          bundle: #bundle
+        )
+      }
       HotKeyHintRecord(
         modifiers: [.command],
         keyPress: .downArrow
       ) {
         String(
-          localized: "i18n:Menu.PlaySelected",
-          defaultValue: "Play selected",
+          localized: "i18n:HotKeyHint.Record.TableView.PlayFromSelected",
+          defaultValue: "Play from selected (like double-click)",
           bundle: #bundle
         )
       }
@@ -171,28 +202,6 @@ extension HotKeyHintView {
         String(
           localized: "i18n:ContextMenu.CopyMetadata",
           defaultValue: "Copy metadata",
-          bundle: #bundle
-        )
-      }
-      // Return: Play selected tracks.
-      HotKeyHintRecord(
-        modifiers: [],
-        keyPress: .return
-      ) {
-        String(
-          localized: "i18n:HotKeyHint.Record.TableView.ReturnPlay",
-          defaultValue: "Play selected tracks",
-          bundle: #bundle
-        )
-      }
-      // Space: Toggle play/pause (if track loaded); otherwise play selected.
-      HotKeyHintRecord(
-        modifiers: [],
-        keyPress: .space
-      ) {
-        String(
-          localized: "i18n:HotKeyHint.Record.TableView.SpaceTogglePlay",
-          defaultValue: "Toggle play/pause; or play selected",
           bundle: #bundle
         )
       }

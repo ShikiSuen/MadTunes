@@ -88,14 +88,11 @@ struct GlobalControlMenuCommands: Commands {
   // MARK: - Table Mode Commands
 
   @ViewBuilder private var commandsOfControlForAlbumTableView: some View {
-    // Phase 63: Play selected — Cmd+↓
+    // Phase 91: Play like double-click — Cmd+↓ / Enter / Shift+Space
+    // Queue ALL displayed tracks starting from cursor/selected position.
     Section {
       Button {
-        let tracks = vm.tableVM.currentTracksDisplayed
-        let selected = tracks.filter { vm.selectedTrackIDs.contains($0.id) }
-        if !selected.isEmpty {
-          vm.player.setQueue(selected, startingAt: 0)
-        }
+        vm.tableVM.playSelectedAsDoubleClick()
       } label: {
         Label(
           String(
@@ -108,6 +105,53 @@ struct GlobalControlMenuCommands: Commands {
       }
       .keyboardShortcut(.downArrow, modifiers: [.command])
       .disabled(vm.selectedTrackIDs.isEmpty)
+
+      // Phase 91: Enter — play like double-click.
+      Button {
+        vm.tableVM.playSelectedAsDoubleClick()
+      } label: {
+        Label(
+          String(
+            localized: "i18n:Menu.PlayFromSelected",
+            defaultValue: "Play from Selected",
+            bundle: #bundle
+          ),
+          systemImage: "play.fill"
+        )
+      }
+      .keyboardShortcut(.return, modifiers: [])
+      .disabled(vm.selectedTrackIDs.isEmpty)
+
+      // Phase 91: Shift+Space — play like double-click.
+      Button {
+        vm.tableVM.playSelectedAsDoubleClick()
+      } label: {
+        Label(
+          String(
+            localized: "i18n:Menu.PlayFromSelected",
+            defaultValue: "Play from Selected",
+            bundle: #bundle
+          ),
+          systemImage: "play.fill"
+        )
+      }
+      .keyboardShortcut(.space, modifiers: [.shift])
+      .disabled(vm.selectedTrackIDs.isEmpty)
+
+      // Phase 91: Space alone — toggle play/pause.
+      Button {
+        vm.player.togglePlayPause()
+      } label: {
+        Label(
+          String(
+            localized: "i18n:Menu.TogglePlayPause",
+            defaultValue: "Toggle Play/Pause",
+            bundle: #bundle
+          ),
+          systemImage: "playpause.fill"
+        )
+      }
+      .keyboardShortcut(.space, modifiers: [])
     }
 
     // UIKit: Arrow keys move selection in List.

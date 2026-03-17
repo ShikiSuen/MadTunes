@@ -395,6 +395,24 @@ final class AlbumTableViewModel {
     trackIDsForNewPlaylist = []
   }
 
+  // MARK: - Phase 91: Play Like Double-Click
+
+  /// Queues ALL currently displayed tracks, starting from the first selected
+  /// track's position — identical to double-clicking a row.
+  func playSelectedAsDoubleClick() {
+    guard let mainVM else { return }
+    let tracks = currentTracksDisplayed
+    guard !tracks.isEmpty else { return }
+    let cursorID = tableSelectionCursorID ?? mainVM.selectedTrackIDs.first
+    let startIndex: Int
+    if let cursorID, let idx = tracks.firstIndex(where: { $0.id == cursorID }) {
+      startIndex = idx
+    } else {
+      startIndex = 0
+    }
+    mainVM.player.setQueue(tracks, startingAt: startIndex)
+  }
+
   // MARK: - Phase 63: Keyboard Navigation (moved from MadTunesViewModel)
 
   /// Handles keyboard input when the table view is active.
@@ -439,28 +457,26 @@ final class AlbumTableViewModel {
       }
     }
 
-    // CMD+↓: Play selected tracks immediately.
+    // Phase 91: CMD+↓ / Enter / Shift+Space: play like double-click
+    // (queue ALL displayed tracks starting from cursor position).
     if press.key == .downArrow, press.modifiers.contains(.command) {
-      let selected = tracks.filter { mainVM.selectedTrackIDs.contains($0.id) }
-      if !selected.isEmpty {
-        mainVM.player.setQueue(selected, startingAt: 0)
-        return .handled
-      }
+      playSelectedAsDoubleClick()
+      return .handled
+    }
+    if press.key == .return, !press.modifiers.contains(.command) {
+      playSelectedAsDoubleClick()
       return .handled
     }
 
-    // Return / Space: play selected tracks (or track at cursor).
-    if press.key == .return || press.characters == " " {
-      if press.characters == " ", mainVM.player.currentTrack != nil {
+    // Phase 91: Space alone = toggle play/pause;
+    // Shift+Space = play like double-click.
+    if press.characters == " " {
+      if press.modifiers.contains(.shift) {
+        playSelectedAsDoubleClick()
+      } else {
         mainVM.player.togglePlayPause()
-        return .handled
       }
-      let selected = tracks.filter { mainVM.selectedTrackIDs.contains($0.id) }
-      if !selected.isEmpty {
-        mainVM.player.setQueue(selected, startingAt: 0)
-        return .handled
-      }
-      return .ignored
+      return .handled
     }
 
     // Page/Home/End: UIKit List does not provide native navigation, so handle

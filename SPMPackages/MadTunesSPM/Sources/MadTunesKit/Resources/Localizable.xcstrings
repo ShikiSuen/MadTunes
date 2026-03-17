@@ -2070,31 +2070,31 @@
         }
       }
     },
-    "i18n:HotKeyHint.Record.TableView.ReturnPlay" : {
+    "i18n:HotKeyHint.Record.TableView.PlayFromSelected" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Play selected tracks"
+            "value" : "Play from selected (like double-click)"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "選択したトラックを再生"
+            "value" : "選択位置から再生（ダブルクリック同様）"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "播放所选曲目"
+            "value" : "从所选位置播放（同双击）"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "播放所選曲目"
+            "value" : "從所選位置播放（同雙擊）"
           }
         }
       }
@@ -2215,31 +2215,31 @@
         }
       }
     },
-    "i18n:HotKeyHint.Record.TableView.SpaceTogglePlay" : {
+    "i18n:HotKeyHint.Record.TableView.SpaceTogglePlayPause" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Toggle play/pause; or play selected"
+            "value" : "Toggle play/pause"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "再生/一時停止を切り替え、又は選択を再生"
+            "value" : "再生/一時停止を切り替え"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "切换播放/暂停、或播放所选"
+            "value" : "切换播放/暂停"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "切換播放/暫停、或播放所選"
+            "value" : "切換播放/暫停"
           }
         }
       }
@@ -2790,6 +2790,35 @@
         }
       }
     },
+    "i18n:Menu.PlayFromSelected" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Play from Selected"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択位置から再生"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从所选位置播放"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "從所選位置播放"
+          }
+        }
+      }
+    },
     "i18n:Menu.PlayOrExpand" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -2902,6 +2931,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "選擇上一首"
+          }
+        }
+      }
+    },
+    "i18n:Menu.TogglePlayPause" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Toggle Play/Pause"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再生/一時停止を切り替え"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切换播放/暂停"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切換播放/暫停"
           }
         }
       }
