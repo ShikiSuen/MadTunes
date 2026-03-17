@@ -335,12 +335,20 @@ struct AlbumTableView: View {
       // Phase 87: Use \.element.id instead of \.offset so SwiftUI can perform
       // stable identity diffing — prevents full list rebuild on every data change.
       ForEach(Array(tableVM.displayedTracks.enumerated()), id: \.element.id) { index, track in
-        trackRow(track)
-          .id(track.id)
-          .tag(track.id)
-          .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
-          // Phase 71: Manual alternating row backgrounds for UIKit targets.
+        // Phase 88: Extracted to standalone view with visibility-gated rendering.
+        TableTrackRowView(
+          track: track,
+          visibleColumns: visibleColumns,
+          currentTrackID: currentTrackID,
+          isTrackSelected: vm.selectedTrackIDs.contains(track.id)
+        )
+        .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+        // Phase 71: Manual alternating row backgrounds for UIKit targets.
+        #if !canImport(AppKit) && canImport(UIKit)
           .listRowBackground(alternatingRowBackground(at: index, trackID: track.id))
+        #endif
+          .drawingGroup()
+          .tag(track.id)
       }
       .onMove(perform: onRowMoveActionProvider(canReorder: canReorder))
     }
@@ -380,91 +388,6 @@ struct AlbumTableView: View {
       set: { tableVM.isEditModeActive = ($0 == .active) }
     ))
     #endif
-  }
-
-  // MARK: - Row
-
-  @ViewBuilder
-  private func trackRow(_ track: Track) -> some View {
-    // Phase 44: Use HStack to match header layout exactly
-    Color.clear
-      .frame(height: 20)
-      .overlay(alignment: .leading) {
-        HStack(spacing: 0) {
-          ForEach(Array(visibleColumns.enumerated()), id: \.element) { index, column in
-            let isTrailingColumn = index == visibleColumns.count - 1
-            let columnWidth = isTrailingColumn ? nil : tableVM.columnWidth(for: column)
-            cellContent(for: track, column: column)
-              .font(.callout)
-              .lineLimit(1)
-              .padding(.horizontal, 6)
-              .frame(width: columnWidth, alignment: .leading)
-            // Add spacer between columns (except last) to match header dividers
-            if !isTrailingColumn {
-              Spacer().frame(width: 1)
-            }
-          }
-        }
-      }
-      .clipShape(.rect)
-      .contentShape(.rect)
-      .frame(minWidth: 1, maxWidth: .infinity, alignment: .leading)
-      .drawingGroup()
-  }
-
-  // Phase 42/46: All user data uses Text(verbatim:) to prevent String Catalog pollution.
-  @ViewBuilder
-  private func cellContent(for track: Track, column: TableColumnType) -> some View {
-    switch column {
-    case .playingIndicator:
-      // Phase 45: Playing indicator column shows speaker icon for current track
-      if track.id == currentTrackID {
-        Image(systemName: "speaker.wave.2.fill")
-          .foregroundStyle(
-            vm.selectedTrackIDs.contains(track.id) ? Color.white : Color.primary
-          )
-          .font(.caption)
-          .frame(width: 16)
-      } else {
-        Color.clear
-          .frame(width: 16)
-      }
-    case .name:
-      // Phase 45: Removed speaker icon (now in separate playingIndicator column)
-      Text(verbatim: track.title)
-        .help(Text(verbatim: track.title))
-    case .length:
-      Text(verbatim: formatDuration(track.duration))
-        .monospacedDigit()
-        .foregroundStyle(.secondary)
-        .help(Text(verbatim: formatDuration(track.duration)))
-    case .artist:
-      Text(verbatim: track.artist)
-        .help(Text(verbatim: track.artist))
-    case .albumTitle:
-      Text(verbatim: track.albumTitle)
-        .help(Text(verbatim: track.albumTitle))
-    case .albumArtist:
-      Text(verbatim: track.albumArtist)
-        .help(Text(verbatim: track.albumArtist))
-    case .trackNumber:
-      // Phase 45: Always show disc-track format, treating missing values as 0
-      let disc = max(0, track.discNumber)
-      let trackNum = max(0, track.trackNumber)
-      Text(verbatim: "\(disc)-\(String(format: "%02d", trackNum))")
-        .monospacedDigit()
-        .help(Text(verbatim: "\(disc)-\(trackNum)"))
-    case .genre:
-      Text(verbatim: track.genre)
-        .help(Text(verbatim: track.genre))
-    case .year:
-      Text(verbatim: track.year.map(String.init) ?? "")
-        .monospacedDigit()
-        .help(Text(verbatim: track.year.map(String.init) ?? ""))
-    case .folder:
-      Text(verbatim: (track.folderPath as NSString).lastPathComponent)
-        .help(Text(verbatim: track.fileURL.path(percentEncoded: false)))
-    }
   }
 
   // MARK: - Context menu builder
@@ -533,5 +456,125 @@ struct AlbumTableView: View {
     guard vm.tableVM.canReorderCurrentPlaylist else { return }
     let ids = source.map { tableVM.displayedTracks[$0].id }
     vm.tableVM.moveTracksInCurrentPlaylist(trackIDs: ids, toIndex: destination)
+  }
+}
+
+// MARK: - TableTrackRowView
+
+/// Phase 88: Extracted row view with visibility-gated rendering.
+/// Only evaluates column content (and reads `columnWidth`) when the row is
+/// on-screen; off-screen rows remain lightweight `Color.clear` placeholders
+/// with no @Observable subscriptions to table layout state.
+private struct TableTrackRowView: View {
+  // MARK: Lifecycle
+
+  init(
+    track: Track,
+    visibleColumns: [TableColumnType],
+    currentTrackID: UUID?,
+    isTrackSelected: Bool
+  ) {
+    self.track = track
+    self.visibleColumns = visibleColumns
+    self.currentTrackID = currentTrackID
+    self.isTrackSelected = isTrackSelected
+  }
+
+  // MARK: Internal
+
+  var body: some View {
+    Color.clear
+      .frame(height: 20)
+      .overlay(alignment: .leading) {
+        if isVisible {
+          rowContent
+        }
+      }
+      .clipShape(.rect)
+      .contentShape(.rect)
+      .frame(minWidth: 1, maxWidth: .infinity, alignment: .leading)
+      .drawingGroup()
+      .onAppear { isVisible = true }
+      .onDisappear { isVisible = false }
+  }
+
+  // MARK: Private
+
+  @State private var vm: MadTunesViewModel = .shared
+  @State private var isVisible = false
+
+  private let track: Track
+  private let visibleColumns: [TableColumnType]
+  private let currentTrackID: UUID?
+  private let isTrackSelected: Bool
+
+  // Phase 60: Sub-ViewModel reference.
+  private var tableVM: AlbumTableViewModel { vm.tableVM }
+
+  @ViewBuilder private var rowContent: some View {
+    HStack(spacing: 0) {
+      ForEach(Array(visibleColumns.enumerated()), id: \.element) { index, column in
+        let isTrailingColumn = index == visibleColumns.count - 1
+        let columnWidth = isTrailingColumn ? nil : tableVM.columnWidth(for: column)
+        cellContent(for: column)
+          .font(.callout)
+          .lineLimit(1)
+          .padding(.horizontal, 6)
+          .frame(width: columnWidth, alignment: .leading)
+        if !isTrailingColumn {
+          Spacer().frame(width: 1)
+        }
+      }
+    }
+  }
+
+  // Phase 42/46: All user data uses Text(verbatim:) to prevent String Catalog pollution.
+  @ViewBuilder
+  private func cellContent(for column: TableColumnType) -> some View {
+    switch column {
+    case .playingIndicator:
+      if track.id == currentTrackID {
+        Image(systemName: "speaker.wave.2.fill")
+          .foregroundStyle(isTrackSelected ? Color.white : Color.primary)
+          .font(.caption)
+          .frame(width: 16)
+      } else {
+        Color.clear
+          .frame(width: 16)
+      }
+    case .name:
+      Text(verbatim: track.title)
+        .help(Text(verbatim: track.title))
+    case .length:
+      Text(verbatim: formatDuration(track.duration))
+        .monospacedDigit()
+        .foregroundStyle(.secondary)
+        .help(Text(verbatim: formatDuration(track.duration)))
+    case .artist:
+      Text(verbatim: track.artist)
+        .help(Text(verbatim: track.artist))
+    case .albumTitle:
+      Text(verbatim: track.albumTitle)
+        .help(Text(verbatim: track.albumTitle))
+    case .albumArtist:
+      Text(verbatim: track.albumArtist)
+        .help(Text(verbatim: track.albumArtist))
+    case .trackNumber:
+      let disc = max(0, track.discNumber)
+      let trackNum = max(0, track.trackNumber)
+      Text(verbatim: "\(disc)-\(String(format: "%02d", trackNum))")
+        .monospacedDigit()
+        .help(Text(verbatim: "\(disc)-\(trackNum)"))
+    case .genre:
+      Text(verbatim: track.genre)
+        .help(Text(verbatim: track.genre))
+    case .year:
+      Text(verbatim: track.year.map(String.init) ?? "")
+        .monospacedDigit()
+        .help(Text(verbatim: track.year.map(String.init) ?? ""))
+    case .folder:
+      Text(verbatim: (track.folderPath as NSString).lastPathComponent)
+        .help(Text(verbatim: track.fileURL.path(percentEncoded: false)))
+    }
   }
 }
