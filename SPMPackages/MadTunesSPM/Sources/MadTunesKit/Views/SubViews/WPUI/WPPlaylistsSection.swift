@@ -31,7 +31,7 @@ struct WPPlaylistsSection: View {
                 Text(verbatim: playlist.name)
                   .font(.system(size: 17, weight: .semibold))
                   .foregroundStyle(.white)
-                Text(verbatim: "\(playlist.trackIDs.count) \(playlist.trackIDs.count == 1 ? "track" : "tracks")")
+                Text("i18n:Unit:Track:\(playlist.trackIDs.count)", bundle: #bundle)
                   .font(.system(size: 13))
                   .foregroundStyle(.white.opacity(0.5))
               }
