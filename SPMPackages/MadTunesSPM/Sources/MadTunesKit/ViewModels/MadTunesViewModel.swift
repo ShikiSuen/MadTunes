@@ -221,16 +221,16 @@ final class MadTunesViewModel {
   /// playback state (queue/current track) and any cached filter results.
   /// Phase 86: Also cleans up cross-UI state (WPUI selection, recent album keys,
   /// expanded album, highlighted albums) to prevent stale references.
-  func removeTracksFromLibrary(_ ids: Set<UUID>) {
+  func removeTracksFromLibrary(_ ids: Set<UUID>) async {
     guard !ids.isEmpty else { return }
 
     // If the currently playing track is being removed, stop playback.
     if let current = player.currentTrack, ids.contains(current.id) {
-      player.stop()
+      await player.stop()
     }
 
     // Remove from the play queue (and adjust current index if needed).
-    player.removeFromQueue(trackIDs: ids)
+    await player.removeFromQueue(trackIDs: ids)
 
     // Keep selection state consistent.
     selectedTrackIDs.subtract(ids)
@@ -288,7 +288,7 @@ final class MadTunesViewModel {
   func playFilteredTracks() {
     let tracks = filteredTracksBase
     guard !tracks.isEmpty else { return }
-    player.setQueue(tracks, startingAt: 0)
+    Task { await player.setQueue(tracks, startingAt: 0) }
   }
 
   func importURLs(_ urls: [URL]) {

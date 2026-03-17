@@ -80,7 +80,7 @@ public struct MadTunesScene: Scene {
         Menu {
           if !vm.library.isImporting {
             Button(role: .destructive) {
-              vm.player.stop()
+              Task { await vm.player.stop() }
               vm.library.clearDatabase()
             } label: {
               Label(

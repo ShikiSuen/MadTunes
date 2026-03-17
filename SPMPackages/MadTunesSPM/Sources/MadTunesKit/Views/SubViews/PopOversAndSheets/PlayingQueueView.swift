@@ -68,12 +68,12 @@ struct PlayingQueueView: View {
             .contentShape(.rect)
             .onTapGesture {
               highlightedIndex = index
-              player.setQueue(player.queue, startingAt: index)
+              Task { await player.setQueue(player.queue, startingAt: index) }
             }
             .tag(index)
           }
           .onMove { source, destination in
-            player.moveQueueItem(from: source, to: destination)
+            Task { await player.moveQueueItem(from: source, to: destination) }
           }
         }
         .listStyle(.plain)
@@ -126,11 +126,11 @@ struct PlayingQueueView: View {
     var newQueue = player.queue
     newQueue.remove(at: index)
     if newQueue.isEmpty {
-      player.stop()
+      Task { await player.stop() }
     } else {
       // Adjust current index if needed
       let newIndex = min(player.currentIndex, newQueue.count - 1)
-      player.setQueue(newQueue, startingAt: newIndex)
+      Task { await player.setQueue(newQueue, startingAt: newIndex) }
     }
   }
 
@@ -139,7 +139,7 @@ struct PlayingQueueView: View {
           player.queue.indices.contains(from),
           to >= 0, to <= player.queue.count else { return }
     let source = IndexSet([from])
-    player.moveQueueItem(from: source, to: to)
+    Task { await player.moveQueueItem(from: source, to: to) }
   }
 
   private func scrambleQueue() {
@@ -150,7 +150,7 @@ struct PlayingQueueView: View {
     let newIndex = currentTrack.flatMap { track in
       shuffled.firstIndex(where: { $0.id == track.id })
     } ?? 0
-    player.setQueue(shuffled, startingAt: newIndex)
+    Task { await player.setQueue(shuffled, startingAt: newIndex) }
   }
 
   // MARK: - Keyboard Handling
@@ -183,7 +183,7 @@ struct PlayingQueueView: View {
     guard newIndex != currentIdx else { return .handled }
 
     highlightedIndex = newIndex
-    player.setQueue(player.queue, startingAt: newIndex)
+    Task { await player.setQueue(player.queue, startingAt: newIndex) }
     return .handled
   }
 

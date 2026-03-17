@@ -141,10 +141,12 @@ final class AlbumGridViewModel {
 
   func onTrackDoubleClicked(_ track: Track, albumTracks: [Track]) {
     guard let mainVM else { return }
-    mainVM.player.setQueue(
-      albumTracks,
-      startingAt: albumTracks.firstIndex(of: track) ?? 0
-    )
+    Task {
+      await mainVM.player.setQueue(
+        albumTracks,
+        startingAt: albumTracks.firstIndex(of: track) ?? 0
+      )
+    }
   }
 
   func onAlbumDoubleClicked(_ album: Album) {
@@ -152,7 +154,9 @@ final class AlbumGridViewModel {
     // Album passed here is already filtered (contains only matching tracks).
     let tracks = album.tracks
     guard !tracks.isEmpty else { return }
-    mainVM.player.setQueue(tracks, startingAt: 0)
+    Task {
+      await mainVM.player.setQueue(tracks, startingAt: 0)
+    }
     highlightedAlbumIDs = [album.id]
   }
 
@@ -414,10 +418,14 @@ final class AlbumGridViewModel {
       let hasAlbumExpanded = expandedAlbumID != nil
       switch press.modifiers {
       case [] where mainVM.player.currentTrack != nil && hasAlbumExpanded:
-        mainVM.player.togglePlayPause()
+        Task {
+          await mainVM.player.togglePlayPause()
+        }
         return .handled
       case [.shift] where !(mainVM.player.currentTrack != nil && hasAlbumExpanded):
-        mainVM.player.togglePlayPause()
+        Task {
+          await mainVM.player.togglePlayPause()
+        }
         return .handled
       default: break spaceTask
       }
@@ -708,7 +716,9 @@ final class AlbumGridViewModel {
     if press.isAlbumExpansionAssignmentKey {
       let selectedSorted = sorted.filter { mainVM.selectedTrackIDs.contains($0.id) }
       if !selectedSorted.isEmpty {
-        mainVM.player.setQueue(selectedSorted, startingAt: 0)
+        Task {
+          await mainVM.player.setQueue(selectedSorted, startingAt: 0)
+        }
         return .handled
       }
       withAnimation(.easeInOut(duration: 0.3)) {

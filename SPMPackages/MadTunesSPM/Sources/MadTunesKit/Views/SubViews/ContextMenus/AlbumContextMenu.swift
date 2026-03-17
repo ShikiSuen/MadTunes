@@ -61,19 +61,19 @@ struct AlbumContextMenu: View {
     if !tracks.isEmpty {
       // 播放選項
       Button {
-        audioPlayer.setQueue(tracks, startingAt: 0)
+        Task { await audioPlayer.setQueue(tracks, startingAt: 0) }
       } label: {
         Label(String(localized: "i18n:ContextMenu.PlayAlbum", bundle: #bundle), systemImage: "play.fill")
       }
 
       Button {
-        audioPlayer.setQueue(tracks.shuffled(), startingAt: 0)
+        Task { await audioPlayer.setQueue(tracks.shuffled(), startingAt: 0) }
       } label: {
         Label(String(localized: "i18n:ContextMenu.ShuffleAlbum", bundle: #bundle), systemImage: "shuffle")
       }
 
       Button {
-        audioPlayer.insertNext(tracks)
+        Task { await audioPlayer.insertNext(tracks) }
       } label: {
         Label(
           String(localized: "i18n:ContextMenu.PlayNext", bundle: #bundle),

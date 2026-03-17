@@ -42,7 +42,9 @@ struct GlobalControlMenuCommands: Commands {
            let album = albums.first(where: { $0.id == expandedID }) {
           let selected = album.tracks.filter { vm.selectedTrackIDs.contains($0.id) }
           if !selected.isEmpty {
-            vm.player.setQueue(selected, startingAt: 0)
+            Task {
+              await vm.player.setQueue(selected, startingAt: 0)
+            }
           } else {
             withAnimation(.easeInOut(duration: 0.3)) {
               vm.gridVM.expandedAlbumID = nil
@@ -140,7 +142,9 @@ struct GlobalControlMenuCommands: Commands {
 
       // Phase 91: Space alone — toggle play/pause.
       Button {
-        vm.player.togglePlayPause()
+        Task {
+          await vm.player.togglePlayPause()
+        }
       } label: {
         Label(
           String(

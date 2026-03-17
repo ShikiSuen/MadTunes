@@ -127,7 +127,9 @@ struct AlbumTableView: View {
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
       Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
         let trackIDs = Set(tableVM.tracksToDelete.map(\.id))
-        vm.removeTracksFromLibrary(trackIDs)
+        Task {
+          await vm.removeTracksFromLibrary(trackIDs)
+        }
         tableVM.tracksToDelete = []
       }
     } message: {
@@ -501,7 +503,9 @@ struct AlbumTableView: View {
     let track = tableVM.displayedTracks.first(where: { $0.id == firstID })
     guard let track else { return }
     let startIndex = tracks.firstIndex(where: { $0.id == track.id }) ?? 0
-    vm.player.setQueue(tracks, startingAt: startIndex)
+    Task {
+      await vm.player.setQueue(tracks, startingAt: startIndex)
+    }
   }
 
   // MARK: - Drag-and-Drop Reorder (AppKit SUNT)

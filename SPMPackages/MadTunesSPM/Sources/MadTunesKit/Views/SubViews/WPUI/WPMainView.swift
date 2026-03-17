@@ -179,7 +179,9 @@ struct WPMainView: View {
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
       Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
         let trackIDs = Set(phoneVM.albumsToDelete.flatMap { $0.tracks.map(\.id) })
-        vm.removeTracksFromLibrary(trackIDs)
+        Task {
+          await vm.removeTracksFromLibrary(trackIDs)
+        }
         phoneVM.albumsToDelete = []
       }
     } message: {
@@ -196,7 +198,9 @@ struct WPMainView: View {
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
       Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
         let trackIDs = Set(phoneVM.tracksToDelete.map(\.id))
-        vm.removeTracksFromLibrary(trackIDs)
+        Task {
+          await vm.removeTracksFromLibrary(trackIDs)
+        }
         phoneVM.tracksToDelete = []
       }
     } message: {
@@ -485,7 +489,9 @@ struct WPQueueSheet: View {
           List {
             ForEach(Array(vm.player.queue.enumerated()), id: \.offset) { index, track in
               Button {
-                vm.player.setQueue(vm.player.queue, startingAt: index)
+                Task {
+                  await vm.player.setQueue(vm.player.queue, startingAt: index)
+                }
               } label: {
                 HStack(spacing: 12) {
                   if index == vm.player.currentIndex, vm.player.isPlaying {
@@ -521,14 +527,14 @@ struct WPQueueSheet: View {
                 newQueue.remove(at: index)
               }
               if newQueue.isEmpty {
-                vm.player.stop()
+                Task { await vm.player.stop() }
               } else {
                 let newIndex = min(vm.player.currentIndex, newQueue.count - 1)
-                vm.player.setQueue(newQueue, startingAt: newIndex)
+                Task { await vm.player.setQueue(newQueue, startingAt: newIndex) }
               }
             }
             .onMove { source, destination in
-              vm.player.moveQueueItem(from: source, to: destination)
+              Task { await vm.player.moveQueueItem(from: source, to: destination) }
             }
           }
           .listStyle(.plain)
@@ -555,7 +561,7 @@ struct WPQueueSheet: View {
                   let current = shuffledQueue.remove(at: currentIndex)
                   shuffledQueue.shuffle()
                   shuffledQueue.insert(current, at: 0)
-                  vm.player.setQueue(shuffledQueue, startingAt: 0)
+                  Task { await vm.player.setQueue(shuffledQueue, startingAt: 0) }
                 }
               } label: {
                 Image(systemName: "shuffle")

@@ -590,7 +590,7 @@ struct WPTrackListView: View {
           Button {
             // Play tapped track and set queue to all visible tracks.
             if let idx = tracks.firstIndex(of: track) {
-              vm.player.setQueue(tracks, startingAt: idx)
+              Task { await vm.player.setQueue(tracks, startingAt: idx) }
             }
           } label: {
             HStack(spacing: 12) {

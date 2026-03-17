@@ -410,7 +410,9 @@ final class AlbumTableViewModel {
     } else {
       startIndex = 0
     }
-    mainVM.player.setQueue(tracks, startingAt: startIndex)
+    Task {
+      await mainVM.player.setQueue(tracks, startingAt: startIndex)
+    }
   }
 
   // MARK: - Phase 63: Keyboard Navigation (moved from MadTunesViewModel)
@@ -474,7 +476,9 @@ final class AlbumTableViewModel {
       if press.modifiers.contains(.shift) {
         playSelectedAsDoubleClick()
       } else {
-        mainVM.player.togglePlayPause()
+        Task {
+          await mainVM.player.togglePlayPause()
+        }
       }
       return .handled
     }

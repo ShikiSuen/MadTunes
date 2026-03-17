@@ -78,7 +78,7 @@ struct WPNowPlayingSection: View {
               case .repeatOne: .shuffle
               case .shuffle: .sequential
               }
-              vm.player.setLoopBehavior(next)
+              Task { await vm.player.setLoopBehavior(next) }
             } label: {
               Image(systemName: loopIcon)
                 .font(.system(size: 22))
@@ -184,7 +184,7 @@ struct WPProgressScrubber: View {
               scrubFraction = max(0, min(value.location.x / geo.size.width, 1))
             }
             .onEnded { _ in
-              player.seek(to: scrubFraction * player.duration)
+              Task { await player.seek(to: scrubFraction * player.duration) }
               scrubbing = false
             }
         )
@@ -236,7 +236,7 @@ struct WPTransportControls: View {
   var body: some View {
     HStack(spacing: 44) {
       Button {
-        player.previous()
+        Task { await player.previous() }
       } label: {
         Image(systemName: "backward.fill")
           .font(.system(size: 28))
@@ -245,7 +245,7 @@ struct WPTransportControls: View {
       .buttonStyle(.plain)
 
       Button {
-        player.togglePlayPause()
+        Task { await player.togglePlayPause() }
       } label: {
         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
           .font(.system(size: 38))
@@ -254,7 +254,7 @@ struct WPTransportControls: View {
       .buttonStyle(.plain)
 
       Button {
-        player.next()
+        Task { await player.next() }
       } label: {
         Image(systemName: "forward.fill")
           .font(.system(size: 28))

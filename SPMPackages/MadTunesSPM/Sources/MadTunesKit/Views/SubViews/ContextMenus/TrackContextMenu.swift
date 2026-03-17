@@ -70,7 +70,7 @@ struct TrackContextMenu: View {
 
       // 插播
       Button {
-        audioPlayer.insertNext(tracks)
+        Task { await audioPlayer.insertNext(tracks) }
       } label: {
         Label(
           String(localized: "i18n:ContextMenu.PlayNext", bundle: #bundle),

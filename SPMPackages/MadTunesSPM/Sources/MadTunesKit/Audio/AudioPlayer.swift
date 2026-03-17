@@ -40,7 +40,11 @@ public final class AudioPlayer {
     Task { @MainActor in
       // take a snapshot so we know what IDs existed prior to any change.
       self.previousLibraryTrackIDs = Set(MadTunesViewModel.shared.library.tracks.map(\.id))
-      observeLibraryChanges()
+      await observeLibraryChanges()
+    }
+    // Different observation ops stay on different task.
+    Task { @MainActor in
+      await observeVolumeChanges()
     }
   }
 
@@ -58,7 +62,7 @@ public final class AudioPlayer {
   public private(set) var loopBehavior: PlayLoopBehavior = .sequential
 
   /// 切換迴圈模式。若正在播放且 duration 已知，會立即安裝／拆除 boundary observer。
-  public func setLoopBehavior(_ newValue: PlayLoopBehavior) {
+  public func setLoopBehavior(_ newValue: PlayLoopBehavior) async {
     loopBehavior = newValue
     let currentDuration = CMTime(seconds: duration, preferredTimescale: 600)
     if newValue == .repeatOne,
@@ -75,17 +79,17 @@ public final class AudioPlayer {
   }
 
   /// Replace the queue and start playing from the given index.
-  public func setQueue(_ tracks: [Track], startingAt index: Int = 0) {
+  public func setQueue(_ tracks: [Track], startingAt index: Int = 0) async {
     queue = tracks
     if tracks.indices.contains(index) {
       currentIndex = index
-      play(tracks[index])
+      await play(tracks[index])
     }
   }
 
   /// 在當前播放位置的下一首之前插入曲目，不中斷當前播放。
   /// Phase 39: 插播不應結束當前曲目，僅將曲目插入佇列中。
-  public func insertNext(_ tracks: [Track]) {
+  public func insertNext(_ tracks: [Track]) async {
     guard !tracks.isEmpty else { return }
     let insertAt = min(currentIndex + 1, queue.count)
     queue.insert(contentsOf: tracks, at: insertAt)
@@ -93,7 +97,7 @@ public final class AudioPlayer {
   }
 
   /// Move a track within the queue (for drag-to-reorder).
-  public func moveQueueItem(from source: IndexSet, to destination: Int) {
+  public func moveQueueItem(from source: IndexSet, to destination: Int) async {
     let oldTrack = queue.indices.contains(currentIndex) ? queue[currentIndex] : nil
     queue.move(fromOffsets: source, toOffset: destination)
     // Re-sync currentIndex to follow the currently-playing track.
@@ -104,7 +108,7 @@ public final class AudioPlayer {
 
   // MARK: - Playback Controls
 
-  public func play(_ track: Track) {
+  public func play(_ track: Track) async {
     cleanupObservers()
     avPlayer?.pause()
 
@@ -138,7 +142,7 @@ public final class AudioPlayer {
     playViaAVPlayer(url: playbackURL)
   }
 
-  public func togglePlayPause() {
+  public func togglePlayPause() async {
     guard let avPlayer else { return }
     if isPlaying {
       avPlayer.pause()
@@ -148,7 +152,7 @@ public final class AudioPlayer {
     isPlaying.toggle()
   }
 
-  public func stop() {
+  public func stop() async {
     cleanupObservers()
     avPlayer?.pause()
     avPlayer = nil
@@ -164,12 +168,12 @@ public final class AudioPlayer {
   ///
   /// If the currently playing track is removed, playback stops.
   /// Otherwise, the queue is updated preserving the current track position.
-  public func removeFromQueue(trackIDs: Set<UUID>) {
+  public func removeFromQueue(trackIDs: Set<UUID>) async {
     guard !trackIDs.isEmpty else { return }
 
     // If the current track is being removed, stop playback entirely.
     if let current = currentTrack, trackIDs.contains(current.id) {
-      stop()
+      await stop()
       queue.removeAll { trackIDs.contains($0.id) }
       currentIndex = 0
       return
@@ -187,49 +191,43 @@ public final class AudioPlayer {
     }
   }
 
-  public func next() {
+  public func next() async {
     guard !queue.isEmpty else { return }
     switch loopBehavior {
     case .repeatOne:
-      seek(to: 0)
+      await seek(to: 0)
       avPlayer?.play()
     case .shuffle:
       currentIndex = Int.random(in: 0 ..< queue.count)
-      play(queue[currentIndex])
+      await play(queue[currentIndex])
     case .sequential:
       let nextIndex = currentIndex + 1
       if nextIndex < queue.count {
         currentIndex = nextIndex
-        play(queue[nextIndex])
+        await play(queue[nextIndex])
       } else {
-        stop()
+        await stop()
       }
     }
   }
 
-  public func previous() {
+  public func previous() async {
     guard !queue.isEmpty else { return }
     if currentTime > 3 {
-      seek(to: 0)
+      await seek(to: 0)
     } else if currentIndex > 0 {
       currentIndex -= 1
-      play(queue[currentIndex])
+      await play(queue[currentIndex])
     } else {
-      seek(to: 0)
+      await seek(to: 0)
     }
   }
 
-  public func seek(to time: TimeInterval) {
+  public func seek(to time: TimeInterval) async {
     guard let avPlayer else { return }
     let cmTime = CMTime(seconds: time, preferredTimescale: 600)
     currentTime = time
-    avPlayer.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
-  }
-
-  /// Update volume and sync to the underlying player.
-  public func setVolume(_ newVolume: Float) {
-    volume = newVolume
-    avPlayer?.volume = newVolume
+    await avPlayer.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
   }
 
   // MARK: Private
@@ -275,7 +273,7 @@ public final class AudioPlayer {
   }
 
   @MainActor
-  private func observeLibraryChanges() {
+  private func observeLibraryChanges() async {
     // Use the Observable macro helper to track changeID.
     // We re-register on each callback to keep the observation alive.
     withObservationTracking {
@@ -288,10 +286,29 @@ public final class AudioPlayer {
         let removed = self.previousLibraryTrackIDs.subtracting(currentIDs)
         self.previousLibraryTrackIDs = currentIDs
         if !removed.isEmpty {
-          self.handleLibraryTracksRemoval(removed)
+          await self.handleLibraryTracksRemoval(removed)
         }
         // keep observing future changes
-        self.observeLibraryChanges()
+        await self.observeLibraryChanges()
+      }
+    }
+  }
+
+  @MainActor
+  private func observeVolumeChanges() async {
+    // Use the Observable macro helper to track changeID.
+    // We re-register on each callback to keep the observation alive.
+    withObservationTracking {
+      _ = volume
+    } onChange: { [weak self] in
+      guard let this = self else { return }
+      Task { @MainActor in
+        guard let avPlayer = this.avPlayer else { return }
+        if avPlayer.volume != this.volume {
+          avPlayer.volume = this.volume
+        }
+        // keep observing future changes
+        await this.observeVolumeChanges()
       }
     }
   }
@@ -299,12 +316,12 @@ public final class AudioPlayer {
   // Called when the library announces that tracks have been deleted.  We
   // must purge any occurrences from our queue and stop playback if the
   // currently playing item is among them.
-  private func handleLibraryTracksRemoval(_ ids: Set<UUID>) {
+  private func handleLibraryTracksRemoval(_ ids: Set<UUID>) async {
     // remove from queue
     queue.removeAll { ids.contains($0.id) }
     if let curr = currentTrack, ids.contains(curr.id) {
       // track was playing -> stop entirely
-      stop()
+      await stop()
     } else if let curr = currentTrack, let newIdx = queue.firstIndex(where: { $0.id == curr.id }) {
       currentIndex = newIdx
     } else {
@@ -470,7 +487,7 @@ public final class AudioPlayer {
               self.isPlaying,
               self.avPlayerGeneration == generation
         else { return }
-        self.next()
+        await self.next()
       }
     }
   }

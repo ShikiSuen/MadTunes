@@ -57,7 +57,7 @@ struct WPAlbumDetailView: View {
           // Play / Shuffle buttons.
           HStack(spacing: 16) {
             Button {
-              vm.player.setQueue(liveAlbum.tracks, startingAt: 0)
+              Task { await vm.player.setQueue(liveAlbum.tracks, startingAt: 0) }
             } label: {
               Label(
                 String(localized: "i18n:WP.Play", bundle: #bundle),
@@ -74,7 +74,7 @@ struct WPAlbumDetailView: View {
 
             Button {
               let shuffled = liveAlbum.tracks.shuffled()
-              vm.player.setQueue(shuffled, startingAt: 0)
+              Task { await vm.player.setQueue(shuffled, startingAt: 0) }
             } label: {
               Label(
                 String(localized: "i18n:WP.Shuffle", bundle: #bundle),
@@ -240,7 +240,7 @@ struct WPPlaylistDetailView: View {
             Button {
               let tracks = playlistTracks
               guard !tracks.isEmpty else { return }
-              vm.player.setQueue(tracks, startingAt: 0)
+              Task { await vm.player.setQueue(tracks, startingAt: 0) }
             } label: {
               Label(
                 String(localized: "i18n:WP.Play", bundle: #bundle),
@@ -258,7 +258,7 @@ struct WPPlaylistDetailView: View {
             Button {
               let tracks = playlistTracks.shuffled()
               guard !tracks.isEmpty else { return }
-              vm.player.setQueue(tracks, startingAt: 0)
+              Task { await vm.player.setQueue(tracks, startingAt: 0) }
             } label: {
               Label(
                 String(localized: "i18n:WP.Shuffle", bundle: #bundle),

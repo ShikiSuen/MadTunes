@@ -54,7 +54,7 @@ struct WPMiniPlayerBar: View {
 
           // Play/Pause button (does not navigate).
           Button {
-            vm.player.togglePlayPause()
+            Task { await vm.player.togglePlayPause() }
           } label: {
             Image(systemName: vm.player.isPlaying ? "pause.fill" : "play.fill")
               .font(.system(size: 20))
@@ -64,7 +64,7 @@ struct WPMiniPlayerBar: View {
 
           // Next button.
           Button {
-            vm.player.next()
+            Task { await vm.player.next() }
           } label: {
             Image(systemName: "forward.fill")
               .font(.system(size: 16))

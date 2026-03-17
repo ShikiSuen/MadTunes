@@ -40,7 +40,9 @@ struct PlayerControlsView: View {
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
       Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
         if let id = player.currentTrack?.id {
-          vm.removeTracksFromLibrary([id])
+          Task {
+            await vm.removeTracksFromLibrary([id])
+          }
         }
       }
     } message: {
@@ -140,7 +142,11 @@ struct PlayerControlsView: View {
         let scrubber = ProgressScrubber(
           currentTime: player.currentTime,
           duration: player.duration,
-          onSeek: { player.seek(to: $0) }
+          onSeek: { seekTarget in
+            Task {
+              await player.seek(to: seekTarget)
+            }
+          }
         )
         HStack(spacing: 16 * vm.uiFactor) {
           // Now-playing info (left)
@@ -220,7 +226,8 @@ struct PlayerControlsView: View {
   @State private var newPlaylistName = ""
   @State private var trackIDsForNewPlaylist: Set<UUID> = []
 
-  private var player: AudioPlayer
+  @State private var player: AudioPlayer
+
   private var artworkData: Data?
   private var sansBezel = false
 
@@ -300,19 +307,19 @@ struct PlayerControlsView: View {
 
   @ViewBuilder private var transportControls: some View {
     HStack(spacing: 4 * vm.uiFactor) {
-      Button { player.previous() } label: {
+      Button { Task { await player.previous() } } label: {
         Image(systemName: "backward.fill")
           .font(.title3)
           .frame(width: 32 * vm.uiFactor, height: 32)
           .contentShape(.rect)
       }
-      Button { player.togglePlayPause() } label: {
+      Button { Task { await player.togglePlayPause() } } label: {
         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
           .font(.title)
           .frame(width: 32 * vm.uiFactor, height: 32)
           .contentShape(.rect)
       }
-      Button { player.next() } label: {
+      Button { Task { await player.next() } } label: {
         Image(systemName: "forward.fill")
           .font(.title3)
           .frame(width: 32 * vm.uiFactor, height: 32)
@@ -327,10 +334,12 @@ struct PlayerControlsView: View {
   @ViewBuilder private var playLoopBehaviorButton: some View {
     let isActive = player.loopBehavior != .sequential
     Button {
-      switch player.loopBehavior {
-      case .sequential: player.setLoopBehavior(.repeatOne)
-      case .repeatOne: player.setLoopBehavior(.shuffle)
-      case .shuffle: player.setLoopBehavior(.sequential)
+      Task {
+        switch player.loopBehavior {
+        case .sequential: await player.setLoopBehavior(.repeatOne)
+        case .repeatOne: await player.setLoopBehavior(.shuffle)
+        case .shuffle: await player.setLoopBehavior(.sequential)
+        }
       }
     } label: {
       Image(systemName: loopBehaviorIcon)
@@ -387,16 +396,9 @@ struct PlayerControlsView: View {
       Image(systemName: volumeIcon)
         .font(.caption)
         .frame(width: 28 * vm.uiFactor, height: 28)
-
-      Slider(
-        value: Binding<Double>(
-          get: { Double(player.volume) },
-          set: { player.setVolume(Float($0)) }
-        ),
-        in: 0 ... 1
-      )
-      .frame(width: 80 * vm.uiFactor)
-      .controlSize(.mini)
+      Slider(value: Bindable(player).volume, in: 0 ... 1)
+        .frame(width: 80 * vm.uiFactor)
+        .controlSize(.mini)
     }
   }
 
