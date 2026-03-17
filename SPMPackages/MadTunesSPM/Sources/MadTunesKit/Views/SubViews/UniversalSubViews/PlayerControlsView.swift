@@ -457,7 +457,6 @@ struct ProgressScrubber: View {
             onSeek(dragValue)
           }
       )
-      .animation(.easeOut(duration: 0.12), value: isDragging)
       .frame(height: 8, alignment: .center)
     }
   }
