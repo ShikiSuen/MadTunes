@@ -285,7 +285,7 @@ struct AlbumTableView: View {
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(.horizontal, 16)
+    .padding(.horizontal)
     .background(.ultraThinMaterial)
     .disabled(tableVM.isEditModeActive)
   }
@@ -591,6 +591,7 @@ private struct TableTrackRowView: View {
         cellContent(for: column)
           .font(.callout)
           .lineLimit(1)
+          .padding(.horizontal, 6)
           .frame(width: columnWidth, alignment: .leading)
         if !isTrailingColumn {
           Spacer().frame(width: 1)
