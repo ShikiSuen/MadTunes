@@ -332,7 +332,9 @@ struct AlbumTableView: View {
       // Phase 52: Conditionally apply .onMove — only for playlists that
       // support reordering. This prevents List from showing drag affordances
       // on All Music, dynamic playlists, or when sorting/filtering is active.
-      ForEach(Array(tableVM.displayedTracks.enumerated()), id: \.offset) { index, track in
+      // Phase 87: Use \.element.id instead of \.offset so SwiftUI can perform
+      // stable identity diffing — prevents full list rebuild on every data change.
+      ForEach(Array(tableVM.displayedTracks.enumerated()), id: \.element.id) { index, track in
         trackRow(track)
           .id(track.id)
           .tag(track.id)
