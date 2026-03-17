@@ -218,6 +218,51 @@ extension HotKeyHintView {
           bundle: #bundle
         )
       }
+
+      if !OS.isAppKit {
+        // Arrow keys: move selection up/down (UIKit List).
+        HotKeyHintRecord(
+          modifiers: [],
+          keyPress: .upArrow
+        ) {
+          String(
+            localized: "i18n:HotKeyHint.Record.TableView.ArrowUpDown",
+            defaultValue: "Move selection",
+            bundle: #bundle
+          )
+        }
+        HotKeyHintRecord(
+          modifiers: [],
+          keyPress: .downArrow
+        ) {
+          String(
+            localized: "i18n:HotKeyHint.Record.TableView.ArrowUpDown",
+            defaultValue: "Move selection",
+            bundle: #bundle
+          )
+        }
+        HotKeyHintRecord(
+          modifiers: [.shift],
+          keyPress: .upArrow
+        ) {
+          String(
+            localized: "i18n:HotKeyHint.Record.TableView.ShiftArrowRange",
+            defaultValue: "Extend selection",
+            bundle: #bundle
+          )
+        }
+        HotKeyHintRecord(
+          modifiers: [.shift],
+          keyPress: .downArrow
+        ) {
+          String(
+            localized: "i18n:HotKeyHint.Record.TableView.ShiftArrowRange",
+            defaultValue: "Extend selection",
+            bundle: #bundle
+          )
+        }
+      }
+
       // Phase 74: PgUp/PgDn/Home/End hints.
       HotKeyHintRecord(
         modifiers: [],

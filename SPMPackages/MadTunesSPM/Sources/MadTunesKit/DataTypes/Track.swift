@@ -2,7 +2,9 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
 
+import CoreTransferable
 import Foundation
+import UniformTypeIdentifiers
 
 // MARK: - TrackFieldFallbacks
 
@@ -80,6 +82,20 @@ public struct Track: Identifiable, Hashable, Sendable {
   public var year: Int?
   public var bookmarkData: Data?
   public var fallbackFields: TrackFieldFallbacks = []
+}
+
+// MARK: Transferable
+
+/// Phase 90: Transferable conformance for drag-and-drop in SwiftUI Native Table (SUNT).
+/// Uses ProxyRepresentation with UUID string — lightweight, no Codable needed for Track.
+extension Track: Transferable {
+  static var draggableUTType: UTType {
+    UTType(exportedAs: "org.atelierinmu.MadTunes.track-id")
+  }
+
+  public static var transferRepresentation: some TransferRepresentation {
+    ProxyRepresentation(exporting: \.id.uuidString)
+  }
 }
 
 extension Array where Element == Track {

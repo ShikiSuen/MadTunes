@@ -79,18 +79,20 @@ enum TableColumnType: String, CaseIterable, Identifiable {
 
 // MARK: - AlbumTableView
 
-/// Custom table view using a SwiftUI `List` with manual column layout.
+/// Custom table view with platform-specific backends.
 ///
-/// Each track is rendered as a single row (HStack of cells) via the custom
-/// `trackRow` builder. Selection and basic keyboard navigation are delegated
-/// to the system `List`. Double-click fires `onTrackDoubleClicked`; right-click
-/// shows a context menu. The column header row at the bottom is independently
-/// managed.
+/// **AppKit** (macOS native): Uses SwiftUI `Table` (SUNT — SwiftUI Native Table)
+/// with a single column containing the full row HStack. The native NSTableView
+/// backend handles selection, alternating rows, and keyboard navigation.
+/// Drag-reorder uses `TableRow.draggable` + `ForEach.dropDestination`.
+/// The built-in column header is hidden; the custom `columnNameRow` is used instead.
 ///
-/// Phase 52: Migrated from `Table` to `List` + `ForEach` so that `.onMove`
-/// can provide native drag-reorder for playlist tracks. `Table` intercepted
-/// both row-level drag gestures and Option+Arrow key events, making both
-/// drag-reorder and keyboard-reorder impossible to implement.
+/// **UIKit** (iOS / iPadOS / Mac Catalyst): Uses `List` + `ForEach` with
+/// `.onMove` for native drag-reorder. Selection and edit mode are handled
+/// by the system `List`. Double-click on non-AppKit uses `.simultaneousGesture`.
+///
+/// Phase 41: Original creation. Phase 52: Table → List.
+/// Phase 89: List → LazyVGrid (abandoned). Phase 90: SUNT (AppKit) + List (UIKit).
 struct AlbumTableView: View {
   // MARK: Lifecycle
 
@@ -100,11 +102,12 @@ struct AlbumTableView: View {
   // MARK: Internal
 
   var body: some View {
-    // Phase 52: List + ForEach replaces the single-column headerless Table.
-    // This enables native .onMove drag-reorder and avoids Table's interception
-    // of row-level gestures and Option+Arrow key events.
     ScrollViewReader { proxy in
-      trackList(scrollProxy: proxy)
+      #if canImport(AppKit) && !canImport(UIKit)
+      nativeTableList(scrollProxy: proxy)
+      #else
+      listTrackList(scrollProxy: proxy)
+      #endif
     }
     .safeAreaInset(edge: .bottom) {
       columnNameRow
@@ -173,13 +176,95 @@ struct AlbumTableView: View {
     tableVM.visibleColumns
   }
 
-  private var listSyleProvided: some ListStyle {
-    #if os(macOS)
-    .inset(alternatesRowBackgrounds: true)
-    #else
-    .inset
-    #endif
+  // MARK: - UIKit: List-based track list
+
+  /// Phase 52 original design restored for UIKit targets.
+  /// List + ForEach with .onMove for drag-reorder on reorderable playlists.
+  #if !canImport(AppKit) || canImport(UIKit)
+  private var listSyleProvided: some ListStyle { .inset }
+
+  // Phase 71: Extracted helper to avoid type-checker explosion in trackList body.
+  @ViewBuilder
+  private func alternatingRowBackground(at index: Int, trackID: UUID) -> some View {
+    let isHighlighted = vm.selectedTrackIDs.contains(trackID)
+    if isHighlighted {
+      Color.accentColor
+        .clipShape(.capsule)
+        .allowsHitTesting(false)
+    } else if !index.isMultiple(of: 2) {
+      LinearGradient(
+        colors: [
+          .clear,
+          .secondary,
+          .secondary,
+          .secondary,
+          .secondary,
+          .secondary,
+          .secondary,
+          .clear,
+        ],
+        startPoint: .leading,
+        endPoint: .trailing
+      ).opacity(0.08)
+        .clipShape(.capsule)
+        .allowsHitTesting(false)
+    }
   }
+
+  @ViewBuilder
+  private func listTrackList(scrollProxy proxy: ScrollViewProxy) -> some View {
+    let canReorder = vm.tableVM.canReorderCurrentPlaylist
+    List(selection: Bindable(vm).selectedTrackIDs) {
+      ForEach(Array(tableVM.displayedTracks.enumerated()), id: \.element.id) { index, track in
+        TableTrackRowView(
+          track: track,
+          index: index,
+          visibleColumns: visibleColumns,
+          currentTrackID: currentTrackID,
+          isTrackSelected: vm.selectedTrackIDs.contains(track.id)
+        )
+        .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+        .listRowBackground(alternatingRowBackground(at: index, trackID: track.id))
+        .drawingGroup()
+        .tag(track.id)
+      }
+      .onMove(perform: onRowMoveActionProvider(canReorder: canReorder))
+    }
+    .listStyle(listSyleProvided)
+    .onAppear {
+      tableVM.scheduleDisplayedTracksUpdate(to: tracks)
+    }
+    .onChange(of: tracks) { _, newValue in
+      tableVM.scheduleDisplayedTracksUpdate(to: newValue)
+    }
+    .contextMenu(forSelectionType: UUID.self, menu: { ids in
+      let selected = tableVM.displayedTracks.filter { ids.contains($0.id) }
+      if !selected.isEmpty {
+        trackContextMenu(forTracks: selected)
+      }
+    })
+    .simultaneousGesture(
+      TapGesture(count: 2).onEnded {
+        onTrackDoubleClicked(vm.selectedTrackIDs)
+      }
+    )
+    // Phase 69: Enable iOS multi-select when edit mode is active.
+    .environment(\.editMode, .init(
+      get: { tableVM.isEditModeActive ? .active : .inactive },
+      set: { tableVM.isEditModeActive = ($0 == .active) }
+    ))
+    .onChange(of: vm.tableVM.tableScrollTargetID) { _, newID in
+      if let id = newID {
+        Task {
+          withAnimation(.easeInOut(duration: 0.3)) {
+            proxy.scrollTo(id, anchor: .center)
+          }
+        }
+        vm.tableVM.tableScrollTargetID = nil
+      }
+    }
+  }
+  #endif
 
   // MARK: - Header
 
@@ -200,8 +285,9 @@ struct AlbumTableView: View {
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(.horizontal)
+    .padding(.horizontal, 16)
     .background(.ultraThinMaterial)
+    .disabled(tableVM.isEditModeActive)
   }
 
   // MARK: - Sheet / bar helpers
@@ -228,36 +314,6 @@ struct AlbumTableView: View {
         get: { tableVM.isColumnVisible(column) },
         set: { _ in tableVM.toggleColumnVisibility(column) }
       ))
-    }
-  }
-
-  // Phase 71: Extracted helper to avoid type-checker explosion in trackList body.
-  @ViewBuilder
-  private func alternatingRowBackground(at index: Int, trackID: UUID) -> some View {
-    if !OS.isAppKit {
-      let isHighlighted = vm.selectedTrackIDs.contains(trackID)
-      if isHighlighted {
-        Color.accentColor
-          .clipShape(.capsule)
-          .allowsHitTesting(false)
-      } else if !index.isMultiple(of: 2) {
-        LinearGradient(
-          colors: [
-            .clear,
-            .secondary,
-            .secondary,
-            .secondary,
-            .secondary,
-            .secondary,
-            .secondary,
-            .clear,
-          ],
-          startPoint: .leading,
-          endPoint: .trailing
-        ).opacity(0.08)
-          .clipShape(.capsule)
-          .allowsHitTesting(false)
-      }
     }
   }
 
@@ -325,46 +381,57 @@ struct AlbumTableView: View {
       }
   }
 
+  /// Phase 89: Migrated from List to ScrollView + LazyVGrid for performance.
+  /// Phase 90 revised: LazyVGrid abandoned. AppKit uses SUNT, UIKit uses List.
+  ///
+  /// SUNT (SwiftUI Native Table) — single-column Table with custom row content.
+  /// Uses NSTableView backend. Column header hidden via `.tableColumnHeaders(.hidden)`.
+  /// Drag-reorder via TableRow.draggable + ForEach.dropDestination.
+  #if canImport(AppKit) && !canImport(UIKit)
   @ViewBuilder
-  private func trackList(scrollProxy proxy: ScrollViewProxy) -> some View {
+  private func nativeTableList(scrollProxy proxy: ScrollViewProxy) -> some View {
     let canReorder = vm.tableVM.canReorderCurrentPlaylist
-    List(selection: Bindable(vm).selectedTrackIDs) {
-      // Phase 52: Conditionally apply .onMove — only for playlists that
-      // support reordering. This prevents List from showing drag affordances
-      // on All Music, dynamic playlists, or when sorting/filtering is active.
-      // Phase 87: Use \.element.id instead of \.offset so SwiftUI can perform
-      // stable identity diffing — prevents full list rebuild on every data change.
-      ForEach(Array(tableVM.displayedTracks.enumerated()), id: \.element.id) { index, track in
-        // Phase 88: Extracted to standalone view with visibility-gated rendering.
+    Table(of: Track.self, selection: Bindable(vm).selectedTrackIDs) {
+      TableColumn("Tracks".description) { track in
+        let index = tableVM.displayedTracks.firstIndex(where: { $0.id == track.id }) ?? 0
         TableTrackRowView(
           track: track,
+          index: index,
           visibleColumns: visibleColumns,
           currentTrackID: currentTrackID,
           isTrackSelected: vm.selectedTrackIDs.contains(track.id)
         )
-        .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
-        // Phase 71: Manual alternating row backgrounds for UIKit targets.
-        #if !canImport(AppKit) && canImport(UIKit)
-          .listRowBackground(alternatingRowBackground(at: index, trackID: track.id))
-        #endif
-          .drawingGroup()
-          .tag(track.id)
       }
-      .onMove(perform: onRowMoveActionProvider(canReorder: canReorder))
+    } rows: {
+      ForEach(tableVM.displayedTracks) { track in
+        if canReorder {
+          TableRow(track)
+            .draggable(track)
+        } else {
+          TableRow(track)
+        }
+      }
+      .dropDestination(for: String.self) { index, uuidStrings in
+        if canReorder {
+          handleDropReorder(uuidStrings: uuidStrings, destinationIndex: index)
+        }
+      }
     }
-    .listStyle(listSyleProvided)
+    .tableColumnHeaders(.hidden)
+    .contextMenu(forSelectionType: UUID.self, menu: { ids in
+      let selected = tableVM.displayedTracks.filter { ids.contains($0.id) }
+      if !selected.isEmpty {
+        trackContextMenu(forTracks: selected)
+      }
+    }, primaryAction: { ids in
+      onTrackDoubleClicked(ids)
+    })
     .onAppear {
       tableVM.scheduleDisplayedTracksUpdate(to: tracks)
     }
     .onChange(of: tracks) { _, newValue in
       tableVM.scheduleDisplayedTracksUpdate(to: newValue)
     }
-    .contextMenu(forSelectionType: UUID.self, menu: { ids in
-      let selected = tableVM.displayedTracks.filter { ids.contains($0.id) }
-      if !selected.isEmpty {
-        trackContextMenu(forTracks: selected)
-      }
-    }, primaryAction: givePrimaryTableAction())
     .onChange(of: vm.tableVM.tableScrollTargetID) { _, newID in
       if let id = newID {
         Task {
@@ -375,20 +442,8 @@ struct AlbumTableView: View {
         vm.tableVM.tableScrollTargetID = nil
       }
     }
-    #if !(canImport(AppKit) && !canImport(UIKit))
-    .simultaneousGesture(
-      TapGesture(count: 2).onEnded {
-        // Double-click: play starting from the first selected track.
-        onTrackDoubleClicked(vm.selectedTrackIDs)
-      }
-    )
-    // Phase 69: Enable iOS multi-select when edit mode is active.
-    .environment(\.editMode, .init(
-      get: { tableVM.isEditModeActive ? .active : .inactive },
-      set: { tableVM.isEditModeActive = ($0 == .active) }
-    ))
-    #endif
   }
+  #endif
 
   // MARK: - Context menu builder
 
@@ -425,56 +480,65 @@ struct AlbumTableView: View {
     )
   }
 
-  // MARK: - List
+  // MARK: - List helpers (UIKit)
 
+  #if !canImport(AppKit) || canImport(UIKit)
   private func onRowMoveActionProvider(canReorder: Bool? = nil) -> ((IndexSet, Int) -> Void)? {
     guard canReorder ?? vm.tableVM.canReorderCurrentPlaylist else { return nil }
     return handleOnMove
   }
 
-  private func givePrimaryTableAction() -> ((Set<UUID>) -> Void)? {
-    #if canImport(AppKit) && !canImport(UIKit)
-    return onTrackDoubleClicked
-    #else
-    return nil
-    #endif
-  }
-
-  private func onTrackDoubleClicked(_ ids: Set<UUID>) {
-    guard let firstID = ids.first else { return }
-    let track = tableVM.displayedTracks.first(where: { $0.id == firstID })
-    guard let track else { return }
-    // when a user double-clicks in the table we treat it as playing
-    // the full filtered list beginning at that track
-    let startIndex = tracks.firstIndex(where: { $0.id == track.id }) ?? 0
-    vm.player.setQueue(tracks, startingAt: startIndex)
-  }
-
   /// Phase 52: Handles the `.onMove` callback from ForEach drag-reorder.
-  /// Translates IndexSet + destination into the `moveTracks` API.
   private func handleOnMove(_ source: IndexSet, _ destination: Int) {
     guard vm.tableVM.canReorderCurrentPlaylist else { return }
     let ids = source.map { tableVM.displayedTracks[$0].id }
     vm.tableVM.moveTracksInCurrentPlaylist(trackIDs: ids, toIndex: destination)
   }
+  #endif
+
+  private func onTrackDoubleClicked(_ ids: Set<UUID>) {
+    guard let firstID = ids.first else { return }
+    let track = tableVM.displayedTracks.first(where: { $0.id == firstID })
+    guard let track else { return }
+    let startIndex = tracks.firstIndex(where: { $0.id == track.id }) ?? 0
+    vm.player.setQueue(tracks, startingAt: startIndex)
+  }
+
+  // MARK: - Drag-and-Drop Reorder (AppKit SUNT)
+
+  /// Phase 90: Drop handler for SUNT drag-reorder.
+  /// Receives UUID strings (from Track's ProxyRepresentation), resolves to track IDs,
+  /// and delegates to moveTracksInCurrentPlaylist.
+  #if canImport(AppKit) && !canImport(UIKit)
+  @discardableResult
+  private func handleDropReorder(uuidStrings: [String], destinationIndex: Int) -> Bool {
+    guard vm.tableVM.canReorderCurrentPlaylist else { return false }
+    let draggedIDs = uuidStrings.compactMap(UUID.init(uuidString:))
+    guard !draggedIDs.isEmpty else { return false }
+    vm.tableVM.moveTracksInCurrentPlaylist(trackIDs: draggedIDs, toIndex: destinationIndex)
+    return true
+  }
+  #endif
 }
 
 // MARK: - TableTrackRowView
 
-/// Phase 88: Extracted row view with visibility-gated rendering.
-/// Only evaluates column content (and reads `columnWidth`) when the row is
-/// on-screen; off-screen rows remain lightweight `Color.clear` placeholders
-/// with no @Observable subscriptions to table layout state.
+/// Row view shared between SUNT (AppKit) and List (UIKit).
+/// On AppKit/SUNT: no extra background, highlight, or foreground — the native
+/// NSTableView handles selection highlighting and alternating row colors.
+/// On UIKit/List: uses Phase 88 visibility-gated rendering with manual row background.
 private struct TableTrackRowView: View {
   // MARK: Lifecycle
 
   init(
     track: Track,
+    index: Int,
     visibleColumns: [TableColumnType],
     currentTrackID: UUID?,
     isTrackSelected: Bool
   ) {
     self.track = track
+    self.index = index
     self.visibleColumns = visibleColumns
     self.currentTrackID = currentTrackID
     self.isTrackSelected = isTrackSelected
@@ -483,6 +547,11 @@ private struct TableTrackRowView: View {
   // MARK: Internal
 
   var body: some View {
+    #if canImport(AppKit) && !canImport(UIKit)
+    // SUNT mode: bare row content, no extra styling.
+    rowContent
+    #else
+    // List mode: visibility-gated rendering with Phase 88 pattern.
     Color.clear
       .frame(height: 20)
       .overlay(alignment: .leading) {
@@ -496,30 +565,32 @@ private struct TableTrackRowView: View {
       .drawingGroup()
       .onAppear { isVisible = true }
       .onDisappear { isVisible = false }
+    #endif
   }
 
   // MARK: Private
 
   @State private var vm: MadTunesViewModel = .shared
+  #if !canImport(AppKit) || canImport(UIKit)
   @State private var isVisible = false
+  #endif
 
   private let track: Track
+  private let index: Int
   private let visibleColumns: [TableColumnType]
   private let currentTrackID: UUID?
   private let isTrackSelected: Bool
 
-  // Phase 60: Sub-ViewModel reference.
   private var tableVM: AlbumTableViewModel { vm.tableVM }
 
   @ViewBuilder private var rowContent: some View {
     HStack(spacing: 0) {
-      ForEach(Array(visibleColumns.enumerated()), id: \.element) { index, column in
-        let isTrailingColumn = index == visibleColumns.count - 1
+      ForEach(Array(visibleColumns.enumerated()), id: \.element) { colIdx, column in
+        let isTrailingColumn = colIdx == visibleColumns.count - 1
         let columnWidth = isTrailingColumn ? nil : tableVM.columnWidth(for: column)
         cellContent(for: column)
           .font(.callout)
           .lineLimit(1)
-          .padding(.horizontal, 6)
           .frame(width: columnWidth, alignment: .leading)
         if !isTrailingColumn {
           Spacer().frame(width: 1)
@@ -535,7 +606,6 @@ private struct TableTrackRowView: View {
     case .playingIndicator:
       if track.id == currentTrackID {
         Image(systemName: "speaker.wave.2.fill")
-          .foregroundStyle(isTrackSelected ? Color.white : Color.primary)
           .font(.caption)
           .frame(width: 16)
       } else {

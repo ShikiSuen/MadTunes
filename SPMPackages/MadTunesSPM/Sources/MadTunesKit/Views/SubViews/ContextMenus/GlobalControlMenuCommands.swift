@@ -109,6 +109,92 @@ struct GlobalControlMenuCommands: Commands {
       .keyboardShortcut(.downArrow, modifiers: [.command])
       .disabled(vm.selectedTrackIDs.isEmpty)
     }
+
+    // UIKit: Arrow keys move selection in List.
+    #if !canImport(AppKit) || targetEnvironment(macCatalyst)
+    Section {
+      Button {
+        vm.tableVM.moveSelection(
+          direction: -1,
+          extend: false,
+          tracks: vm.tableVM.currentTracksDisplayed,
+          mainVM: vm
+        )
+      } label: {
+        Label(
+          String(
+            localized: "i18n:Menu.SelectPreviousTrack",
+            defaultValue: "Select previous track",
+            bundle: #bundle
+          ),
+          systemImage: "arrow.up"
+        )
+      }
+      .keyboardShortcut(.upArrow, modifiers: [])
+      .disabled(vm.tableVM.currentTracksDisplayed.isEmpty)
+
+      Button {
+        vm.tableVM.moveSelection(
+          direction: 1,
+          extend: false,
+          tracks: vm.tableVM.currentTracksDisplayed,
+          mainVM: vm
+        )
+      } label: {
+        Label(
+          String(
+            localized: "i18n:Menu.SelectNextTrack",
+            defaultValue: "Select next track",
+            bundle: #bundle
+          ),
+          systemImage: "arrow.down"
+        )
+      }
+      .keyboardShortcut(.downArrow, modifiers: [])
+      .disabled(vm.tableVM.currentTracksDisplayed.isEmpty)
+
+      Button {
+        vm.tableVM.moveSelection(
+          direction: -1,
+          extend: true,
+          tracks: vm.tableVM.currentTracksDisplayed,
+          mainVM: vm
+        )
+      } label: {
+        Label(
+          String(
+            localized: "i18n:Menu.ExtendSelectionUp",
+            defaultValue: "Extend selection up",
+            bundle: #bundle
+          ),
+          systemImage: "arrow.up"
+        )
+      }
+      .keyboardShortcut(.upArrow, modifiers: [.shift])
+      .disabled(vm.tableVM.currentTracksDisplayed.isEmpty)
+
+      Button {
+        vm.tableVM.moveSelection(
+          direction: 1,
+          extend: true,
+          tracks: vm.tableVM.currentTracksDisplayed,
+          mainVM: vm
+        )
+      } label: {
+        Label(
+          String(
+            localized: "i18n:Menu.ExtendSelectionDown",
+            defaultValue: "Extend selection down",
+            bundle: #bundle
+          ),
+          systemImage: "arrow.down"
+        )
+      }
+      .keyboardShortcut(.downArrow, modifiers: [.shift])
+      .disabled(vm.tableVM.currentTracksDisplayed.isEmpty)
+    }
+    #endif
+
     // Phase 52: Menu commands for playlist track reordering.
     Section {
       Button {

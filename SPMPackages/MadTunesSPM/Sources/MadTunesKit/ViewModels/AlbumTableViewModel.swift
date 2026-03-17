@@ -130,8 +130,12 @@ final class AlbumTableViewModel {
 
   /// Phase 69: Whether the current playlist supports iOS edit mode (multi-select).
   /// Enabled for Favorites and user static playlists on non-AppKit platforms.
+  ///
+  /// Edit mode is mutually exclusive with table sorting: sorting reorders the
+  /// displayed list and therefore cannot be mixed with manual multi-selection.
   var canEnterEditMode: Bool {
     guard !OS.isAppKit else { return false }
+    guard tableSortCriteria == nil else { return false }
     guard let mainVM else { return false }
     guard let playlistID = mainVM.selectedPlaylistID,
           let index = mainVM.library.playlists.firstIndex(where: { $0.id == playlistID })
@@ -187,6 +191,9 @@ final class AlbumTableViewModel {
 
   // Phase 44: Set or toggle column sort
   func setTableSort(column: TableColumnType) {
+    // Sorting and edit mode are mutually exclusive.
+    isEditModeActive = false
+
     if let current = tableSortCriteria, current.column == column {
       // Toggle direction
       let newAscending = !current.ascending
@@ -391,14 +398,38 @@ final class AlbumTableViewModel {
   // MARK: - Phase 63: Keyboard Navigation (moved from MadTunesViewModel)
 
   /// Handles keyboard input when the table view is active.
-  /// Arrow keys, Shift+Arrow, PgUp/PgDn are handled natively by the List on macOS.
+  /// On UIKit, List does not automatically move selection with arrow keys.
   /// Track reorder (Option+↑/↓) is handled via menu commands.
-  /// This handler intercepts: Cmd+C copy, Cmd+↓/Return/Space to play,
-  /// and (UIKit only) PgUp/PgDn/Home/End for scroll+selection.
   func handleKeyPress(_ press: KeyPress) -> KeyPress.Result {
     guard let mainVM else { return .ignored }
     let tracks = currentTracksDisplayed
     guard !tracks.isEmpty else { return .ignored }
+
+    // Arrow keys (UIKit only): move selection up/down in the List.
+    if !OS.isAppKit,
+       press.key == .upArrow || press.key == .downArrow,
+       !press.modifiers.contains(.command),
+       !press.modifiers.contains(.option) {
+      let direction = press.key == .upArrow ? -1 : 1
+      return moveSelection(
+        direction: direction,
+        extend: press.modifiers.contains(.shift),
+        tracks: tracks,
+        mainVM: mainVM
+      )
+    }
+
+    // Phase 89: Cmd+A to select all, Escape to clear selection.
+    if press.characters == "a", press.modifiers.contains(.command) {
+      mainVM.selectedTrackIDs = Set(tracks.map(\.id))
+      return .handled
+    }
+    if press.key == .escape {
+      mainVM.selectedTrackIDs = []
+      tableSelectionAnchorID = nil
+      tableSelectionCursorID = nil
+      return .handled
+    }
 
     // CMD+C: Copy selected tracks metadata.
     if press.characters == "c", press.modifiers.contains(.command) {
@@ -432,7 +463,8 @@ final class AlbumTableViewModel {
       return .ignored
     }
 
-    // Phase 74: PgUp/PgDn/Home/End for UIKit targets (macOS List handles these natively).
+    // Page/Home/End: UIKit List does not provide native navigation, so handle
+    // via KeyPress or menu commands on non-AppKit platforms.
     if !OS.isAppKit, press.isPageKey || press.key == .home || press.key == .end {
       return handlePageOrEndpointKey(press, tracks: tracks, mainVM: mainVM)
     }
@@ -485,6 +517,43 @@ final class AlbumTableViewModel {
     tableScrollTargetID = targetID
   }
 
+  /// Moves the selection cursor up/down within the currently displayed track list.
+  ///
+  /// On UIKit platforms, `List` does not automatically move the selection using
+  /// the hardware arrow keys, so we synthesize the expected behavior here.
+  @discardableResult
+  func moveSelection(
+    direction: Int,
+    extend: Bool,
+    tracks: [Track],
+    mainVM: MadTunesViewModel
+  )
+    -> KeyPress.Result {
+    let currentID = tableSelectionCursorID ?? mainVM.selectedTrackIDs.first
+    let currentIdx = currentID.flatMap { id in tracks.firstIndex(where: { $0.id == id }) } ?? 0
+    let newIdx = max(0, min(tracks.count - 1, currentIdx + direction))
+    guard newIdx != currentIdx || mainVM.selectedTrackIDs.isEmpty else { return .handled }
+    let targetID = tracks[newIdx].id
+
+    if extend {
+      if tableSelectionAnchorID == nil {
+        tableSelectionAnchorID = currentID ?? targetID
+      }
+      if let anchorID = tableSelectionAnchorID,
+         let anchorIdx = tracks.firstIndex(where: { $0.id == anchorID }) {
+        let lo = min(anchorIdx, newIdx)
+        let hi = max(anchorIdx, newIdx)
+        mainVM.selectedTrackIDs = Set(tracks[lo ... hi].map(\.id))
+      }
+    } else {
+      mainVM.selectedTrackIDs = [targetID]
+      tableSelectionAnchorID = targetID
+    }
+    tableSelectionCursorID = targetID
+    tableScrollTargetID = targetID
+    return .handled
+  }
+
   // MARK: Private
 
   // MARK: - Display Buffer Methods
@@ -493,7 +562,7 @@ final class AlbumTableViewModel {
   /// in batches to keep the UI responsive during large imports.
   private var displayedTracksUpdateTask: Task<Void, Never>?
 
-  /// Phase 74: PgUp/PgDn/Home/End handler for UIKit targets (.onKeyPress fallback).
+  /// Phase 74: PgUp/PgDn/Home/End handler.
   private func handlePageOrEndpointKey(
     _ press: KeyPress, tracks: [Track], mainVM: MadTunesViewModel
   )
