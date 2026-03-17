@@ -311,39 +311,12 @@ public final class MusicLibrary {
       var data = await MetadataReader.readArtwork(from: trackURL)
       artworkLoadingKeys.remove(key)
 
-      // Attempt to resize artwork to 512×512 px before caching
+      // Phase 87: Move heavy image processing off main actor to prevent
+      // blocking the UI thread (CGImage decode + resize + JPEG encode).
       if let raw = data {
-        // Try standard instantiation first
-        var processedData: Data?
-
-        func resizeCGImage(_ cgImage: CGImage?) -> CGImage? {
-          cgImage?.directResized(
-            size: CGSize(width: 512, height: 512),
-            preserveAspectRatio: true
-          )
-        }
-
-        var useJPEGHint = false
-        let cgImage: CGImage? = {
-          let first = resizeCGImage(CGImage.instantiate(data: raw))
-          if first != nil { return first }
-          print("[MusicLibrary] Standard decode failed, retrying with JPEG hint...")
-          useJPEGHint = true
-          return resizeCGImage(CGImage.instantiate(data: raw, forceJPEG: true))
-        }()
-
-        if let resizedData = cgImage?.encodeToFileData(as: .jpeg(quality: 0.85)) {
-          processedData = resizedData
-          print("[MusicLibrary] \(useJPEGHint ? "JPEGHint" : "default") decode successful")
-        } else {
-          // If all decoding fails, keep original data as fallback
-          print("[MusicLibrary] All decode attempts failed, using original data")
-          processedData = raw
-        }
-
-        if let processedData {
-          data = processedData
-        }
+        data = await Task.detached(priority: .utility) {
+          Self.processRawArtwork(raw)
+        }.value
       }
 
       if let data {
@@ -547,6 +520,34 @@ public final class MusicLibrary {
           )
         }
       }
+    }
+  }
+
+  /// Phase 87: Process raw artwork data off the main actor.
+  /// Resizes to 512×512 and encodes as JPEG; returns original data on failure.
+  private nonisolated static func processRawArtwork(_ raw: Data) -> Data {
+    func resizeCGImage(_ cgImage: CGImage?) -> CGImage? {
+      cgImage?.directResized(
+        size: CGSize(width: 512, height: 512),
+        preserveAspectRatio: true
+      )
+    }
+
+    var useJPEGHint = false
+    let cgImage: CGImage? = {
+      let first = resizeCGImage(CGImage.instantiate(data: raw))
+      if first != nil { return first }
+      print("[MusicLibrary] Standard decode failed, retrying with JPEG hint...")
+      useJPEGHint = true
+      return resizeCGImage(CGImage.instantiate(data: raw, forceJPEG: true))
+    }()
+
+    if let resizedData = cgImage?.encodeToFileData(as: .jpeg(quality: 0.85)) {
+      print("[MusicLibrary] \(useJPEGHint ? "JPEGHint" : "default") decode successful")
+      return resizedData
+    } else {
+      print("[MusicLibrary] All decode attempts failed, using original data")
+      return raw
     }
   }
 
