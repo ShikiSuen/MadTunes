@@ -42,7 +42,7 @@ final class MockMusicLibrary: MusicLibraryProviding {
 
   // MARK: - Lazy Artwork (no-op)
 
-  func requestArtworkLoad(forAlbumKey _: String, sampleTrackURL _: URL) {}
+  func requestArtworkLoad(forAlbumKey _: String, sampleTrackURL _: URL, sampleTrackBookmark _: Data?) {}
 
   // MARK: - Playlist CRUD
 
@@ -98,12 +98,16 @@ final class MockMusicLibrary: MusicLibraryProviding {
 
   func moveTracks(_ trackIDs: [UUID], inPlaylist playlistID: UUID, toIndex: Int) {
     guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
-    var ids = playlists[idx].trackIDs
-    let movedIDs = trackIDs
-    ids.removeAll { movedIDs.contains($0) }
-    let insertAt = min(toIndex, ids.count)
-    ids.insert(contentsOf: movedIDs, at: insertAt)
-    playlists[idx].trackIDs = ids
+    let existingIDs = playlists[idx].trackIDs
+    let dragSet = Set(trackIDs)
+    let draggedIDsInOrder = existingIDs.filter { dragSet.contains($0) }
+    guard !draggedIDsInOrder.isEmpty else { return }
+    let beforeDraggedCount = existingIDs.prefix(min(toIndex, existingIDs.count))
+      .filter { dragSet.contains($0) }.count
+    let insertionIndex = max(0, min(existingIDs.count - draggedIDsInOrder.count, toIndex - beforeDraggedCount))
+    var newOrder = existingIDs.filter { !dragSet.contains($0) }
+    newOrder.insert(contentsOf: draggedIDsInOrder, at: insertionIndex)
+    playlists[idx].trackIDs = newOrder
   }
 
   func removeTracks(ids: Set<UUID>) {

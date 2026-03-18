@@ -256,13 +256,15 @@ struct MockMusicLibraryPlaylistTests {
     let t3 = makeTrack(title: "C")
     mock.setTracks([t1, t2, t3])
     mock.addPlaylist(name: "P")
-    let pid = mock.playlists.last!.id
-    mock.addTracks([t1.id, t2.id, t3.id], toPlaylist: pid)
+    let playlistIdx = mock.playlists.count - 1
+    let pid = mock.playlists[playlistIdx].id
+    // Set trackIDs directly to guarantee deterministic order (Set iteration is unordered).
+    mock.playlists[playlistIdx].trackIDs = [t1.id, t2.id, t3.id]
 
     // Move t3 to index 0 (before t1)
     mock.moveTracks([t3.id], inPlaylist: pid, toIndex: 0)
 
-    #expect(mock.playlists.last!.trackIDs == [t3.id, t1.id, t2.id])
+    #expect(mock.playlists[playlistIdx].trackIDs == [t3.id, t1.id, t2.id])
   }
 
   @Test("Favorites toggle works")
