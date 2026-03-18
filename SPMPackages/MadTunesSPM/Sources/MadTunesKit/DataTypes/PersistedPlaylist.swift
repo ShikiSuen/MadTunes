@@ -13,16 +13,16 @@ final class PersistedPlaylist {
   // MARK: Lifecycle
 
   init(
-    playlistID: String,
+    id: UUID,
     name: String,
-    trackIDStrings: [String] = [],
+    trackIDs: [UUID] = [],
     isSystemPlaylist: Bool = false,
     sortIndex: Int = 0,
     kindRawValue: String = PlaylistKind.staticList.rawValue
   ) {
-    self.playlistID = playlistID
+    self.id = id
     self.name = name
-    self.trackIDStrings = trackIDStrings
+    self.trackIDs = trackIDs
     self.isSystemPlaylist = isSystemPlaylist
     self.sortIndex = sortIndex
     self.kindRawValue = kindRawValue
@@ -30,9 +30,9 @@ final class PersistedPlaylist {
 
   // MARK: Internal
 
-  @Attribute(.unique) var playlistID: String
+  @Attribute(.unique, originalName: "playlistID") var id: UUID
   var name: String
-  var trackIDStrings: [String]
+  var trackIDs: [UUID]
   var isSystemPlaylist: Bool
   var sortIndex: Int
   var kindRawValue: String
@@ -42,10 +42,8 @@ final class PersistedPlaylist {
   }
 
   /// 轉換為應用層的 Playlist 模型
-  func toPlaylist() -> Playlist? {
-    guard let id = UUID(uuidString: playlistID) else { return nil }
-    let trackIDs = trackIDStrings.compactMap { UUID(uuidString: $0) }
-    return Playlist(
+  func toPlaylist() -> Playlist {
+    Playlist(
       id: id,
       name: name,
       trackIDs: trackIDs,

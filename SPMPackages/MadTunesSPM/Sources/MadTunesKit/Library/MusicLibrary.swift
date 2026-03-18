@@ -524,10 +524,14 @@ public final class MusicLibrary {
   // MARK: - SwiftData Container
 
   private nonisolated static func makeModelContainer() -> ModelContainer? {
-    let schema = Schema([PersistedTrack.self, PersistedSourceBookmark.self, PersistedPlaylist.self])
+    let schema = Schema(PersistedSchemaV2.models)
     let config = ModelConfiguration(schema: schema)
     do {
-      return try ModelContainer(for: schema, configurations: [config])
+      return try ModelContainer(
+        for: schema,
+        migrationPlan: PersistedSchemaMigrationPlan.self,
+        configurations: [config]
+      )
     } catch {
       // Database corrupted — delete and recreate.
       let url = config.url
@@ -537,7 +541,11 @@ public final class MusicLibrary {
       let shmURL = url.appendingPathExtension("shm")
       try? FileManager.default.removeItem(at: walURL)
       try? FileManager.default.removeItem(at: shmURL)
-      return try? ModelContainer(for: schema, configurations: [config])
+      return try? ModelContainer(
+        for: schema,
+        migrationPlan: PersistedSchemaMigrationPlan.self,
+        configurations: [config]
+      )
     }
   }
 
@@ -577,20 +585,30 @@ public final class MusicLibrary {
     #endif
   }
 
-  /// Persist all current tracks to SwiftData (full replacement).
+  /// Persist all current tracks to SwiftData (incremental update).
   private func persistAllTracks() {
     guard let container = _modelContainer else { return }
+    let trackMap: [UUID: Track] = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
+    var newTrackIDs = Set(trackMap.keys)
     let context = ModelContext(container)
-    // Clear existing track data and re-insert all tracks.
     do {
-      try context.delete(model: PersistedTrack.self)
+      let descriptor = FetchDescriptor<PersistedTrack>()
+      try context.enumerate(descriptor) { existing in
+        if newTrackIDs.contains(existing.id), let track = trackMap[existing.id] {
+          existing.inherit(track)
+          newTrackIDs.remove(existing.id)
+        } else {
+          context.delete(existing)
+        }
+      }
+      for id in newTrackIDs {
+        guard let track = trackMap[id] else { continue }
+        context.insert(PersistedTrack(from: track))
+      }
+      try context.save()
     } catch {
       return
     }
-    for track in tracks {
-      context.insert(PersistedTrack(from: track))
-    }
-    try? context.save()
   }
 
   /// Persist all playlists to SwiftData (full replacement).
@@ -645,7 +663,7 @@ public final class MusicLibrary {
     ]
 
     for persistedPlaylist in persisted {
-      guard let playlist = persistedPlaylist.toPlaylist() else { continue }
+      let playlist = persistedPlaylist.toPlaylist()
       // 只載入非系統播放清單，或名稱與系統播放清單匹配的（保留其 trackIDs）
       if playlist.isSystemPlaylist {
         // 更新系統播放清單的 trackIDs

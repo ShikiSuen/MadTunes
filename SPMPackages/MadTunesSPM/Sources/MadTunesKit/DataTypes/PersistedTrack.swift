@@ -12,7 +12,7 @@ final class PersistedTrack {
   // MARK: Lifecycle
 
   init(from track: Track) {
-    self.trackID = track.id.uuidString
+    self.id = track.id
     self.fileURLString = track.fileURL.absoluteString
     self.bookmarkData = track.bookmarkData
     self.title = track.title
@@ -27,9 +27,31 @@ final class PersistedTrack {
     self.fallbackFieldsRawValue = track.fallbackFields.rawValue
   }
 
+  /// Raw-value initialiser used by `PersistedSchemaMigrationPlan`.
+  init(
+    id: UUID, fileURLString: String, bookmarkData: Data? = nil,
+    title: String, artist: String, albumTitle: String, albumArtist: String,
+    trackNumber: Int, discNumber: Int, duration: Double,
+    genre: String, year: Int? = nil, fallbackFieldsRawValue: Int = 0
+  ) {
+    self.id = id
+    self.fileURLString = fileURLString
+    self.bookmarkData = bookmarkData
+    self.title = title
+    self.artist = artist
+    self.albumTitle = albumTitle
+    self.albumArtist = albumArtist
+    self.trackNumber = trackNumber
+    self.discNumber = discNumber
+    self.duration = duration
+    self.genre = genre
+    self.year = year
+    self.fallbackFieldsRawValue = fallbackFieldsRawValue
+  }
+
   // MARK: Internal
 
-  @Attribute(.unique) var trackID: String
+  @Attribute(.unique, originalName: "trackID") var id: UUID
   var fileURLString: String
   var bookmarkData: Data?
   var title: String
@@ -44,8 +66,7 @@ final class PersistedTrack {
   var fallbackFieldsRawValue: Int = 0
 
   func toTrack() -> Track? {
-    guard let id = UUID(uuidString: trackID),
-          let url = URL(string: fileURLString) else { return nil }
+    guard let url = URL(string: fileURLString) else { return nil }
     var track = Track(
       id: id,
       fileURL: url,
@@ -62,5 +83,20 @@ final class PersistedTrack {
     )
     track.bookmarkData = bookmarkData
     return track
+  }
+
+  func inherit(_ track: Track) {
+    fileURLString = track.fileURL.absoluteString
+    bookmarkData = track.bookmarkData
+    title = track.title
+    artist = track.artist
+    albumTitle = track.albumTitle
+    albumArtist = track.albumArtist
+    trackNumber = track.trackNumber
+    discNumber = track.discNumber
+    duration = track.duration
+    genre = track.genre
+    year = track.year
+    fallbackFieldsRawValue = track.fallbackFields.rawValue
   }
 }
