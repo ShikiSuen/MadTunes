@@ -383,3 +383,98 @@ struct AlbumGridViewModelTests {
     #expect(gridVM.trackIDsForNewPlaylist.isEmpty)
   }
 }
+
+// MARK: - Phase96ObservationTests
+
+@Suite("Phase 96: ViewModel Observation Migration")
+struct Phase96ObservationTests {
+  @Test("onPlaylistSwitched clears selectedTrackIDs")
+  func playlistSwitchClearsTrackSelection() {
+    let vm = MadTunesViewModel.shared
+    // Setup: add some tracks to selection.
+    let t1 = makeTrack(title: "T1")
+    vm.selectedTrackIDs = [t1.id]
+    #expect(!vm.selectedTrackIDs.isEmpty)
+
+    vm.onPlaylistSwitched()
+
+    #expect(vm.selectedTrackIDs.isEmpty)
+  }
+
+  @Test("onPlaylistSwitched clears highlightedAlbumIDs")
+  func playlistSwitchClearsAlbumHighlights() {
+    let vm = MadTunesViewModel.shared
+    let albumID = UUID()
+    vm.gridVM.highlightedAlbumIDs = [albumID]
+
+    vm.onPlaylistSwitched()
+
+    #expect(vm.gridVM.highlightedAlbumIDs.isEmpty)
+  }
+
+  @Test("onPlaylistSwitched clears expandedAlbumID")
+  func playlistSwitchClearsExpandedAlbum() {
+    let vm = MadTunesViewModel.shared
+    vm.gridVM.expandedAlbumID = UUID()
+
+    vm.onPlaylistSwitched()
+
+    #expect(vm.gridVM.expandedAlbumID == nil)
+  }
+
+  @Test("onPlaylistSwitched clears table selection anchors")
+  func playlistSwitchClearsTableAnchors() {
+    let vm = MadTunesViewModel.shared
+    vm.tableVM.tableSelectionAnchorID = UUID()
+    vm.tableVM.tableSelectionCursorID = UUID()
+
+    vm.onPlaylistSwitched()
+
+    #expect(vm.tableVM.tableSelectionAnchorID == nil)
+    #expect(vm.tableVM.tableSelectionCursorID == nil)
+  }
+
+  @Test("onPlaylistSwitched deactivates table edit mode")
+  func playlistSwitchClearsEditMode() {
+    let vm = MadTunesViewModel.shared
+    vm.tableVM.isEditModeActive = true
+
+    vm.onPlaylistSwitched()
+
+    #expect(!vm.tableVM.isEditModeActive)
+  }
+
+  @Test("onPlaylistSwitched resets column browser filters")
+  func playlistSwitchResetsFilters() {
+    let vm = MadTunesViewModel.shared
+    vm.columnBrowserSelectedGenres = ["Rock"]
+    vm.columnBrowserSelectedAlbumArtists = ["Artist"]
+
+    vm.onPlaylistSwitched()
+
+    #expect(vm.columnBrowserSelectedGenres.isEmpty)
+    #expect(vm.columnBrowserSelectedAlbumArtists.isEmpty)
+  }
+
+  @Test("onPlaylistSwitched clears search text when non-empty")
+  func playlistSwitchClearsSearch() {
+    let vm = MadTunesViewModel.shared
+    vm.searchText = "test query"
+
+    vm.onPlaylistSwitched()
+
+    #expect(vm.searchText.isEmpty)
+  }
+
+  @Test("onPlaylistSwitched clears grid selection anchors")
+  func playlistSwitchClearsGridAnchors() {
+    let vm = MadTunesViewModel.shared
+    vm.gridVM.albumSelectionFixedAnchorID = UUID()
+    vm.gridVM.albumSelectionCursorID = UUID()
+
+    vm.onPlaylistSwitched()
+
+    #expect(vm.gridVM.albumSelectionFixedAnchorID == nil)
+    #expect(vm.gridVM.albumSelectionCursorID == nil)
+  }
+}

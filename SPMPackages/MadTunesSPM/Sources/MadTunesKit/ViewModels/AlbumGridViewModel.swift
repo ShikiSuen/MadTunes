@@ -137,6 +137,13 @@ final class AlbumGridViewModel {
     )
   }
 
+  // MARK: - Phase 96: ViewModel-level Observations
+
+  /// Called by MadTunesViewModel after mainVM is assigned.
+  func setupObservations() {
+    observeCurrentAlbumsChange()
+  }
+
   // MARK: - DoubleClick Handlers
 
   func onTrackDoubleClicked(_ track: Track, albumTracks: [Track]) {
@@ -479,6 +486,21 @@ final class AlbumGridViewModel {
 
   /// In-flight batch update task. Cancelled on new updates.
   private var displayedAlbumsUpdateTask: Task<Void, Never>?
+
+  // MARK: - Phase 96: Private Observations
+
+  /// Phase 96: Track `currentAlbumsDisplayed` changes and update display buffer.
+  private func observeCurrentAlbumsChange() {
+    withObservationTracking {
+      _ = self.currentAlbumsDisplayed
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        self.scheduleDisplayedAlbumsUpdate(to: self.currentAlbumsDisplayed)
+        self.observeCurrentAlbumsChange()
+      }
+    }
+  }
 
   // MARK: - Computed Helpers
 

@@ -147,15 +147,9 @@ struct AlbumGridView: View {
       }
       .scrollContentBackground(.hidden)
       .frame(width: canvasWidth, alignment: .leading)
-      .onAppear {
-        gridVM.scheduleDisplayedAlbumsUpdate(to: albums)
-      }
-      .onChange(of: albums) { _, newAlbums in
-        gridVM.scheduleDisplayedAlbumsUpdate(to: newAlbums)
-      }
+      // Phase 96: expandedAlbumID scroll (data scheduling moved to ViewModel).
       .onChange(of: gridVM.expandedAlbumID) { _, newValue in
         guard let newValue else { return }
-        // Ensure the expanded album is included in displayedAlbums quickly.
         gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: newValue)
         gridVM.proxyScrollDebouncer.debounceOnMain {
           withAnimation(.easeInOut(duration: 0.3)) {
@@ -176,12 +170,9 @@ struct AlbumGridView: View {
       .onChange(of: gridVM.scrollToAlbumID) { _, newValue in
         guard let albumID = newValue else { return }
         gridVM.scrollToAlbumID = nil
-        // If the target album isn't yet in displayedAlbums, ask for a quick
-        // inclusion so that proxy.scrollTo can find the row.
         if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
           gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: albumID)
         }
-        // Compute the row offset using the full album list.
         let rows = albums.chunked(into: columnCount)
         guard let rowIndex = rows.firstIndex(
           where: { $0.contains { $0.id == albumID } }

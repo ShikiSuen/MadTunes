@@ -16,6 +16,11 @@ final class MadTunesViewModel {
     gridVM.mainVM = self
     tableVM.mainVM = self
     phoneVM.mainVM = self
+    // Phase 96: Start ViewModel-level observations (replaces View .onChange blocks).
+    setupObservations()
+    phoneVM.setupObservations()
+    gridVM.setupObservations()
+    tableVM.setupObservations()
   }
 
   // MARK: Internal
@@ -402,7 +407,34 @@ final class MadTunesViewModel {
     #endif
   }
 
+  /// Phase 96: Consolidated cleanup when switching playlists.
+  func onPlaylistSwitched() {
+    if !selectedTrackIDs.isEmpty { selectedTrackIDs.removeAll() }
+    gridVM.highlightedAlbumIDs.removeAll()
+    gridVM.expandedAlbumID = nil
+    gridVM.albumSelectionFixedAnchorID = nil
+    gridVM.albumSelectionCursorID = nil
+    tableVM.tableSelectionAnchorID = nil
+    tableVM.tableSelectionCursorID = nil
+    tableVM.isEditModeActive = false
+    resetColumnBrowserFilters()
+    if !searchTokens(from: searchText).isEmpty {
+      searchText = ""
+    }
+  }
+
   // MARK: Private
+
+  // MARK: - Phase 96: ViewModel-level Observations (replacing View .onChange blocks)
+
+  /// Tracks the last known value of `selectedPlaylistID` for change detection.
+  private var _previousSelectedPlaylistID: UUID?
+  /// Tracks the last known value of `gridVM.expandedAlbumID` for change detection.
+  private var _previousExpandedAlbumID: UUID?
+  /// Tracks the last known value of `player.currentTrack?.id` for change detection.
+  private var _previousCurrentTrackID: UUID?
+  /// Tracks the last known value of `useTableView` for change detection.
+  private var _previousUseTableView: Bool?
 
   // --- Async search/cache (Phase 57):
   // Cached filtered results produced by the debounced async search task.
@@ -419,6 +451,114 @@ final class MadTunesViewModel {
       return library.tracks(for: playlist)
     }
     return library.tracks
+  }
+
+  private func setupObservations() {
+    observeUseTableViewChange()
+    observeExpandedAlbumIDChange()
+    observeSelectedPlaylistIDChange()
+    observeCurrentTrackChange()
+    observeUIModeSwitching()
+  }
+
+  /// Phase 96: When `useTableView` changes, persist and clean up cross-view state.
+  private func observeUseTableViewChange() {
+    withObservationTracking {
+      _ = self.useTableView
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        let newValue = self.useTableView
+        let oldValue = self._previousUseTableView
+        self._previousUseTableView = newValue
+        if oldValue != nil, oldValue != newValue {
+          UserDefaults.standard.set(newValue, forKey: "MadTunes.useTableView")
+          self.tableVM.isEditModeActive = false
+          if newValue {
+            self.gridVM.expandedAlbumID = nil
+            self.gridVM.highlightedAlbumIDs.removeAll()
+            self.selectedTrackIDs.removeAll()
+          }
+        }
+        self.observeUseTableViewChange()
+      }
+    }
+    _previousUseTableView = useTableView
+  }
+
+  /// Phase 96: When `expandedAlbumID` changes, clear track selection.
+  private func observeExpandedAlbumIDChange() {
+    withObservationTracking {
+      _ = self.gridVM.expandedAlbumID
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        self.selectedTrackIDs.removeAll()
+        self.observeExpandedAlbumIDChange()
+      }
+    }
+  }
+
+  /// Phase 96: When playlist is switched, reset selections, filters, and search.
+  private func observeSelectedPlaylistIDChange() {
+    withObservationTracking {
+      _ = self.selectedPlaylistID
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        let newValue = self.selectedPlaylistID
+        let oldValue = self._previousSelectedPlaylistID
+        self._previousSelectedPlaylistID = newValue
+        if oldValue != nil, oldValue != newValue {
+          self.onPlaylistSwitched()
+        }
+        self.observeSelectedPlaylistIDChange()
+      }
+    }
+    _previousSelectedPlaylistID = selectedPlaylistID
+  }
+
+  /// Phase 96: When the current track changes, load artwork for it.
+  private func observeCurrentTrackChange() {
+    withObservationTracking {
+      _ = self.player.currentTrack?.id
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        if let track = self.player.currentTrack {
+          let key = self.library.albumKey(title: track.albumTitle, artist: track.albumArtist)
+          self.library.requestArtworkLoad(
+            forAlbumKey: key,
+            sampleTrackURL: track.fileURL,
+            sampleTrackBookmark: track.bookmarkData
+          )
+        }
+        self.observeCurrentTrackChange()
+      }
+    }
+  }
+
+  /// Phase 96: When iPad switches between desktop UI and WPUI, reset stale state.
+  private func observeUIModeSwitching() {
+    withObservationTracking {
+      _ = self.screenVM.isHorizontallyCompact
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        let isWPUI = WPPhoneViewModel.shouldUseWPUI(screenVM: self.screenVM)
+        if isWPUI {
+          // Entering WPUI: clear desktop-specific selections.
+          self.gridVM.expandedAlbumID = nil
+          self.gridVM.highlightedAlbumIDs.removeAll()
+          self.selectedTrackIDs.removeAll()
+          self.tableVM.isEditModeActive = false
+        } else {
+          // Entering desktop UI: clear WPUI-specific selections.
+          self.phoneVM.wpSelectedAlbumIDs.removeAll()
+        }
+        self.observeUIModeSwitching()
+      }
+    }
   }
 
   // MARK: - Computed Helpers

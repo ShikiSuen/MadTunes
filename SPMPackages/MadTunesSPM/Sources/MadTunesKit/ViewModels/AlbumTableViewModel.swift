@@ -176,6 +176,13 @@ final class AlbumTableViewModel {
     return max(1, Int((canvasHeight - 80) / 24))
   }
 
+  // MARK: - Phase 96: ViewModel-level Observations
+
+  /// Called by MadTunesViewModel after mainVM is assigned.
+  func setupObservations() {
+    observeCurrentTracksChange()
+  }
+
   // MARK: - Table Sorting
 
   // Phase 44: Get sort indicator for column header
@@ -581,6 +588,21 @@ final class AlbumTableViewModel {
   /// Coalesced/batched update (Phase 56). Progressively appends tracks
   /// in batches to keep the UI responsive during large imports.
   private var displayedTracksUpdateTask: Task<Void, Never>?
+
+  // MARK: - Phase 96: Private Observations
+
+  /// Phase 96: Track `currentTracksDisplayed` changes and update display buffer.
+  private func observeCurrentTracksChange() {
+    withObservationTracking {
+      _ = self.currentTracksDisplayed
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        self.scheduleDisplayedTracksUpdate(to: self.currentTracksDisplayed)
+        self.observeCurrentTracksChange()
+      }
+    }
+  }
 
   /// Phase 74: PgUp/PgDn/Home/End handler.
   private func handlePageOrEndpointKey(

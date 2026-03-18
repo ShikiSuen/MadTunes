@@ -280,6 +280,15 @@ final class WPPhoneViewModel {
     }
   }
 
+  // MARK: - Phase 96: ViewModel-level Observations
+
+  /// Called by MadTunesViewModel after mainVM is assigned.
+  func setupObservations() {
+    observeCurrentSectionChange()
+    observeCurrentTrackForActivity()
+    observeImportCompletion()
+  }
+
   /// Determines tile size based on album position and properties.
   func tileSizeForAlbum(_ album: Album, index: Int) -> TileSize {
     if index == 0 { return .large }
@@ -389,4 +398,53 @@ final class WPPhoneViewModel {
 
   private static let lastSectionKey = "MadTunes.WPUI.lastSection"
   private static let recentAlbumKeysKey = "MadTunes.WPUI.recentAlbumKeys"
+
+  /// Tracks the last known `isImporting` for edge detection.
+  private var _previousIsImporting = false
+
+  /// Phase 96: Persist `currentSection` to UserDefaults when it changes.
+  private func observeCurrentSectionChange() {
+    withObservationTracking {
+      _ = self.currentSection
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        Self.saveLastSection(self.currentSection)
+        self.observeCurrentSectionChange()
+      }
+    }
+  }
+
+  /// Phase 96: Record album play activity when the current track changes.
+  private func observeCurrentTrackForActivity() {
+    withObservationTracking {
+      _ = self.mainVM?.player.currentTrack?.id
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        if let track = self.mainVM?.player.currentTrack {
+          self.recordAlbumActivity(title: track.albumTitle, artist: track.albumArtist)
+        }
+        self.observeCurrentTrackForActivity()
+      }
+    }
+  }
+
+  /// Phase 96: Record newly imported albums when import finishes.
+  private func observeImportCompletion() {
+    withObservationTracking {
+      _ = self.mainVM?.library.isImporting
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        let isImporting = self.mainVM?.library.isImporting ?? false
+        let wasImporting = self._previousIsImporting
+        self._previousIsImporting = isImporting
+        if wasImporting, !isImporting, let mainVM = self.mainVM {
+          self.recordNewlyImportedAlbums(from: mainVM.gridVM.currentAlbumsDisplayed)
+        }
+        self.observeImportCompletion()
+      }
+    }
+  }
 }

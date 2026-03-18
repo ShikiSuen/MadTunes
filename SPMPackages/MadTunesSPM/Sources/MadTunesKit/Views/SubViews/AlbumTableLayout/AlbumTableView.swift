@@ -233,12 +233,6 @@ struct AlbumTableView: View {
       .onMove(perform: onRowMoveActionProvider(canReorder: canReorder))
     }
     .listStyle(listSyleProvided)
-    .onAppear {
-      tableVM.scheduleDisplayedTracksUpdate(to: tracks)
-    }
-    .onChange(of: tracks) { _, newValue in
-      tableVM.scheduleDisplayedTracksUpdate(to: newValue)
-    }
     .contextMenu(forSelectionType: UUID.self, menu: { ids in
       let selected = tableVM.displayedTracks.filter { ids.contains($0.id) }
       if !selected.isEmpty {
@@ -428,12 +422,6 @@ struct AlbumTableView: View {
     }, primaryAction: { ids in
       onTrackDoubleClicked(ids)
     })
-    .onAppear {
-      tableVM.scheduleDisplayedTracksUpdate(to: tracks)
-    }
-    .onChange(of: tracks) { _, newValue in
-      tableVM.scheduleDisplayedTracksUpdate(to: newValue)
-    }
     .onChange(of: vm.tableVM.tableScrollTargetID) { _, newID in
       if let id = newID {
         Task {

@@ -175,18 +175,6 @@ struct MadTunesMainView: View {
             .pickerStyle(.segmented)
             .tint(.primary)
             .fixedSize()
-            .onChange(of: vm.useTableView) { _, newValue in
-              UserDefaults.standard.set(newValue, forKey: "MadTunes.useTableView")
-              vm.tableVM.isEditModeActive = false
-              Task {
-                if newValue {
-                  // when entering table mode we no longer need an expanded album
-                  vm.gridVM.expandedAlbumID = nil
-                  vm.gridVM.highlightedAlbumIDs.removeAll()
-                  vm.selectedTrackIDs.removeAll()
-                }
-              }
-            }
           }
           .removeSharedBackgroundVisibility(bypassWhen: OS.isAppKit)
 
@@ -325,29 +313,9 @@ struct MadTunesMainView: View {
           return vm.gridVM.handleKeyPress(press, albums: displayAlbums)
         }
       }
-      .onChange(of: vm.gridVM.expandedAlbumID) { _, _ in
-        vm.selectedTrackIDs.removeAll()
-      }
+      // Phase 96: highlightedAlbumIDs change still needs focus management (UI-only).
       .onChange(of: vm.gridVM.highlightedAlbumIDs) { _, _ in
         isContentFocused = true
-      }
-      .onChange(of: vm.selectedPlaylistID) { _, _ in
-        if !vm.selectedTrackIDs.isEmpty { vm.selectedTrackIDs.removeAll() }
-        vm.tableVM.isEditModeActive = false
-        vm.resetColumnBrowserFilters()
-        if !searchTokens(from: vm.searchText).isEmpty {
-          vm.searchText = ""
-        }
-      }
-      // Phase 43: Ensure artwork is loaded when playing from table view.
-      .onChange(of: vm.player.currentTrack?.id) { _, _ in
-        guard let track = vm.player.currentTrack else { return }
-        let key = vm.library.albumKey(title: track.albumTitle, artist: track.albumArtist)
-        vm.library.requestArtworkLoad(
-          forAlbumKey: key,
-          sampleTrackURL: track.fileURL,
-          sampleTrackBookmark: track.bookmarkData
-        )
       }
       .overlay {
         ContentAvailabilityOverlay(
