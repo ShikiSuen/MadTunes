@@ -30,7 +30,7 @@ final class PersistedPlaylist {
 
   // MARK: Internal
 
-  @Attribute(.unique, originalName: "playlistID") var id: UUID
+  @Attribute(.unique) var id: UUID
   var name: String
   var trackIDs: [UUID]
   var isSystemPlaylist: Bool

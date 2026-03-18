@@ -51,7 +51,7 @@ final class PersistedTrack {
 
   // MARK: Internal
 
-  @Attribute(.unique, originalName: "trackID") var id: UUID
+  @Attribute(.unique) var id: UUID
   var fileURLString: String
   var bookmarkData: Data?
   var title: String

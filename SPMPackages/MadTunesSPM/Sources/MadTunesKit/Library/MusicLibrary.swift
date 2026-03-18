@@ -611,28 +611,43 @@ public final class MusicLibrary {
     }
   }
 
-  /// Persist all playlists to SwiftData (full replacement).
+  /// Persist all playlists to SwiftData (incremental update).
   private func persistAllPlaylists() {
     guard let container = _modelContainer else { return }
+    let playlistMap: [UUID: (index: Int, playlist: Playlist)] = Dictionary(
+      uniqueKeysWithValues: playlists.enumerated().map { ($1.id, ($0, $1)) }
+    )
+    var newPlaylistIDs = Set(playlistMap.keys)
     let context = ModelContext(container)
-    // Clear existing playlist data and re-insert all playlists.
     do {
-      try context.delete(model: PersistedPlaylist.self)
+      let descriptor = FetchDescriptor<PersistedPlaylist>()
+      try context.enumerate(descriptor) { existing in
+        if newPlaylistIDs.contains(existing.id), let entry = playlistMap[existing.id] {
+          existing.name = entry.playlist.name
+          existing.trackIDs = entry.playlist.trackIDs
+          existing.isSystemPlaylist = entry.playlist.isSystemPlaylist
+          existing.sortIndex = entry.index
+          existing.kindRawValue = entry.playlist.kind.rawValue
+          newPlaylistIDs.remove(existing.id)
+        } else {
+          context.delete(existing)
+        }
+      }
+      for id in newPlaylistIDs {
+        guard let entry = playlistMap[id] else { continue }
+        context.insert(PersistedPlaylist(
+          id: entry.playlist.id,
+          name: entry.playlist.name,
+          trackIDs: entry.playlist.trackIDs,
+          isSystemPlaylist: entry.playlist.isSystemPlaylist,
+          sortIndex: entry.index,
+          kindRawValue: entry.playlist.kind.rawValue
+        ))
+      }
+      try context.save()
     } catch {
       return
     }
-    for (index, playlist) in playlists.enumerated() {
-      let persisted = PersistedPlaylist(
-        playlistID: playlist.id.uuidString,
-        name: playlist.name,
-        trackIDStrings: playlist.trackIDs.map { $0.uuidString },
-        isSystemPlaylist: playlist.isSystemPlaylist,
-        sortIndex: index,
-        kindRawValue: playlist.kind.rawValue
-      )
-      context.insert(persisted)
-    }
-    try? context.save()
   }
 
   private func persistAllPlaylistsDebounced() {
