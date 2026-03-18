@@ -138,50 +138,62 @@ struct PlayerControlsView: View {
           }
         }
       VStack(spacing: 0) {
-        // Progress scrubber
-        let scrubber = ProgressScrubber(
-          currentTime: player.currentTime,
-          duration: player.duration,
-          onSeek: { seekTarget in
-            Task {
-              await player.seek(to: seekTarget)
+        let mainControlSpacing = 3 * pow(vm.uiFactor, 4)
+        EqualSideLayout(centerMode: .fitContent, spacing: mainControlSpacing, verticalAlignment: .center) {
+          Color.clear
+            .overlay {
+              GeometryReader { proxy in
+                Color.clear
+                  .overlay(alignment: .leading) {
+                    nowPlayingInfo
+                      .frame(maxWidth: proxy.size.width, alignment: .leading)
+                  }
+              }
+              .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-          }
-        )
-        HStack(spacing: 16 * vm.uiFactor) {
-          // Now-playing info (left)
-          nowPlayingInfo
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-          HStack(spacing: 4 * vm.uiFactor * vm.uiFactor) {
-            transportControls
-              .toolbar {
-                if useTouchScreenCompact {
-                  ToolbarItem(placement: .confirmationAction) {
-                    queueToggleButton
+          transportControls
+
+          Color.clear
+            .overlay {
+              GeometryReader { proxy in
+                Color.clear
+                  .overlay(alignment: .leading) {
+                    ViewThatFits {
+                      Group {
+                        HStack(spacing: mainControlSpacing) {
+                          queueToggleButton
+                          columnBrowserToggleButton
+                          playLoopBehaviorButton
+                          volumeControls
+                        }
+                        .buttonStyle(.plain)
+                        .onAppear { miscControlsMovedToToolbar = false }
+                        .onDisappear { miscControlsMovedToToolbar = true }
+                      }
+                      volumeControls
+                    }
+                    .frame(maxWidth: proxy.size.width, alignment: .trailing)
                   }
-                  ToolbarItem(placement: .confirmationAction) {
-                    columnBrowserToggleButton
-                  }
-                  ToolbarItem(placement: .confirmationAction) {
-                    playLoopBehaviorButton
-                  }
-                }
               }
-            if !useTouchScreenCompact {
-              Group {
-                queueToggleButton
-                columnBrowserToggleButton
-                playLoopBehaviorButton
-              }
-              .buttonStyle(.plain)
+              .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            volumeControls
-          }
-          .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .frame(height: (sansBezel ? 26 : 34) * vm.uiFactor)
-        HStack {
+        .toolbar {
+          if miscControlsMovedToToolbar {
+            ToolbarItem(placement: .confirmationAction) {
+              queueToggleButton
+            }
+            ToolbarItem(placement: .confirmationAction) {
+              columnBrowserToggleButton
+            }
+            ToolbarItem(placement: .confirmationAction) {
+              playLoopBehaviorButton
+            }
+          }
+        }
+        EqualSideLayout(centerMode: .fillAvailable, spacing: 6, verticalAlignment: .center) {
           Button {
             showRemainingTime.toggle()
           } label: {
@@ -191,15 +203,31 @@ struct PlayerControlsView: View {
             Text(timeText)
               .fontWidth(.standard)
               .font(.caption.monospacedDigit())
+              .lineLimit(1)
               .frame(height: 6, alignment: .center)
+              .fixedSize()
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .contentShape(.rect)
           }
           .buttonStyle(.plain)
           .contentShape(.rect)
-          scrubber
+
+          // Progress scrubber
+          ProgressScrubber(
+            currentTime: player.currentTime,
+            duration: player.duration,
+            onSeek: { seekTarget in
+              Task {
+                await player.seek(to: seekTarget)
+              }
+            }
+          )
+
           Text(formatDuration(player.duration))
             .fontWidth(.standard)
             .font(.caption.monospacedDigit())
             .frame(height: 6, alignment: .center)
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .frame(maxWidth: .infinity)
       }
@@ -215,6 +243,7 @@ struct PlayerControlsView: View {
   @State private var isColumnBrowserPopoverPresented = false
   @State private var isQueuePopoverPresented = false
   @State private var showRemainingTime = false
+  @State private var miscControlsMovedToToolbar = true
 
   // MARK: track info / playlist & delete state (for context menu on artwork)
 
@@ -295,7 +324,6 @@ struct PlayerControlsView: View {
             .truncationMode(.tail)
         }
         .contentShape(.rect)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .help(accumulated)
       } else {
         Text(String(localized: "i18n:Player.NotPlaying", bundle: #bundle))
@@ -392,12 +420,12 @@ struct PlayerControlsView: View {
   }
 
   @ViewBuilder private var volumeControls: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: 2) {
       Image(systemName: volumeIcon)
         .font(.caption)
         .frame(width: 28 * vm.uiFactor, height: 28)
       Slider(value: Bindable(player).volume, in: 0 ... 1)
-        .frame(width: 80 * vm.uiFactor)
+        .frame(width: 60 * vm.uiFactor)
         .controlSize(.mini)
     }
   }
@@ -424,7 +452,6 @@ struct ProgressScrubber: View {
     self.currentTime = currentTime
     self.duration = duration
     self.onSeek = onSeek
-    self.isDragging = isDragging
     self.dragValue = dragValue
   }
 
@@ -471,6 +498,201 @@ struct ProgressScrubber: View {
   private let currentTime: TimeInterval
   private let duration: TimeInterval
   private let onSeek: (TimeInterval) -> Void
+}
+
+// MARK: - EqualSideLayout
+
+/// HStack { [A][B][C] }
+/// 在 B 使用 fixedSize (width) 或滿版的情况下让 A 与 C 的可用空间等分。
+private struct EqualSideLayout: Layout {
+  // MARK: Lifecycle
+
+  init(
+    centerMode: CenterMode,
+    spacing: CGFloat = 0,
+    verticalAlignment: VerticalAlignment = .center
+  ) {
+    self.centerMode = centerMode
+    self.spacing = spacing
+    self.verticalAlignment = verticalAlignment
+  }
+
+  // MARK: Internal
+
+  enum CenterMode {
+    case fitContent
+    case fillAvailable
+  }
+
+  struct CachedLayout {
+    var sideWidth: CGFloat
+    var bWidth: CGFloat
+    var height: CGFloat
+    var contentWidth: CGFloat
+  }
+
+  func makeCache(subviews: Subviews) -> CachedLayout? {
+    nil
+  }
+
+  func sizeThatFits(
+    proposal: ProposedViewSize,
+    subviews: Subviews,
+    cache: inout CachedLayout?
+  )
+    -> CGSize {
+    guard subviews.count == 3 else { return .zero }
+
+    let totalSpacing = spacing * CGFloat(subviews.count - 1)
+
+    // ✅ 改成：如果没有明确宽度，就走 intrinsic
+    guard let totalWidth = proposal.width else {
+      return intrinsicSize(subviews, totalSpacing)
+    }
+
+    let contentWidth = max(0, totalWidth - totalSpacing)
+
+    let layout = compute(contentWidth: contentWidth, subviews: subviews)
+    cache = CachedLayout(
+      sideWidth: layout.sideWidth,
+      bWidth: layout.bWidth,
+      height: layout.height,
+      contentWidth: contentWidth
+    )
+
+    return CGSize(width: totalWidth, height: layout.height)
+  }
+
+  func placeSubviews(
+    in bounds: CGRect,
+    proposal: ProposedViewSize,
+    subviews: Subviews,
+    cache: inout CachedLayout?
+  ) {
+    guard subviews.count == 3 else { return }
+
+    let totalSpacing = spacing * CGFloat(subviews.count - 1)
+    let contentWidth = max(0, bounds.width - totalSpacing)
+
+    let layout: (sideWidth: CGFloat, bWidth: CGFloat, height: CGFloat)
+    if let cached = cache, cached.contentWidth == contentWidth {
+      layout = (cached.sideWidth, cached.bWidth, cached.height)
+    } else {
+      layout = compute(contentWidth: contentWidth, subviews: subviews)
+    }
+
+    func yOffset(for size: CGSize) -> CGFloat {
+      switch verticalAlignment {
+      case .top:
+        return bounds.minY
+      case .center:
+        return bounds.minY + (bounds.height - size.height) / 2
+      case .bottom:
+        return bounds.maxY - size.height
+      default:
+        return bounds.minY + (bounds.height - size.height) / 2
+      }
+    }
+
+    var x = bounds.minX
+
+    // A
+    let aSize = subviews[0].sizeThatFits(.init(width: layout.sideWidth, height: bounds.height))
+    subviews[0].place(
+      at: CGPoint(x: x, y: yOffset(for: aSize)),
+      proposal: .init(width: layout.sideWidth, height: aSize.height)
+    )
+
+    x += layout.sideWidth + spacing
+
+    // B
+    let bSize = subviews[1].sizeThatFits(.init(width: layout.bWidth, height: bounds.height))
+    subviews[1].place(
+      at: CGPoint(x: x, y: yOffset(for: bSize)),
+      proposal: .init(width: layout.bWidth, height: bSize.height)
+    )
+
+    x += layout.bWidth + spacing
+
+    // C
+    let cSize = subviews[2].sizeThatFits(.init(width: layout.sideWidth, height: bounds.height))
+    subviews[2].place(
+      at: CGPoint(x: x, y: yOffset(for: cSize)),
+      proposal: .init(width: layout.sideWidth, height: cSize.height)
+    )
+  }
+
+  // MARK: Private
+
+  private let centerMode: CenterMode
+  private let spacing: CGFloat
+  private let verticalAlignment: VerticalAlignment
+
+  private func compute(
+    contentWidth: CGFloat,
+    subviews: Subviews
+  )
+    -> (sideWidth: CGFloat, bWidth: CGFloat, height: CGFloat) {
+    let bIntrinsic = subviews[1].sizeThatFits(.unspecified)
+
+    // Allow the left/right sides to size themselves, and only shrink the center
+    // content when space is constrained.
+    let leftIntrinsic = subviews[0].sizeThatFits(.unspecified)
+    let rightIntrinsic = subviews[2].sizeThatFits(.unspecified)
+    let minSideWidth = max(leftIntrinsic.width, rightIntrinsic.width)
+
+    let sideWidth: CGFloat
+    let bWidth: CGFloat
+
+    switch centerMode {
+    case .fitContent:
+      // Give the center the room it wants first, but ensure left/right views
+      // are never squeezed below their intrinsic width unless the total width is
+      // smaller than the sum of their intrinsic widths.
+      let desiredSideWidth = minSideWidth
+      let maxCenterWidth = max(0, contentWidth - 2 * desiredSideWidth)
+
+      let centerWidth = min(bIntrinsic.width, maxCenterWidth)
+      let remaining = contentWidth - centerWidth
+
+      // If we have enough room, expand sides evenly. Otherwise, shrink the
+      // center to keep the side views at (or near) their intrinsic widths.
+      let sideIfExpanded = remaining / 2
+      if sideIfExpanded >= desiredSideWidth {
+        sideWidth = sideIfExpanded
+        bWidth = centerWidth
+      } else {
+        let clampedSide = min(desiredSideWidth, contentWidth / 2)
+        sideWidth = clampedSide
+        bWidth = max(0, contentWidth - 2 * clampedSide)
+      }
+
+    case .fillAvailable:
+      let aMin = leftIntrinsic.width
+      let cMin = rightIntrinsic.width
+
+      let safeRemaining = max(0, contentWidth - aMin - cMin)
+
+      bWidth = safeRemaining
+      sideWidth = (contentWidth - bWidth) / 2
+    }
+
+    let aSize = subviews[0].sizeThatFits(.init(width: sideWidth, height: nil))
+    let cSize = subviews[2].sizeThatFits(.init(width: sideWidth, height: nil))
+
+    let height = max(aSize.height, bIntrinsic.height, cSize.height)
+
+    return (sideWidth, bWidth, height)
+  }
+
+  private func intrinsicSize(_ subviews: Subviews, _ totalSpacing: CGFloat) -> CGSize {
+    let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+
+    let width = sizes.map(\.width).reduce(0, +) + totalSpacing
+    let height = sizes.map(\.height).max() ?? 0
+
+    return CGSize(width: width, height: height)
+  }
 }
 
 // MARK: - GlassEffectModifier
