@@ -83,7 +83,8 @@ public final class MusicLibrary {
 
   /// Import audio files (or directories) from an array of URLs.
   /// Duplicates (by file URL) are automatically skipped.
-  /// Uses TaskGroup for parallel metadata reading and batch UI updates.
+  /// Phase 99: Sequential metadata reading (replaced TaskGroup to avoid
+  /// filesystem-level race conditions with concurrent file access).
   public func importFiles(urls: [URL]) async {
     isImporting = true
     defer {
@@ -113,88 +114,68 @@ public final class MusicLibrary {
       }
     }
 
-    // Phase 2: Read metadata in parallel.
-    let maxConcurrency = 8
+    // Phase 2: Read metadata sequentially (Phase 99: replaced TaskGroup).
     let batchSize = 50
     var existingURLs = Set(tracks.map(\.fileURL))
     var pendingTracks: [Track] = []
     importTotalFileCount = allFileURLs.count
     importFinishedFileCount = 0
 
-    await withTaskGroup(of: Track?.self) { group in
-      var iterator = allFileURLs.makeIterator()
-
-      func enqueueNext() -> Bool {
-        guard let fileURL = iterator.next() else { return false }
-        group.addTask {
-          // Check if this is a Voice Memo before processing
-          let isVoice = await MetadataReader.isVoiceMemo(url: fileURL)
-          if isVoice {
-            print("[MusicLibrary] Skipping Voice Memo: \(fileURL.lastPathComponent)")
-            return nil
-          }
-
-          let meta = await MetadataReader.readTrackInfo(from: fileURL)
-          return meta.track
-        }
-        return true
-      }
-
-      // Seed initial tasks.
-      for _ in 0 ..< maxConcurrency {
-        if !enqueueNext() { break }
-      }
-
-      for await optionalTrack in group {
+    for fileURL in allFileURLs {
+      // Check if this is a Voice Memo before processing.
+      let isVoice = await MetadataReader.isVoiceMemo(url: fileURL)
+      if isVoice {
         importFinishedFileCount += 1
-        // Skip voice memos (tracks that returned nil)
-        guard var track = optionalTrack else { continue }
+        continue
+      }
 
-        // Phase 79: Create per-file bookmark for sandbox persistence across app relaunches.
-        if track.bookmarkData == nil {
-          track.bookmarkData = Self.createBookmark(for: track.fileURL)
-        }
+      let meta = await MetadataReader.readTrackInfo(from: fileURL)
+      var track = meta.track
 
-        currentProcessingFileName = track.fileURL.lastPathComponent
-        if existingURLs.contains(track.fileURL) {
-          // Duplicate: update existing track's metadata in-place.  Do **not** touch
-          // `totalPlayCount` here – the user’s accumulated play count should survive
-          // repeated imports.  The new `track` object has a fresh default count of 0,
-          // so assigning `tracks[idx] = track` would reset the counter.
-          if let idx = tracks.firstIndex(where: { $0.fileURL == track.fileURL }) {
-            tracks[idx].title = track.title
-            tracks[idx].artist = track.artist
-            tracks[idx].albumTitle = track.albumTitle
-            tracks[idx].albumArtist = track.albumArtist
-            tracks[idx].trackNumber = track.trackNumber
-            tracks[idx].discNumber = track.discNumber
-            tracks[idx].duration = track.duration
-            tracks[idx].genre = track.genre
-            tracks[idx].year = track.year
-            tracks[idx].fallbackFields = track.fallbackFields
-            // totalPlayCount intentionally not modified
-            // Phase 79: Backfill bookmark if previously missing.
-            if tracks[idx].bookmarkData == nil {
-              tracks[idx].bookmarkData = track.bookmarkData
-            }
+      importFinishedFileCount += 1
+
+      // Phase 79: Create per-file bookmark for sandbox persistence across app relaunches.
+      if track.bookmarkData == nil {
+        track.bookmarkData = Self.createBookmark(for: track.fileURL)
+      }
+
+      currentProcessingFileName = track.fileURL.lastPathComponent
+      if existingURLs.contains(track.fileURL) {
+        // Duplicate: update existing track’s metadata in-place.  Do **not** touch
+        // `totalPlayCount` here – the user’s accumulated play count should survive
+        // repeated imports.  The new `track` object has a fresh default count of 0,
+        // so assigning `tracks[idx] = track` would reset the counter.
+        if let idx = tracks.firstIndex(where: { $0.fileURL == track.fileURL }) {
+          tracks[idx].title = track.title
+          tracks[idx].artist = track.artist
+          tracks[idx].albumTitle = track.albumTitle
+          tracks[idx].albumArtist = track.albumArtist
+          tracks[idx].trackNumber = track.trackNumber
+          tracks[idx].discNumber = track.discNumber
+          tracks[idx].duration = track.duration
+          tracks[idx].genre = track.genre
+          tracks[idx].year = track.year
+          tracks[idx].fallbackFields = track.fallbackFields
+          // totalPlayCount intentionally not modified
+          // Phase 79: Backfill bookmark if previously missing.
+          if tracks[idx].bookmarkData == nil {
+            tracks[idx].bookmarkData = track.bookmarkData
           }
-        } else {
-          existingURLs.insert(track.fileURL)
-          pendingTracks.append(track)
         }
-        // Batch flush for progressive UI updates.
-        if pendingTracks.count >= batchSize {
-          tracks.append(contentsOf: pendingTracks)
-          pendingTracks.removeAll(keepingCapacity: true)
-          organizeAlbums()
-        }
-        _ = enqueueNext()
+      } else {
+        existingURLs.insert(track.fileURL)
+        pendingTracks.append(track)
+      }
+      // Batch flush for progressive UI updates.
+      if pendingTracks.count >= batchSize {
+        tracks.append(contentsOf: pendingTracks)
+        pendingTracks.removeAll(keepingCapacity: true)
+        organizeAlbums()
       }
     }
 
-    // 之前的操作都是直接操縱 in-memory 資料庫。
-    var newTracksArray = tracks
     // Flush remaining tracks.
+    var newTracksArray = tracks
     if !pendingTracks.isEmpty {
       newTracksArray.append(contentsOf: pendingTracks)
     }
@@ -586,6 +567,8 @@ public final class MusicLibrary {
   }
 
   /// Persist all current tracks to SwiftData (incremental update).
+  /// Phase 99: Replaced `context.enumerate` with `context.fetch` to avoid
+  /// modifying the collection mid-enumeration and causing data inconsistencies.
   private func persistAllTracks() {
     guard let container = _modelContainer else { return }
     let trackMap: [UUID: Track] = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
@@ -593,7 +576,8 @@ public final class MusicLibrary {
     let context = ModelContext(container)
     do {
       let descriptor = FetchDescriptor<PersistedTrack>()
-      try context.enumerate(descriptor) { existing in
+      let existingRecords = try context.fetch(descriptor)
+      for existing in existingRecords {
         if newTrackIDs.contains(existing.id), let track = trackMap[existing.id] {
           existing.inherit(track)
           newTrackIDs.remove(existing.id)
@@ -612,6 +596,8 @@ public final class MusicLibrary {
   }
 
   /// Persist all playlists to SwiftData (incremental update).
+  /// Phase 99: Replaced `context.enumerate` with `context.fetch` to avoid
+  /// modifying the collection mid-enumeration and causing data inconsistencies.
   private func persistAllPlaylists() {
     guard let container = _modelContainer else { return }
     let playlistMap: [UUID: (index: Int, playlist: Playlist)] = Dictionary(
@@ -621,7 +607,8 @@ public final class MusicLibrary {
     let context = ModelContext(container)
     do {
       let descriptor = FetchDescriptor<PersistedPlaylist>()
-      try context.enumerate(descriptor) { existing in
+      let existingRecords = try context.fetch(descriptor)
+      for existing in existingRecords {
         if newPlaylistIDs.contains(existing.id), let entry = playlistMap[existing.id] {
           existing.name = entry.playlist.name
           existing.trackIDs = entry.playlist.trackIDs

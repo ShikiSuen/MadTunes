@@ -223,6 +223,14 @@ final class MadTunesViewModel {
     }
   }
 
+  /// Phase 99: Explicitly push current data into both grid and table display
+  /// buffers. This covers the `withObservationTracking` re-registration gap
+  /// where mutations between onChange firing and Task re-registration are missed.
+  func refreshDisplayBuffers() {
+    gridVM.scheduleDisplayedAlbumsUpdate(to: gridVM.currentAlbumsDisplayed)
+    tableVM.scheduleDisplayedTracksUpdate(to: tableVM.currentTracksDisplayed)
+  }
+
   /// Removes tracks from the library and ensures they are also removed from
   /// playback state (queue/current track) and any cached filter results.
   /// Phase 86: Also cleans up cross-UI state (WPUI selection, recent album keys,
@@ -277,6 +285,11 @@ final class MadTunesViewModel {
 
     // Phase 86: Pop WPUI navigation if the user is viewing a now-deleted album or playlist.
     phoneVM.popNavigationIfDataInvalid(library: library)
+
+    // Phase 99: Explicitly refresh display buffers to cover the
+    // `withObservationTracking` re-registration gap where mutations
+    // between onChange firing and Task re-registration are missed.
+    refreshDisplayBuffers()
   }
 
   /// Resets column browser filters.
@@ -318,6 +331,9 @@ final class MadTunesViewModel {
           library.addTracks(Set(idsToAdd), toPlaylist: pid)
         }
       }
+
+      // Phase 99: Explicitly refresh display buffers after import completes.
+      refreshDisplayBuffers()
     }
   }
 

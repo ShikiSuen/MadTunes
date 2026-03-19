@@ -2680,7 +2680,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Performance Mode (for old devices)"
+            "value" : "Performance Mode"
           }
         },
         "ja" : {
