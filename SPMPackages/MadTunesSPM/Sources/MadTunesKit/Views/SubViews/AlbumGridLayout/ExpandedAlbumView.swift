@@ -23,12 +23,14 @@ struct ExpandedAlbumView: View {
 
   init(
     album: Album,
+    showBackground: Bool = true,
     currentTrackID: UUID? = nil,
     containerWidth: CGFloat,
     selectedTrackIDs: Binding<Set<UUID>>,
     onClose: @escaping () -> Void
   ) {
     self.album = album
+    self.showBackground = showBackground
     self.currentTrackID = currentTrackID
     self.containerWidth = containerWidth
     self._selectedTrackIDs = selectedTrackIDs
@@ -96,7 +98,7 @@ struct ExpandedAlbumView: View {
     .padding(16 * vm.uiFactor)
     .background(
       RoundedRectangle(cornerRadius: 12)
-        .fill(.secondary.opacity(0.1))
+        .fill(showBackground ? Color.secondary.opacity(0.1) : Color.clear)
     )
     .padding(.horizontal, 4 * vm.uiFactor)
     .background(
@@ -179,6 +181,8 @@ struct ExpandedAlbumView: View {
   @State private var dragAnchorTrackID: UUID?
   @State private var preDragSelection: Set<UUID> = []
   @State private var isDragSelecting = false
+
+  private let showBackground: Bool
 
   private let album: Album
   private var currentTrackID: UUID?

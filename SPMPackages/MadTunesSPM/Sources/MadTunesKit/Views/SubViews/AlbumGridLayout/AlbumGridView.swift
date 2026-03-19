@@ -18,9 +18,62 @@ struct AlbumGridView: View {
 
   var body: some View {
     mainContent
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        // Expanded detail for the expanded album (if it belongs to this row).
+        if gridVM.legacyHardwareMode,
+           let expandedAlbum = gridVM.displayedAlbums.first(
+             where: { $0.id == gridVM.expandedAlbumID }
+           ) {
+          let id = "\(expandedAlbum.id)_\(Int(canvasWidth))"
+          ScrollViewReader { proxy in
+            ScrollView {
+              ExpandedAlbumView(
+                album: expandedAlbum,
+                showBackground: false,
+                currentTrackID: currentTrackID,
+                containerWidth: canvasWidth,
+                selectedTrackIDs: Bindable(vm).selectedTrackIDs,
+                onClose: { gridVM.expandedAlbumID = nil }
+              )
+              .drawingGroup()
+              .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
+              .onAppear {
+                gridVM.expandedAlbumWasInView = true
+              }
+              .onDisappear {
+                gridVM.expandedAlbumWasInView = false
+              }
+            }
+            .scrollContentBackground(.hidden)
+            .background {
+              Rectangle()
+                .fill(.ultraThickMaterial)
+                .ignoresSafeArea(.all)
+            }
+            .onChange(of: gridVM.expandedAlbumID) { _, newVal in
+              guard newVal != nil else { return }
+              gridVM.proxyScrollDebouncer.debounceOnMain {
+                withAnimation(.interactiveSpring) {
+                  proxy.scrollTo(id)
+                }
+              }
+            }
+          }
+          .compositingGroup()
+          .shadow(radius: 8)
+          .padding(.horizontal)
+          .frame(
+            width: vm.screenVM.mainColumnCanvasSizeObserved.width,
+            height: (220 + 20) * vm.uiFactor
+          )
+        }
+      }
       .opacity(screenVM.windowSizeEverObserved ? 1 : 0)
       // Phase 54: Unify the animated response against `expandedAlbumID` changes.
-      .animation(.interactiveSpring(duration: 0.2), value: gridVM.expandedAlbumID)
+      .animation(
+        .interactiveSpring(duration: 0.2),
+        value: gridVM.expandedAlbumID
+      )
       .animation(.none, value: canvasWidth)
       .sheet(isPresented: Bindable(gridVM).isTrackInfoPresented) {
         trackInfoSheetContent
@@ -109,9 +162,10 @@ struct AlbumGridView: View {
             albumRow(row, columnCount: columnCount)
 
             // Expanded detail for the expanded album (if it belongs to this row).
-            if let expandedAlbum = row.first(where: { $0.id == gridVM.expandedAlbumID }) {
+            if !gridVM.legacyHardwareMode, let expandedAlbum = row.first(where: { $0.id == gridVM.expandedAlbumID }) {
               ExpandedAlbumView(
                 album: expandedAlbum,
+                showBackground: true,
                 currentTrackID: currentTrackID,
                 containerWidth: canvasWidth,
                 selectedTrackIDs: Bindable(vm).selectedTrackIDs,
@@ -142,9 +196,12 @@ struct AlbumGridView: View {
       }
       .scrollContentBackground(.hidden)
       // Phase 96: expandedAlbumID scroll (data scheduling moved to ViewModel).
+      // Phase 98: In Intel Mac mode, skip auto-scroll to ExpandedAlbumView;
+      // scrolling to AlbumGridItemView is handled in the safeAreaInset onChange.
       .onChange(of: gridVM.expandedAlbumID) { _, newValue in
         guard let newValue else { return }
         gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: newValue)
+        guard !gridVM.legacyHardwareMode else { return }
         gridVM.proxyScrollDebouncer.debounceOnMain {
           withAnimation(.interactiveSpring) {
             proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")

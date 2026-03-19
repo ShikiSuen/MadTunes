@@ -24,6 +24,24 @@ struct GlobalControlMenuCommands: Commands {
       } else {
         commandsOfControlForAlbumGridView
       }
+      // Phase 98: Performance mode toggle (Intel Mac safeAreaInset expansion).
+      Section {
+        Toggle(
+          isOn: Binding(
+            get: { vm.gridVM.legacyHardwareMode },
+            set: { vm.gridVM.legacyHardwareMode = $0 }
+          )
+        ) {
+          Label(
+            String(
+              localized: "i18n:Menu.LegacyMacPerformanceMode",
+              defaultValue: "Performance Mode",
+              bundle: #bundle
+            ),
+            systemImage: "pc"
+          )
+        }
+      }
     }
   }
 

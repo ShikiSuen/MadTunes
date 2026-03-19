@@ -76,6 +76,15 @@ final class AlbumGridViewModel {
 
   var expandedAlbumWasInView = false
 
+  // MARK: - Phase 98: Intel Mac Performance Mode
+
+  /// Phase 98: Whether to use safeAreaInset-based expansion (Intel Mac performance mode).
+  /// @AppStorage + @ObservationIgnored bridge for @Observable compatibility.
+  var legacyHardwareMode: Bool {
+    get { access(keyPath: \.legacyHardwareMode); return _legacyHardwareMode }
+    set { withMutation(keyPath: \.legacyHardwareMode) { _legacyHardwareMode = newValue } }
+  }
+
   // MARK: - Dedicated Properties (Computed)
 
   var gridColumnCount: Int {
@@ -480,6 +489,11 @@ final class AlbumGridViewModel {
   // MARK: Private
 
   // MARK: - Display Buffer Methods
+
+  @ObservationIgnored @AppStorage(
+    wrappedValue: ThisDevice.isIntelProcessor,
+    "MadTunes.AlbumGridViewIntelMacCompatibility"
+  ) private var _legacyHardwareMode
 
   private let minItemWidth: CGFloat = 160
   private let gridSpacing: CGFloat = 16

@@ -88,7 +88,22 @@ struct MadTunesMainView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
           ZStack {
-            BottomBarBackground()
+            Group {
+              Group {
+                if #available(macOS 26.0, iOS 26.0, *), OS.liquidGlassThemeSuspected {
+                  Rectangle()
+                    .glassEffect(.regular, in: .rect)
+                } else {
+                  Rectangle()
+                    .fill(.ultraThinMaterial)
+                }
+              }
+              .mask {
+                BottomBarMask()
+              }
+              .ignoresSafeArea(.all)
+              BottomBarBackground()
+            }
             PlayerControlsView(player: vm.player, artworkData: vm.currentTrackArtwork)
               .fixedSize()
               .frame(maxWidth: .infinity)
@@ -323,6 +338,27 @@ struct MadTunesMainView: View {
           selectedPlaylist: vm.library.playlists.first(where: { $0.id == vm.selectedPlaylistID })
         )
       }
+  }
+}
+
+// MARK: - BottomBarMask
+
+private struct BottomBarMask: View {
+  @Environment(\.colorScheme) var colorScheme
+
+  var body: some View {
+    let baseColor = Color.primary
+    LinearGradient(
+      colors: [
+        baseColor.opacity(0),
+        baseColor.opacity(1),
+        baseColor,
+      ],
+      startPoint: .top,
+      endPoint: .bottom
+    )
+    .ignoresSafeArea(.all)
+    .colorInvert()
   }
 }
 
