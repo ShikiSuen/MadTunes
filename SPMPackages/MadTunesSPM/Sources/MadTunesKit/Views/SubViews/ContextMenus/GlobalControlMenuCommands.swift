@@ -46,12 +46,12 @@ struct GlobalControlMenuCommands: Commands {
               await vm.player.setQueue(selected, startingAt: 0)
             }
           } else {
-            withAnimation(.easeInOut(duration: 0.3)) {
+            withAnimation(.interactiveSpring) {
               vm.gridVM.expandedAlbumID = nil
             }
           }
         } else if vm.gridVM.highlightedAlbumIDs.count == 1 {
-          withAnimation(.easeInOut(duration: 0.3)) {
+          withAnimation(.interactiveSpring) {
             vm.gridVM.expandedAlbumID = vm.gridVM.highlightedAlbumIDs.first
           }
         }
@@ -69,7 +69,7 @@ struct GlobalControlMenuCommands: Commands {
 
       // Collapse — Cmd+↑
       Button {
-        withAnimation(.easeInOut(duration: 0.3)) {
+        withAnimation(.interactiveSpring) {
           vm.gridVM.expandedAlbumID = nil
         }
       } label: {

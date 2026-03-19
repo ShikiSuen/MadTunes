@@ -238,7 +238,7 @@ struct WPPivotBar: View {
         HStack(spacing: 20) {
           ForEach(WPPhoneViewModel.LibraryPivot.allCases) { pivot in
             Button {
-              withAnimation(.easeInOut(duration: 0.2)) {
+              withAnimation(.interactiveSpring) {
                 currentPivot = pivot
               }
             } label: {

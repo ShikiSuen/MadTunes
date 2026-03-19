@@ -16,7 +16,7 @@ struct WPMiniPlayerBar: View {
 
   var body: some View {
     Button {
-      withAnimation(.easeInOut(duration: 0.25)) {
+      withAnimation(.interactiveSpring) {
         phoneVM.currentSection = .nowPlaying
       }
     } label: {

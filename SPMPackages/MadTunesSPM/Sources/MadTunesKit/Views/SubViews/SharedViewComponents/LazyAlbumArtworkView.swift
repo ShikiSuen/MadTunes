@@ -31,6 +31,7 @@ struct LazyAlbumArtworkView: View {
           sampleTrackBookmark: track.bookmarkData
         )
       }
+      .animation(.interactiveSpring, value: cachedArtwork?.hashValue)
   }
 
   // MARK: Private

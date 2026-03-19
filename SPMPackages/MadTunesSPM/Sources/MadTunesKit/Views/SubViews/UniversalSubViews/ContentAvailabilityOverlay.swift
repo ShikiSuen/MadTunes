@@ -147,10 +147,10 @@ struct ContentAvailabilityOverlay: View {
           .compositingGroup()
       }
     }
-    .animation(.easeOut(duration: 0.12), value: vm.library.hasLoadedPersistence)
-    .animation(.easeOut(duration: 0.12), value: vm.isSearching)
-    .animation(.easeOut(duration: 0.12), value: vm.library.isImporting)
-    .animation(.easeOut(duration: 0.12), value: hasActiveFilters)
+    .animation(.interactiveSpring, value: vm.library.hasLoadedPersistence)
+    .animation(.interactiveSpring, value: vm.isSearching)
+    .animation(.interactiveSpring, value: vm.library.isImporting)
+    .animation(.interactiveSpring, value: hasActiveFilters)
   }
 
   // MARK: Private

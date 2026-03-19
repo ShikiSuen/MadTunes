@@ -115,7 +115,7 @@ private struct WPFilterSection: View {
     VStack(spacing: 0) {
       // Section header (tap to expand/collapse).
       Button {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.interactiveSpring) {
           isExpanded.toggle()
         }
       } label: {

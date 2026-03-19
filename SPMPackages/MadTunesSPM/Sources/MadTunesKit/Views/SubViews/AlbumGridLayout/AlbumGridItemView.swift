@@ -65,7 +65,7 @@ struct AlbumGridItemView: View {
       .padding(.horizontal, isExpanded ? 4 : 8)
       .padding(.bottom, 4)
     }
-    .animation(.easeInOut(duration: 0.2), value: isExpanded)
+    .animation(.interactiveSpring, value: isExpanded)
     .background {
       if showSelectedStatus {
         selectionBackground

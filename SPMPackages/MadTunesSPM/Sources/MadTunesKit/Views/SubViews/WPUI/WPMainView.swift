@@ -105,7 +105,7 @@ struct WPMainView: View {
           .ignoresSafeArea()
         )
       }
-      .animation(.easeInOut(duration: 0.25), value: phoneVM.currentSection)
+      .animation(.interactiveSpring, value: phoneVM.currentSection)
       .preferredColorScheme(.dark)
       .environment(vm)
       .environment(phoneVM)
@@ -299,7 +299,7 @@ struct WPSectionTitlesBar: View {
         HStack(spacing: 20) {
           ForEach(WPPhoneViewModel.PanoramaSection.allCases) { section in
             Button {
-              withAnimation(.easeInOut(duration: 0.25)) {
+              withAnimation(.interactiveSpring) {
                 currentSection = section
               }
             } label: {

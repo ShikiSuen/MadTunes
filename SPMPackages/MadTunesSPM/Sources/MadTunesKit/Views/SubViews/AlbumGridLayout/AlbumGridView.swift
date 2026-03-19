@@ -18,10 +18,10 @@ struct AlbumGridView: View {
 
   var body: some View {
     mainContent
-      // Phase 54: Unify the animated response against `expandedAlbumID` changes.
-      .animation(.easeInOut(duration: 0.3), value: gridVM.expandedAlbumID)
-      .animation(canvasAnimation, value: canvasWidth)
       .opacity(screenVM.windowSizeEverObserved ? 1 : 0)
+      // Phase 54: Unify the animated response against `expandedAlbumID` changes.
+      .animation(.interactiveSpring(duration: 0.2), value: gridVM.expandedAlbumID)
+      .animation(.none, value: canvasWidth)
       .sheet(isPresented: Bindable(gridVM).isTrackInfoPresented) {
         trackInfoSheetContent
       }
@@ -93,11 +93,6 @@ struct AlbumGridView: View {
     gridVM.expandedAlbumID == nil
   }
 
-  private var canvasAnimation: Animation {
-    let duration: TimeInterval = screenVM.windowSizeEverObserved ? 0.12 : 0
-    return .easeOut(duration: duration)
-  }
-
   /// The normalised selection rectangle from drag origin to current position.
   private var selectionRect: CGRect? {
     gridVM.selectionRect
@@ -120,7 +115,7 @@ struct AlbumGridView: View {
                 currentTrackID: currentTrackID,
                 containerWidth: canvasWidth,
                 selectedTrackIDs: Bindable(vm).selectedTrackIDs,
-                onClose: { withAnimation(.easeInOut(duration: 0.3)) { gridVM.expandedAlbumID = nil } }
+                onClose: { gridVM.expandedAlbumID = nil }
               )
               .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
               .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
@@ -146,13 +141,12 @@ struct AlbumGridView: View {
         .drawingGroup()
       }
       .scrollContentBackground(.hidden)
-      .frame(width: canvasWidth, alignment: .leading)
       // Phase 96: expandedAlbumID scroll (data scheduling moved to ViewModel).
       .onChange(of: gridVM.expandedAlbumID) { _, newValue in
         guard let newValue else { return }
         gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: newValue)
         gridVM.proxyScrollDebouncer.debounceOnMain {
-          withAnimation(.easeInOut(duration: 0.3)) {
+          withAnimation(.interactiveSpring) {
             proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
           }
         }
@@ -162,7 +156,7 @@ struct AlbumGridView: View {
         let wasVisible = gridVM.expandedAlbumWasInView
         guard wasVisible else { return }
         gridVM.proxyScrollDebouncer.debounceOnMain {
-          withAnimation(.easeInOut(duration: 0.3)) {
+          withAnimation(.interactiveSpring) {
             proxy.scrollTo("\(expandedID)_\(Int(newWidth))")
           }
         }
@@ -178,7 +172,7 @@ struct AlbumGridView: View {
           where: { $0.contains { $0.id == albumID } }
         ) else { return }
         gridVM.proxyScrollDebouncer.debounceOnMain {
-          withAnimation(.easeInOut(duration: 0.3)) {
+          withAnimation(.interactiveSpring) {
             proxy.scrollTo(rowIndex, anchor: .center)
           }
         }
@@ -300,12 +294,6 @@ struct AlbumGridView: View {
           }
         )
         .contentShape(Rectangle())
-        .animation(
-          .easeOut(duration: 0.12),
-          value: vm.library.artworkLoadingKeys.contains(
-            vm.library.albumKey(title: album.title, artist: album.artist)
-          )
-        )
         // Phase 49/61: Combined gesture with debounced single-click and priority double-click.
         // Phase 61 fix: Plain single-click immediately sets cursor/selection but DELAYS
         // expansion (keepFirstAttemptInstead: false) so double-click can cancel it.
