@@ -339,46 +339,28 @@ final class MadTunesViewModel {
 
   // MARK: - Drop Handling
 
+  // Phase 100: Rewritten to (1) collect ALL URLs from all providers before
+  // importing, preventing concurrent importFiles interleaving on MainActor;
+  // (2) handle both file URLs and folder types; (3) handle both URL and Data
+  // return types from NSItemProvider (Finder may return either).
   func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-    var found = false
-    for provider in providers {
-      if provider.hasItemConformingToTypeIdentifier("public.file-url") {
-        found = true
-        provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, _ in
-          guard let data = data as? Data,
-                let url = URL(dataRepresentation: data, relativeTo: nil)
-          else { return }
-          #if os(macOS) || targetEnvironment(macCatalyst)
-          let bookmark = try? url.bookmarkData(
-            options: .withSecurityScope,
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-          )
-          #else
-          let bookmark: Data? = try? url.bookmarkData()
-          #endif
-          Task { @MainActor in
-            if let bookmark {
-              var stale = false
-              #if os(macOS) || targetEnvironment(macCatalyst)
-              if let scopedURL = try? URL(
-                resolvingBookmarkData: bookmark,
-                options: .withSecurityScope,
-                relativeTo: nil,
-                bookmarkDataIsStale: &stale
-              ) {
-                _ = scopedURL.startAccessingSecurityScopedResource()
-                self.importURLs([scopedURL])
-                return
-              }
-              #endif
-            }
-            self.importURLs([url])
-          }
+    let relevantProviders = providers.filter {
+      $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+        || $0.hasItemConformingToTypeIdentifier(UTType.folder.identifier)
+    }
+    guard !relevantProviders.isEmpty else { return false }
+
+    Task { @MainActor in
+      var collectedURLs: [URL] = []
+      for provider in relevantProviders {
+        if let url = await self.extractDroppedURL(from: provider) {
+          collectedURLs.append(url)
         }
       }
+      guard !collectedURLs.isEmpty else { return }
+      self.importURLs(collectedURLs)
     }
-    return found
+    return true
   }
 
   // MARK: - Select All & Copy
@@ -469,6 +451,57 @@ final class MadTunesViewModel {
       return library.tracks(for: playlist)
     }
     return library.tracks
+  }
+
+  /// Extract a URL from a dropped NSItemProvider, handling both file URLs and
+  /// folders, and both URL and Data return types.
+  private func extractDroppedURL(from provider: NSItemProvider) async -> URL? {
+    let typeIdentifier: String
+    if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+      typeIdentifier = UTType.fileURL.identifier
+    } else if provider.hasItemConformingToTypeIdentifier(UTType.folder.identifier) {
+      typeIdentifier = UTType.folder.identifier
+    } else {
+      return nil
+    }
+
+    return await withCheckedContinuation { continuation in
+      provider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { item, _ in
+        // Finder may return a URL directly (especially for folders) or Data.
+        var rawURL: URL?
+        if let url = item as? URL {
+          rawURL = url
+        } else if let data = item as? Data {
+          rawURL = URL(dataRepresentation: data, relativeTo: nil)
+        }
+
+        guard let url = rawURL else {
+          continuation.resume(returning: nil)
+          return
+        }
+
+        #if os(macOS) || targetEnvironment(macCatalyst)
+        if let bookmark = try? url.bookmarkData(
+          options: .withSecurityScope,
+          includingResourceValuesForKeys: nil,
+          relativeTo: nil
+        ) {
+          var stale = false
+          if let scopedURL = try? URL(
+            resolvingBookmarkData: bookmark,
+            options: .withSecurityScope,
+            relativeTo: nil,
+            bookmarkDataIsStale: &stale
+          ) {
+            _ = scopedURL.startAccessingSecurityScopedResource()
+            continuation.resume(returning: scopedURL)
+            return
+          }
+        }
+        #endif
+        continuation.resume(returning: url)
+      }
+    }
   }
 
   private func setupObservations() {
