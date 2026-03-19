@@ -716,7 +716,7 @@ final class AlbumGridViewModel {
 
     if press.isAlbumExpansionAssignmentKey {
       if highlightedAlbumIDs.count == 1 {
-        withAnimation(.interactiveSpring) {
+        withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) {
           expandedAlbumID = highlightedAlbumIDs.first
         }
         return .handled
@@ -735,7 +735,7 @@ final class AlbumGridViewModel {
     let sorted = album.tracks
     guard !sorted.isEmpty else {
       if press.key == .escape || (press.modifiers.contains(.command) && press.key == .upArrow) {
-        withAnimation(.interactiveSpring) { expandedAlbumID = nil }
+        withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) { expandedAlbumID = nil }
         return .handled
       }
       return .ignored
@@ -743,7 +743,7 @@ final class AlbumGridViewModel {
 
     if press.key == .escape
       || (press.modifiers.contains(.command) && press.key == .upArrow) {
-      withAnimation(.interactiveSpring) {
+      withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) {
         expandedAlbumID = nil
       }
       return .handled
@@ -757,7 +757,7 @@ final class AlbumGridViewModel {
         }
         return .handled
       }
-      withAnimation(.interactiveSpring) {
+      withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) {
         expandedAlbumID = nil
       }
       return .handled
@@ -772,7 +772,7 @@ final class AlbumGridViewModel {
           }
           return .handled
         case .upArrow:
-          withAnimation(.interactiveSpring) {
+          withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) {
             expandedAlbumID = nil
           }
           return .handled
@@ -806,7 +806,7 @@ final class AlbumGridViewModel {
       case .downArrow:
         let lastIdx = sorted.lastIndex(where: { mainVM.selectedTrackIDs.contains($0.id) }) ?? anchorIdx
         if lastIdx >= sorted.count - 1 {
-          withAnimation(.interactiveSpring) {
+          withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) {
             expandedAlbumID = nil
           }
           mainVM.selectedTrackIDs.removeAll()
@@ -848,7 +848,7 @@ final class AlbumGridViewModel {
     }
     guard newIdx != idx else { return .handled }
     let newAlbumID = albums[newIdx].id
-    withAnimation(.interactiveSpring) {
+    withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) {
       highlightedAlbumIDs = [newAlbumID]
       expandedAlbumID = newAlbumID
     }

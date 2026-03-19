@@ -53,8 +53,8 @@ struct AlbumGridView: View {
             .onChange(of: gridVM.expandedAlbumID) { _, newVal in
               guard newVal != nil else { return }
               gridVM.proxyScrollDebouncer.debounceOnMain {
-                withAnimation(.interactiveSpring) {
-                  proxy.scrollTo(id)
+                withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
+                  proxy.scrollTo(id, anchor: .top)
                 }
               }
             }
@@ -71,7 +71,7 @@ struct AlbumGridView: View {
       .opacity(screenVM.windowSizeEverObserved ? 1 : 0)
       // Phase 54: Unify the animated response against `expandedAlbumID` changes.
       .animation(
-        .interactiveSpring(duration: 0.2),
+        .interactiveSpring(duration: 0.2).nerf(gridVM.legacyHardwareMode),
         value: gridVM.expandedAlbumID
       )
       .animation(.none, value: canvasWidth)
@@ -203,7 +203,7 @@ struct AlbumGridView: View {
         gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: newValue)
         guard !gridVM.legacyHardwareMode else { return }
         gridVM.proxyScrollDebouncer.debounceOnMain {
-          withAnimation(.interactiveSpring) {
+          withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
             proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
           }
         }
@@ -213,7 +213,7 @@ struct AlbumGridView: View {
         let wasVisible = gridVM.expandedAlbumWasInView
         guard wasVisible else { return }
         gridVM.proxyScrollDebouncer.debounceOnMain {
-          withAnimation(.interactiveSpring) {
+          withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
             proxy.scrollTo("\(expandedID)_\(Int(newWidth))")
           }
         }
@@ -229,7 +229,7 @@ struct AlbumGridView: View {
           where: { $0.contains { $0.id == albumID } }
         ) else { return }
         gridVM.proxyScrollDebouncer.debounceOnMain {
-          withAnimation(.interactiveSpring) {
+          withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
             proxy.scrollTo(rowIndex, anchor: .center)
           }
         }

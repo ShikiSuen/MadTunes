@@ -105,7 +105,10 @@ struct WPMainView: View {
           .ignoresSafeArea()
         )
       }
-      .animation(.interactiveSpring, value: phoneVM.currentSection)
+      .animation(
+        .interactiveSpring.nerf(vm.gridVM.legacyHardwareMode),
+        value: phoneVM.currentSection
+      )
       .preferredColorScheme(.dark)
       .environment(vm)
       .environment(phoneVM)
@@ -291,6 +294,8 @@ enum WPNavigationDestination: Hashable {
 struct WPSectionTitlesBar: View {
   @Binding var currentSection: WPPhoneViewModel.PanoramaSection
 
+  @State private var vm = MadTunesViewModel.shared
+
   let accentColor: Color
 
   var body: some View {
@@ -299,7 +304,7 @@ struct WPSectionTitlesBar: View {
         HStack(spacing: 20) {
           ForEach(WPPhoneViewModel.PanoramaSection.allCases) { section in
             Button {
-              withAnimation(.interactiveSpring) {
+              withAnimation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode)) {
                 currentSection = section
               }
             } label: {

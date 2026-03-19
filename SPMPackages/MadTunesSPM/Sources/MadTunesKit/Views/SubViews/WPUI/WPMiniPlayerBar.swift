@@ -16,7 +16,7 @@ struct WPMiniPlayerBar: View {
 
   var body: some View {
     Button {
-      withAnimation(.interactiveSpring) {
+      withAnimation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode)) {
         phoneVM.currentSection = .nowPlaying
       }
     } label: {

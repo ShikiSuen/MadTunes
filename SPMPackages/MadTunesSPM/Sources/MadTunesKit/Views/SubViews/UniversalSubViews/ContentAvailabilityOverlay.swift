@@ -147,10 +147,10 @@ struct ContentAvailabilityOverlay: View {
           .compositingGroup()
       }
     }
-    .animation(.interactiveSpring, value: vm.library.hasLoadedPersistence)
-    .animation(.interactiveSpring, value: vm.isSearching)
-    .animation(.interactiveSpring, value: vm.library.isImporting)
-    .animation(.interactiveSpring, value: hasActiveFilters)
+    .animation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode), value: vm.library.hasLoadedPersistence)
+    .animation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode), value: vm.isSearching)
+    .animation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode), value: vm.library.isImporting)
+    .animation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode), value: hasActiveFilters)
   }
 
   // MARK: Private

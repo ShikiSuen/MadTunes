@@ -111,11 +111,13 @@ private struct WPFilterSection: View {
 
   @State private var isExpanded = false
 
+  @State private var vm = MadTunesViewModel.shared
+
   var body: some View {
     VStack(spacing: 0) {
       // Section header (tap to expand/collapse).
       Button {
-        withAnimation(.interactiveSpring) {
+        withAnimation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode)) {
           isExpanded.toggle()
         }
       } label: {

@@ -252,7 +252,7 @@ struct AlbumTableView: View {
     .onChange(of: vm.tableVM.tableScrollTargetID) { _, newID in
       if let id = newID {
         Task {
-          withAnimation(.interactiveSpring) {
+          withAnimation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode)) {
             proxy.scrollTo(id, anchor: .center)
           }
         }
@@ -425,7 +425,7 @@ struct AlbumTableView: View {
     .onChange(of: vm.tableVM.tableScrollTargetID) { _, newID in
       if let id = newID {
         Task {
-          withAnimation(.interactiveSpring) {
+          withAnimation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode)) {
             proxy.scrollTo(id, anchor: .center)
           }
         }

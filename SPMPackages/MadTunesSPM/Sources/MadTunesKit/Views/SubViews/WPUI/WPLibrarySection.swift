@@ -230,6 +230,8 @@ struct WPLibrarySelectionBar: View {
 struct WPPivotBar: View {
   @Binding var currentPivot: WPPhoneViewModel.LibraryPivot
 
+  @State private var vm = MadTunesViewModel.shared
+
   let accentColor: Color
 
   var body: some View {
@@ -238,7 +240,7 @@ struct WPPivotBar: View {
         HStack(spacing: 20) {
           ForEach(WPPhoneViewModel.LibraryPivot.allCases) { pivot in
             Button {
-              withAnimation(.interactiveSpring) {
+              withAnimation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode)) {
                 currentPivot = pivot
               }
             } label: {

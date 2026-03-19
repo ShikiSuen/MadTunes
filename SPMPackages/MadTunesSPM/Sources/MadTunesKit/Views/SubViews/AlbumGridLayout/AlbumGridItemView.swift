@@ -65,7 +65,7 @@ struct AlbumGridItemView: View {
       .padding(.horizontal, isExpanded ? 4 : 8)
       .padding(.bottom, 4)
     }
-    .animation(.interactiveSpring, value: isExpanded)
+    .animation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode), value: isExpanded)
     .background {
       if showSelectedStatus {
         selectionBackground
@@ -74,6 +74,8 @@ struct AlbumGridItemView: View {
   }
 
   // MARK: Private
+
+  @State private var vm = MadTunesViewModel.shared
 
   private let album: Album
   private let isExpanded: Bool
