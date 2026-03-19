@@ -26,96 +26,120 @@ public struct MadTunesScene: Scene {
   // MARK: Public
 
   public var body: some Scene {
-    WindowGroup {
-      Group {
-        // Phase 75: Use WP Metro-style UI for iPhone / compact layout.
-        if WPPhoneViewModel.shouldUseWPUI(screenVM: vm.screenVM) {
-          WPMainView()
-            .frame(
-              minWidth: 320,
-              minHeight: 568
-            )
-        } else {
-          MadTunesMainView()
-            .frame(
-              minWidth: OS.type == .macOS ? 852 * vm.uiFactor : 320,
-              minHeight: OS.type == .macOS ? 574 * vm.uiFactor : 568
-            )
-        }
-      }
-      // Phase 69: Handle files opened via "Open In" / Share sheet / Finder.
-      .onOpenURL { url in
-        vm.importURLs([url])
-      }
-    }
-    .commands {
-      CommandGroup(replacing: .newItem) {
-        switch OS.isAppKit {
-        case true:
-          Button {
-            vm.isFolderImporterPresented = true
-          } label: {
-            Label(
-              String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle),
-              systemImage: "folder"
-            )
-          }
-          .keyboardShortcut("o")
-        case false:
-          // 此處不設定熱鍵。熱鍵全權交給 `MadTunesAppDelegate` 處理。
-          // 另外，此處也不需要系統判斷，不然 iPadOS 會出現兩個「開啟單個檔案」的命令。
-          // 總之，這裡只需要這個 CMD+Shift+O 的命令就行。
-          Button {
-            vm.isFolderImporterPresented = true
-          } label: {
-            Label(
-              String(localized: "i18n:Import.ImportFolder", bundle: #bundle),
-              systemImage: "folder"
-            )
-          }
-          .keyboardShortcut("o", modifiers: [.command, .shift])
-        }
-        #if DEBUG
-        Divider()
-        Menu {
-          if !vm.library.isImporting {
-            Button(role: .destructive) {
-              Task { await vm.player.stop() }
-              vm.library.clearDatabase()
+    coreScene
+      .commands {
+        CommandGroup(replacing: .newItem) {
+          switch OS.isAppKit {
+          case true:
+            Button {
+              vm.isFolderImporterPresented = true
             } label: {
               Label(
-                String(localized: "i18n:Debug.ClearDatabase", bundle: #bundle),
-                systemImage: "trash"
+                String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle),
+                systemImage: "folder"
               )
             }
+            .keyboardShortcut("o")
+          case false:
+            // 此處不設定熱鍵。熱鍵全權交給 `MadTunesAppDelegate` 處理。
+            // 另外，此處也不需要系統判斷，不然 iPadOS 會出現兩個「開啟單個檔案」的命令。
+            // 總之，這裡只需要這個 CMD+Shift+O 的命令就行。
+            Button {
+              vm.isFolderImporterPresented = true
+            } label: {
+              Label(
+                String(localized: "i18n:Import.ImportFolder", bundle: #bundle),
+                systemImage: "folder"
+              )
+            }
+            .keyboardShortcut("o", modifiers: [.command, .shift])
           }
-        } label: {
-          Label("# DEBUG".description, systemImage: "pc")
-        }
-        #endif
-      }
-      GlobalControlMenuCommands()
-      CommandGroup(before: .toolbar) {
-        if !vm.library.isImporting, !vm.useTableView {
+          #if DEBUG
+          Divider()
           Menu {
-            Picker(
-              String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
-              selection: $vm.gridVM.albumSortOrder
-            ) {
-              ForEach(AlbumSortOrder.allCases, id: \.self) { order in
-                Text(order.localizedName).tag(order)
+            if !vm.library.isImporting {
+              Button(role: .destructive) {
+                Task { await vm.player.stop() }
+                vm.library.clearDatabase()
+              } label: {
+                Label(
+                  String(localized: "i18n:Debug.ClearDatabase", bundle: #bundle),
+                  systemImage: "trash"
+                )
               }
             }
-            .pickerStyle(.inline)
           } label: {
-            Label(String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle), systemImage: "arrow.up.arrow.down")
-              .tint(.primary)
+            Label("# DEBUG".description, systemImage: "pc")
           }
-          Divider()
+          #endif
+        }
+        GlobalControlMenuCommands()
+        CommandGroup(before: .toolbar) {
+          if !vm.library.isImporting, !vm.useTableView {
+            Menu {
+              Picker(
+                String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
+                selection: $vm.gridVM.albumSortOrder
+              ) {
+                ForEach(AlbumSortOrder.allCases, id: \.self) { order in
+                  Text(order.localizedName).tag(order)
+                }
+              }
+              .pickerStyle(.inline)
+            } label: {
+              Label(
+                String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
+                systemImage: "arrow.up.arrow.down"
+              )
+              .tint(.primary)
+            }
+            Divider()
+          }
         }
       }
+      .windowResizability(.contentSize)
+  }
+
+  // MARK: Internal
+
+  @SceneBuilder var coreScene: some Scene {
+    #if !os(macOS)
+    WindowGroup {
+      coreSceneView
     }
-    .windowResizability(.contentSize)
+    #else
+    Window("MadTunes", id: "main") {
+      coreSceneView
+    }
+    #endif
+  }
+
+  @ViewBuilder var coreSceneView: some View {
+    Group {
+      // Phase 75: Use WP Metro-style UI for iPhone / compact layout.
+      if WPPhoneViewModel.shouldUseWPUI(screenVM: vm.screenVM) {
+        WPMainView()
+          .frame(
+            minWidth: 320,
+            minHeight: 568
+          )
+      } else {
+        MadTunesMainView()
+          .frame(
+            minWidth: OS.type == .macOS ? 852 * vm.uiFactor : 320,
+            minHeight: OS.type == .macOS ? 574 * vm.uiFactor : 568
+          )
+      }
+    }
+    // Phase 69: Handle files opened via "Open In" / Share sheet / Finder.
+    // Phase 100: On native macOS, MadTunesNSAppDelegate.application(_:open:)
+    // handles file-open events as a single batch. Skip .onOpenURL on macOS to
+    // avoid duplicate imports (delegate + onOpenURL both firing).
+    #if !os(macOS)
+    .onOpenURL { url in
+      vm.importURLs([url])
+    }
+    #endif
   }
 
   // MARK: Private

@@ -62,13 +62,39 @@ import AppKit
 /// from creating additional windows for a single-window app.
 @MainActor
 public final class MadTunesNSAppDelegate: NSObject, NSApplicationDelegate {
+  // MARK: Public
+
   public func application(_ application: NSApplication, open urls: [URL]) {
+    isHandlingFileOpen = true
     MadTunesViewModel.shared.importURLs(urls)
+    // Wait for the import to finish (not just a fixed delay), then check
+    // whether the user closed the window during the import.
+    Task { @MainActor in
+      // Brief delay to let the window lifecycle settle after dock drop.
+      try? await Task.sleep(for: .seconds(1))
+      // Poll until the import completes (importURLs spawns its own Task).
+      let library = MadTunesViewModel.shared.library
+      while library.isImporting {
+        try? await Task.sleep(for: .milliseconds(500))
+      }
+      self.isHandlingFileOpen = false
+      if NSApplication.shared.mainWindow == nil {
+        NSApplication.shared.terminate(nil)
+      }
+    }
   }
 
-  /// Phase 100: Single-window app — quit when the main window is closed.
+  /// Phase 100: Single-window app — quit when the main window is closed,
+  /// unless a file-open event is in progress (dock icon drop may cause
+  /// a transient window cycle).
   public func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-    true
+    !isHandlingFileOpen
   }
+
+  // MARK: Private
+
+  /// Suppresses termination during file-open event handling to prevent the
+  /// window-close-then-reopen flicker when files are dropped on the dock icon.
+  private var isHandlingFileOpen = false
 }
 #endif
