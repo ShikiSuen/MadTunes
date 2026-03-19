@@ -78,6 +78,7 @@ struct AlbumGridView: View {
         .interactiveSpring(duration: 0.2).nerf(gridVM.legacyHardwareMode),
         value: gridVM.expandedAlbumID
       )
+      .frame(width: canvasWidth)
       .animation(.none, value: canvasWidth)
       .sheet(isPresented: Bindable(gridVM).isTrackInfoPresented) {
         trackInfoSheetContent
