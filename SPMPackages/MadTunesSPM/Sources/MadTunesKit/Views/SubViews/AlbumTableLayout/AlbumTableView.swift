@@ -554,7 +554,6 @@ private struct TableTrackRowView: View {
       .clipShape(.rect)
       .contentShape(.rect)
       .frame(minWidth: 1, maxWidth: .infinity, alignment: .leading)
-      .drawingGroup()
       .onAppear { isVisible = true }
       .onDisappear { isVisible = false }
     #endif

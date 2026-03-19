@@ -122,7 +122,6 @@ struct AlbumGridView: View {
                 selectedTrackIDs: Bindable(vm).selectedTrackIDs,
                 onClose: { withAnimation(.easeInOut(duration: 0.3)) { gridVM.expandedAlbumID = nil } }
               )
-              .drawingGroup()
               .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
               .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
               .onAppear { gridVM.expandedAlbumWasInView = true }
@@ -144,6 +143,7 @@ struct AlbumGridView: View {
         .overlay {
           rubberBandRectOverlay
         }
+        .drawingGroup()
       }
       .scrollContentBackground(.hidden)
       .frame(width: canvasWidth, alignment: .leading)

@@ -62,7 +62,6 @@ struct AlbumGridItemView: View {
             .lineLimit(1)
         }
       }
-      .drawingGroup()
       .padding(.horizontal, isExpanded ? 4 : 8)
       .padding(.bottom, 4)
     }
