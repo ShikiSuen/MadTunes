@@ -20,6 +20,9 @@ struct MadTunesApp: App {
   // Phase 71: UIKit app delegate to customize the File menu (remove system Open/Open Recent).
   #if canImport(UIKit)
   @UIApplicationDelegateAdaptor(MadTunesAppDelegate.self) var delegate
+  #else
+  // Phase 100: AppKit delegate to handle dock icon file drops as single-window imports.
+  @NSApplicationDelegateAdaptor(MadTunesNSAppDelegate.self) var delegate
   #endif
 
   var body: some Scene {

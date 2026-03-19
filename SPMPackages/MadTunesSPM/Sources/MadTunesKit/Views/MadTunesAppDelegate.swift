@@ -48,3 +48,27 @@ public final class MadTunesAppDelegate: UIResponder, UIApplicationDelegate {
   }
 }
 #endif
+
+// MARK: - AppKit Delegate (native macOS)
+
+#if canImport(AppKit) && !targetEnvironment(macCatalyst)
+import AppKit
+
+// MARK: - MadTunesNSAppDelegate
+
+/// Phase 100: AppKit delegate for native macOS. Intercepts file-open events
+/// (dock icon drag-and-drop, Finder "Open With", etc.) and routes them to the
+/// shared ViewModel as a single batch import, preventing SwiftUI WindowGroup
+/// from creating additional windows for a single-window app.
+@MainActor
+public final class MadTunesNSAppDelegate: NSObject, NSApplicationDelegate {
+  public func application(_ application: NSApplication, open urls: [URL]) {
+    MadTunesViewModel.shared.importURLs(urls)
+  }
+
+  /// Phase 100: Single-window app — quit when the main window is closed.
+  public func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+    true
+  }
+}
+#endif
