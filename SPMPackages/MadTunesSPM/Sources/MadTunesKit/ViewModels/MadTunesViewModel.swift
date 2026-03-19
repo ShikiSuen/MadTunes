@@ -43,10 +43,6 @@ final class MadTunesViewModel {
 
   var selectedPlaylistID: UUID?
   var selectedTrackIDs: Set<UUID> = []
-  /// When true the main content area shows AlbumTableView instead of AlbumGridView.
-  /// Persisted via UserDefaults.
-  var useTableView: Bool = UserDefaults.standard.bool(forKey: "MadTunes.useTableView")
-
   var isFileImporterPresented = false // Only for non-AppKit targets.
   var isFolderImporterPresented = false // Also used on macOS AppKit as File Importer.
   var isDropTargeted = false
@@ -65,6 +61,11 @@ final class MadTunesViewModel {
   /// Separate song-artist filter (tracks' artist field).
   var columnBrowserSelectedSongArtists: Set<String> = []
   var columnBrowserSelectedAlbumTitles: Set<String> = []
+
+  var useTableView: Bool {
+    get { access(keyPath: \.useTableView); return _useTableView }
+    set { withMutation(keyPath: \.useTableView) { _useTableView = newValue } }
+  }
 
   // Phase 63: SwiftUI-tracked modifier key state, replacing NSEvent.modifierFlags.
 
@@ -270,12 +271,9 @@ final class MadTunesViewModel {
     }
 
     // Phase 86: Remove stale keys from recent album tracking.
+    // Phase 97: recentAlbumKeys is @AppStorage; mutation auto-persists.
     let validAlbumKeys = Set(library.albums.map { library.albumKey(title: $0.title, artist: $0.artist) })
-    let oldCount = phoneVM.recentAlbumKeys.count
     phoneVM.recentAlbumKeys.removeAll { !validAlbumKeys.contains($0) }
-    if phoneVM.recentAlbumKeys.count != oldCount {
-      UserDefaults.standard.set(phoneVM.recentAlbumKeys, forKey: "MadTunes.WPUI.recentAlbumKeys")
-    }
 
     // Phase 86: Pop WPUI navigation if the user is viewing a now-deleted album or playlist.
     phoneVM.popNavigationIfDataInvalid(library: library)
@@ -425,6 +423,10 @@ final class MadTunesViewModel {
 
   // MARK: Private
 
+  /// When true the main content area shows AlbumTableView instead of AlbumGridView.
+  /// Phase 97: Persisted via @AppStorage + @ObservationIgnored bridge.
+  @ObservationIgnored @AppStorage("MadTunes.useTableView") private var _useTableView = false
+
   // MARK: - Phase 96: ViewModel-level Observations (replacing View .onChange blocks)
 
   /// Tracks the last known value of `selectedPlaylistID` for change detection.
@@ -472,7 +474,6 @@ final class MadTunesViewModel {
         let oldValue = self._previousUseTableView
         self._previousUseTableView = newValue
         if oldValue != nil, oldValue != newValue {
-          UserDefaults.standard.set(newValue, forKey: "MadTunes.useTableView")
           self.tableVM.isEditModeActive = false
           if newValue {
             self.gridVM.expandedAlbumID = nil

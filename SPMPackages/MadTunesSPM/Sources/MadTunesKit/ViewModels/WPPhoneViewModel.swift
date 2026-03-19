@@ -119,12 +119,6 @@ final class WPPhoneViewModel {
 
   weak var mainVM: MadTunesViewModel?
 
-  /// Currently displayed Panorama section.
-  ///
-  /// Phase 83: Persisted via `UserDefaults`. Note: `@Observable` overrides `didSet`,
-  /// so persistence is handled via `.onChange` in `WPMainView`.
-  var currentSection: PanoramaSection = WPPhoneViewModel.loadLastSection()
-
   // MARK: - WPUI Selection Mode (Phase 83)
 
   /// Album IDs selected in WPUI multi-select mode.
@@ -190,26 +184,21 @@ final class WPPhoneViewModel {
   var isCreatePlaylistAlertPresented = false
   var createPlaylistName = ""
 
-  // MARK: - Phase 84: Recent Album Tracking
+  var currentSection: PanoramaSection {
+    get { access(keyPath: \.currentSection); return _currentSection }
+    set { withMutation(keyPath: \.currentSection) { _currentSection = newValue } }
+  }
 
-  /// Album keys recently played or imported, in most-recent-first order (max 10).
-  /// Used to determine the display priority of tiles in WPUI Library → Albums.
-  var recentAlbumKeys: [String] = UserDefaults.standard.stringArray(
-    forKey: WPPhoneViewModel.recentAlbumKeysKey
-  ) ?? []
+  var recentAlbumKeys: [String] {
+    get { access(keyPath: \.recentAlbumKeys); return _recentAlbumKeys }
+    set { withMutation(keyPath: \.recentAlbumKeys) { _recentAlbumKeys = newValue } }
+  }
 
   var isWPSelectionModeActive: Bool { !wpSelectedAlbumIDs.isEmpty }
 
-  var wpAccentColor: WPAccentColor = {
-    if let raw = UserDefaults.standard.string(forKey: "MadTunes.wpAccentColor"),
-       let accent = WPAccentColor(rawValue: raw) {
-      return accent
-    }
-    return .cobalt
-  }() {
-    didSet {
-      UserDefaults.standard.set(wpAccentColor.rawValue, forKey: "MadTunes.wpAccentColor")
-    }
+  var wpAccentColor: WPAccentColor {
+    get { access(keyPath: \.wpAccentColor); return _wpAccentColor }
+    set { withMutation(keyPath: \.wpAccentColor) { _wpAccentColor = newValue } }
   }
 
   /// Unique artists derived from current albums.
@@ -258,19 +247,6 @@ final class WPPhoneViewModel {
     return (albums, matchingTracks)
   }
 
-  static func loadLastSection() -> PanoramaSection {
-    guard let raw = UserDefaults.standard.string(forKey: lastSectionKey),
-          let value = Int(raw),
-          let section = PanoramaSection(rawValue: value) else {
-      return .library
-    }
-    return section
-  }
-
-  static func saveLastSection(_ section: PanoramaSection) {
-    UserDefaults.standard.set(section.rawValue, forKey: lastSectionKey)
-  }
-
   /// Whether WPUI should be used (iPhone always, compact iPad in portrait).
   static func shouldUseWPUI(screenVM: ScreenVM) -> Bool {
     switch OS.type {
@@ -284,7 +260,6 @@ final class WPPhoneViewModel {
 
   /// Called by MadTunesViewModel after mainVM is assigned.
   func setupObservations() {
-    observeCurrentSectionChange()
     observeCurrentTrackForActivity()
     observeImportCompletion()
   }
@@ -351,7 +326,6 @@ final class WPPhoneViewModel {
     if recentAlbumKeys.count > 10 {
       recentAlbumKeys = Array(recentAlbumKeys.prefix(10))
     }
-    UserDefaults.standard.set(recentAlbumKeys, forKey: Self.recentAlbumKeysKey)
   }
 
   /// Record newly imported albums that aren't yet in the recent list.
@@ -394,26 +368,25 @@ final class WPPhoneViewModel {
 
   // MARK: Private
 
-  // MARK: Persistence
+  /// Currently displayed Panorama section.
+  /// Phase 97: @AppStorage + @ObservationIgnored bridge (replaces manual UserDefaults + observation chain).
+  @ObservationIgnored @AppStorage(wrappedValue: .library, "MadTunes.WPUI.lastSection")
+  private var _currentSection: PanoramaSection
 
-  private static let lastSectionKey = "MadTunes.WPUI.lastSection"
-  private static let recentAlbumKeysKey = "MadTunes.WPUI.recentAlbumKeys"
+  // MARK: - Phase 84: Recent Album Tracking
+
+  /// Album keys recently played or imported, in most-recent-first order (max 10).
+  /// Used to determine the display priority of tiles in WPUI Library → Albums.
+  /// Phase 97: @AppStorage + @ObservationIgnored bridge (replaces manual UserDefaults read/write).
+  @ObservationIgnored @AppStorage(wrappedValue: [], "MadTunes.WPUI.recentAlbumKeys")
+  private var _recentAlbumKeys: [String]
+
+  /// Phase 97: @AppStorage + @ObservationIgnored bridge (fixes @Observable didSet not firing).
+  @ObservationIgnored @AppStorage(wrappedValue: .cobalt, "MadTunes.wpAccentColor")
+  private var _wpAccentColor: WPAccentColor
 
   /// Tracks the last known `isImporting` for edge detection.
   private var _previousIsImporting = false
-
-  /// Phase 96: Persist `currentSection` to UserDefaults when it changes.
-  private func observeCurrentSectionChange() {
-    withObservationTracking {
-      _ = self.currentSection
-    } onChange: {
-      Task { @MainActor [weak self] in
-        guard let self else { return }
-        Self.saveLastSection(self.currentSection)
-        self.observeCurrentSectionChange()
-      }
-    }
-  }
 
   /// Phase 96: Record album play activity when the current track changes.
   private func observeCurrentTrackForActivity() {

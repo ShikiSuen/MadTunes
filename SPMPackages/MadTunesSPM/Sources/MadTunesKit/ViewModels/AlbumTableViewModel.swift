@@ -44,26 +44,6 @@ final class AlbumTableViewModel {
   /// Views should bind to this instead of the raw tracks array.
   var displayedTracks: [Track] = []
 
-  // MARK: - Column Visibility
-
-  /// Per-column visibility (persisted to UserDefaults).
-  var tableColumnVisibility: [String: Bool] = {
-    guard let data = UserDefaults.standard.data(forKey: TableColumnType.userDefaultsKey),
-          let dict = try? JSONDecoder().decode([String: Bool].self, from: data) else {
-      return [:]
-    }
-    return dict
-  }()
-
-  /// Per-column widths (persisted to UserDefaults).
-  var columnWidths: [String: CGFloat] = {
-    guard let data = UserDefaults.standard.data(forKey: TableColumnType.columnWidthsKey),
-          let dict = try? JSONDecoder().decode([String: CGFloat].self, from: data) else {
-      return [:]
-    }
-    return dict
-  }()
-
   // MARK: - Context Menu / Sheet State
 
   var isTrackInfoPresented = false
@@ -82,6 +62,16 @@ final class AlbumTableViewModel {
 
   /// Phase 69: Whether iOS edit mode (multi-select) is active.
   var isEditModeActive = false
+
+  var tableColumnVisibility: [String: Bool] {
+    get { access(keyPath: \.tableColumnVisibility); return _tableColumnVisibility }
+    set { withMutation(keyPath: \.tableColumnVisibility) { _tableColumnVisibility = newValue } }
+  }
+
+  var columnWidths: [String: CGFloat] {
+    get { access(keyPath: \.columnWidths); return _columnWidths }
+    set { withMutation(keyPath: \.columnWidths) { _columnWidths = newValue } }
+  }
 
   /// Returns visible columns in display order.
   /// Playing indicator is always first and always visible.
@@ -297,9 +287,6 @@ final class AlbumTableViewModel {
     }
 
     tableColumnVisibility = newVisibility
-    if let data = try? JSONEncoder().encode(newVisibility) {
-      UserDefaults.standard.set(data, forKey: TableColumnType.userDefaultsKey)
-    }
   }
 
   // MARK: - Column Width Methods
@@ -313,7 +300,6 @@ final class AlbumTableViewModel {
     let currentWidth = columnWidths[key] ?? column.defaultWidth
     let newWidth = max(40, currentWidth + translation)
     columnWidths[key] = newWidth
-    persistColumnWidths()
   }
 
   func scheduleDisplayedTracksUpdate(to newTracks: [Track]) {
@@ -583,6 +569,18 @@ final class AlbumTableViewModel {
 
   // MARK: Private
 
+  // MARK: - Column Visibility
+
+  /// Per-column visibility (persisted to UserDefaults).
+  /// Phase 97: @AppStorage + @ObservationIgnored bridge for @Observable compatibility.
+  @ObservationIgnored @AppStorage(wrappedValue: [:], TableColumnType.userDefaultsKey)
+  private var _tableColumnVisibility: [String: Bool]
+
+  /// Per-column widths (persisted to UserDefaults).
+  /// Phase 97: @AppStorage + @ObservationIgnored bridge for @Observable compatibility.
+  @ObservationIgnored @AppStorage(wrappedValue: [:], TableColumnType.columnWidthsKey)
+  private var _columnWidths: [String: CGFloat]
+
   // MARK: - Display Buffer Methods
 
   /// Coalesced/batched update (Phase 56). Progressively appends tracks
@@ -619,11 +617,5 @@ final class AlbumTableViewModel {
     }
     navigateToPage(target, isShift: press.modifiers.contains(.shift))
     return .handled
-  }
-
-  private func persistColumnWidths() {
-    if let data = try? JSONEncoder().encode(columnWidths) {
-      UserDefaults.standard.set(data, forKey: TableColumnType.columnWidthsKey)
-    }
   }
 }
