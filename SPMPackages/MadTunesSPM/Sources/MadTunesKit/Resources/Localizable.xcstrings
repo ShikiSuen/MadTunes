@@ -2680,13 +2680,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Performance Mode"
+            "value" : "Performance Mode (for old devices)"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "性能モード (古い Mac 向き)"
+            "value" : "性能モード (古いハードウェア向き)"
           }
         },
         "zh-Hans" : {
