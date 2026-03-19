@@ -52,10 +52,9 @@ struct AlbumGridView: View {
             }
             .onChange(of: gridVM.expandedAlbumID) { _, newVal in
               guard newVal != nil else { return }
-              gridVM.proxyScrollDebouncer.debounceOnMain {
-                withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-                  proxy.scrollTo(id, anchor: .top)
-                }
+              withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
+                gridVM.scrollToAlbumID = expandedAlbum.id
+                proxy.scrollTo(id, anchor: .top)
               }
             }
           }
@@ -66,6 +65,11 @@ struct AlbumGridView: View {
             width: vm.screenVM.mainColumnCanvasSizeObserved.width,
             height: (220 + 20) * vm.uiFactor
           )
+          .onAppear {
+            withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
+              gridVM.scrollToAlbumID = expandedAlbum.id
+            }
+          }
         }
       }
       .opacity(screenVM.windowSizeEverObserved ? 1 : 0)
@@ -230,7 +234,7 @@ struct AlbumGridView: View {
         ) else { return }
         gridVM.proxyScrollDebouncer.debounceOnMain {
           withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-            proxy.scrollTo(rowIndex, anchor: .center)
+            proxy.scrollTo(rowIndex, anchor: gridVM.legacyHardwareMode ? .bottom : .center)
           }
         }
       }
