@@ -19,7 +19,7 @@ As a music creator, you need playback tools that accurately reveal mixing detail
 **Key Features:**
 
 • **Broad Format Support** — MP3, FLAC, AAC, WAV, AIFF, Ogg Vorbis, Opus, and more mainstream audio formats (audio files only);
-• **Gapless Loop Playback** — Designed for loopable audio, seamless transition at loop points;
+• **Pace-Uninterrupted Loop Playback** — Designed for loopable audio, pace-uninterrupted transition at loop points;
 • **Accurate Stereo** — Faithfully reproduces original mixing, no HRTF interference;
 • **Powerful Keyboard Navigation** — Full keyboard support on iPad / macOS, from grid navigation to queue management without mouse;
 • **Smart Search & Filter** —  Keyword search + three-column cascading filter (Genre/Artist/Album);
@@ -42,30 +42,3 @@ Audiophile music player with classic grid browsing & accurate audio reproduction
 ## Keywords (100 characters max)
 
 music player,audiophile,FLAC,lossless,iTunes,local music,audio playback,music library,MP3
-
----
-
-## What's New (Example)
-
-**Version 1.0**
-- Initial release
-- Album grid browsing with expandable detail view
-- Playing queue management with loop modes
-- Playlist and favorites support
-- Column browser filtering (genre / album artist / song artist / album)
-- Search and multi-selection operations
-- Comprehensive keyboard navigation
-
----
-
-## Screenshot Descriptions
-
-1. **Main Interface** - Show album grid with expanded album view
-2. **Playing Queue** - Show queue management and drag-to-reorder
-3. **Column Browser** - Show four-column cascading filter interface
-4. **Search & Filter** - Show search and filter functionality
-5. **Track Info** - Show detailed metadata window
-
----
-
-*Note: This description has been adjusted for Mac App Store review compliance, ensuring content is truthful, accurate, and platform-compliant.*
