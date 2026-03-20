@@ -51,6 +51,8 @@ final class PersistedTrack {
 
   // MARK: Internal
 
+  // Note: 此處不宜將 fileURLString 標為 Unique。該專案已經有對應的重複排除機制了，所以不用擔心。
+
   @Attribute(.unique) var id: UUID
   var fileURLString: String
   var bookmarkData: Data?
