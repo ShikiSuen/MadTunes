@@ -33,7 +33,7 @@ final class MockMusicLibrary: MusicLibraryProviding {
 
   // MARK: - Import (no-op for tests)
 
-  func importFiles(urls _: [URL]) async {}
+  func importFiles(urls _: [URL]) async -> [UUID] { [] }
   func loadPersistedData() async {}
   func clearDatabase() {
     tracks.removeAll()

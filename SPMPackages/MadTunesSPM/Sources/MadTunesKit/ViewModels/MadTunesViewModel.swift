@@ -311,7 +311,10 @@ final class MadTunesViewModel {
     // Capture the playlist that was active when the import started.
     let targetPlaylistID = selectedPlaylistID
     Task {
-      await library.importFiles(urls: urls)
+      // Phase 103: importFiles returns IDs of all processed tracks (both new
+      // and existing duplicates). This allows adding them to playlists even
+      // when re-importing files that were previously imported.
+      let importedTrackIDs = await library.importFiles(urls: urls)
 
       // After the import finishes, if the user was viewing anything other than
       // "All Music" we should also add the imported items to that playlist.
@@ -319,17 +322,12 @@ final class MadTunesViewModel {
       // playlist. The operation is performed even if some of the files were
       // duplicates (the helper will simply skip entries that already exist in
       // the playlist).
+      // Phase 103: Use the returned track IDs directly instead of path matching,
+      // which failed when importing folders (folder path != file paths).
       if let pid = targetPlaylistID,
-         pid != library.playlists.first?.id {
-        // Determine which track IDs correspond to the imported URLs. We
-        // compare file paths since URLs may not be identical objects.
-        let importedPaths = Set(urls.map { $0.standardizedFileURL.path })
-        let idsToAdd = library.tracks
-          .filter { importedPaths.contains($0.fileURL.standardizedFileURL.path) }
-          .map(\.id)
-        if !idsToAdd.isEmpty {
-          library.addTracks(Set(idsToAdd), toPlaylist: pid)
-        }
+         pid != library.playlists.first?.id,
+         !importedTrackIDs.isEmpty {
+        library.addTracks(Set(importedTrackIDs), toPlaylist: pid)
       }
 
       // Phase 99: Explicitly refresh display buffers after import completes.

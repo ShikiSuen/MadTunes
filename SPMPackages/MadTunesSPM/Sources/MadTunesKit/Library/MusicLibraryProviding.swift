@@ -26,7 +26,7 @@ public protocol MusicLibraryProviding: AnyObject {
 
   // MARK: - Import
 
-  func importFiles(urls: [URL]) async
+  func importFiles(urls: [URL]) async -> [UUID]
   func loadPersistedData() async
   func clearDatabase()
 

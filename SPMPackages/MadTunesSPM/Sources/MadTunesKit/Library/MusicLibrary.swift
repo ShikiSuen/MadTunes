@@ -85,7 +85,11 @@ public final class MusicLibrary {
   /// Duplicates (by file URL) are automatically skipped.
   /// Phase 99: Sequential metadata reading (replaced TaskGroup to avoid
   /// filesystem-level race conditions with concurrent file access).
-  public func importFiles(urls: [URL]) async {
+  /// Phase 103: Returns the IDs of all imported tracks (including duplicates that
+  /// were updated in-place). This allows callers to add them to playlists even
+  /// when the files were previously imported.
+  @discardableResult
+  public func importFiles(urls: [URL]) async -> [UUID] {
     isImporting = true
     defer {
       currentProcessingFileName = ""
@@ -120,6 +124,9 @@ public final class MusicLibrary {
     var pendingTracks: [Track] = []
     importTotalFileCount = allFileURLs.count
     importFinishedFileCount = 0
+    // Phase 103: Track all processed track IDs to return to caller (includes
+    // both new tracks and existing tracks that were updated).
+    var allProcessedTrackIDs: [UUID] = []
 
     for fileURL in allFileURLs {
       // Check if this is a Voice Memo before processing.
@@ -161,10 +168,14 @@ public final class MusicLibrary {
           if tracks[idx].bookmarkData == nil {
             tracks[idx].bookmarkData = track.bookmarkData
           }
+          // Phase 103: Record the existing track's ID (for playlist addition).
+          allProcessedTrackIDs.append(tracks[idx].id)
         }
       } else {
         existingURLs.insert(track.fileURL)
         pendingTracks.append(track)
+        // Phase 103: Record the new track's ID.
+        allProcessedTrackIDs.append(track.id)
       }
       // Batch flush for progressive UI updates.
       if pendingTracks.count >= batchSize {
@@ -186,6 +197,9 @@ public final class MusicLibrary {
     organizeAlbums()
     persistAllTracks()
     persistAllPlaylists()
+
+    // Phase 103: Return the IDs of all processed tracks (new + existing).
+    return allProcessedTrackIDs
   }
 
   // MARK: - Persistence
