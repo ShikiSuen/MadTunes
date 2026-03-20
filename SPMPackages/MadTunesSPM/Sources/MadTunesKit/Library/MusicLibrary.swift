@@ -815,7 +815,10 @@ public final class MusicLibrary {
     guard let enumerator = FileManager.default.enumerator(
       at: url,
       includingPropertiesForKeys: [.isRegularFileKey],
-      options: [.skipsHiddenFiles, .skipsPackageDescendants]
+      // Phase 101: Removed .skipsPackageDescendants to allow importing folders
+      // with dots in their names (e.g., "My.Music.Folder") that may be
+      // misidentified as packages by the system.
+      options: [.skipsHiddenFiles]
     ) else { return [] }
 
     var results: [URL] = []
