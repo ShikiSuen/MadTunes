@@ -45,6 +45,7 @@ struct WPNowPlayingSection: View {
               .lineLimit(1)
           }
           .frame(maxWidth: .infinity, alignment: .leading)
+          .multilineTextAlignment(.leading)
           .padding(.horizontal, 40)
 
           // Progress scrubber.
