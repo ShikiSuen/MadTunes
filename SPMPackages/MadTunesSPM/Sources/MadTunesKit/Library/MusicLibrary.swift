@@ -191,6 +191,7 @@ public final class MusicLibrary {
   // MARK: - Persistence
 
   /// Load persisted tracks from SwiftData. Call once at launch.
+  /// Phase 102: Added deduplication check after loading tracks.
   public func loadPersistedData() async {
     guard !hasLoadedPersistence else { return }
     hasLoadedPersistence = true
@@ -222,11 +223,42 @@ public final class MusicLibrary {
       loadPersistedPlaylists()
       return
     }
-    tracks = await loadedTracks.selfSortByDefault()
-    if !playlists.isEmpty {
-      playlists[0].trackIDs = tracks.map(\.id)
+
+    // Phase 102: Check for duplicates and deduplicate if needed.
+    var (deduplicatedTracks, idMapping) = deduplicateTracks(loadedTracks)
+    let needsDeduplication = !idMapping.isEmpty || deduplicatedTracks.count != loadedTracks.count
+
+    if needsDeduplication {
+      // Enter loading state to show cleanup progress UI.
+      isImporting = true
+      importProgress = ImportProgress(
+        finishedCount: 0,
+        totalCount: deduplicatedTracks.count,
+        fileName: String(localized: "i18n:Import.CleanupDuplicates", bundle: #bundle)
+      )
+
+      // Apply deduplication: update tracks and remap playlist IDs.
+      tracks = await deduplicatedTracks.selfSortByDefault()
+      remapTrackIDsInPlaylists(idMapping: idMapping)
+
+      // Reorganize albums with deduplicated tracks.
+      organizeAlbums()
+
+      // Persist the cleaned-up data back to database.
+      persistAllTracks()
+      persistAllPlaylists()
+
+      // Exit loading state.
+      isImporting = false
+    } else {
+      // No duplicates found: proceed normally.
+      tracks = await loadedTracks.selfSortByDefault()
+      if !playlists.isEmpty {
+        playlists[0].trackIDs = tracks.map(\.id)
+      }
+      organizeAlbums()
     }
-    organizeAlbums()
+
     loadPersistedPlaylists()
   }
 
@@ -569,9 +601,23 @@ public final class MusicLibrary {
   /// Persist all current tracks to SwiftData (incremental update).
   /// Phase 99: Replaced `context.enumerate` with `context.fetch` to avoid
   /// modifying the collection mid-enumeration and causing data inconsistencies.
+  /// Phase 102: Added deduplication for "same URL, different UUID" and
+  /// "same UUID, different URL" scenarios before persisting.
   private func persistAllTracks() {
+    // Phase 102: Deduplicate tracks before persisting.
+    // Handle "same URL, different UUID" - keep the first occurrence, remap others.
+    // Handle "same UUID, different URL" - treat as new track (generate new UUID).
+    let (deduplicatedTracks, idMapping) = deduplicateTracks(tracks)
+
+    // Apply ID mapping to playlists if any duplicates were found.
+    if !idMapping.isEmpty {
+      remapTrackIDsInPlaylists(idMapping: idMapping)
+      // Update in-memory tracks to reflect deduplication.
+      tracks = deduplicatedTracks
+    }
+
     guard let container = _modelContainer else { return }
-    let trackMap: [UUID: Track] = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
+    let trackMap: [UUID: Track] = Dictionary(uniqueKeysWithValues: deduplicatedTracks.map { ($0.id, $0) })
     var newTrackIDs = Set(trackMap.keys)
     let context = ModelContext(container)
     do {
@@ -592,6 +638,80 @@ public final class MusicLibrary {
       try context.save()
     } catch {
       return
+    }
+  }
+
+  // MARK: - Track Deduplication (Phase 102)
+
+  /// Deduplicates tracks by URL and UUID.
+  /// - Returns: A tuple containing the deduplicated tracks and an ID mapping
+  ///   (removed ID -> kept ID) for updating playlist references.
+  private func deduplicateTracks(_ tracks: [Track]) -> (tracks: [Track], idMapping: [UUID: UUID]) {
+    var urlToTrackMap: [URL: (track: Track, index: Int)] = [:]
+    var idMapping: [UUID: UUID] = [:]
+    var result: [Track] = []
+
+    for track in tracks {
+      // Normalize URL for comparison (standardized path, ignoring fragment/query differences).
+      let normalizedURL = track.fileURL.standardizedFileURL.resolvingSymlinksInPath()
+
+      if let existingEntry = urlToTrackMap[normalizedURL] {
+        // Duplicate URL found: map this track's ID to the existing track's ID.
+        idMapping[track.id] = existingEntry.track.id
+        // Keep the track with more complete metadata (longer title/artist/album combined).
+        let existingCompleteness = existingEntry.track.title.count + existingEntry.track.artist.count + existingEntry
+          .track.albumTitle.count
+        let newCompleteness = track.title.count + track.artist.count + track.albumTitle.count
+        if newCompleteness > existingCompleteness {
+          // Replace with the more complete version, preserving the original ID.
+          // Create a new track with the existing ID but new metadata.
+          var replacementTrack = Track(
+            id: existingEntry.track.id,
+            fileURL: track.fileURL,
+            title: track.title,
+            artist: track.artist,
+            albumTitle: track.albumTitle,
+            albumArtist: track.albumArtist,
+            trackNumber: track.trackNumber,
+            discNumber: track.discNumber,
+            duration: track.duration,
+            genre: track.genre,
+            year: track.year,
+            fallbackFields: track.fallbackFields
+          )
+          replacementTrack.bookmarkData = track.bookmarkData
+          result[existingEntry.index] = replacementTrack
+          urlToTrackMap[normalizedURL] = (replacementTrack, existingEntry.index)
+        }
+      } else {
+        // New unique URL: add to result.
+        let index = result.count
+        urlToTrackMap[normalizedURL] = (track, index)
+        result.append(track)
+      }
+    }
+
+    return (result, idMapping)
+  }
+
+  /// Updates all playlists to remap removed track IDs to their replacements.
+  private func remapTrackIDsInPlaylists(idMapping: [UUID: UUID]) {
+    for i in playlists.indices {
+      var remappedIDs: [UUID] = []
+      var seenIDs = Set<UUID>()
+
+      for trackID in playlists[i].trackIDs {
+        // Map to the kept ID if it was a duplicate, otherwise keep original.
+        let finalID = idMapping[trackID] ?? trackID
+
+        // Also deduplicate within the playlist itself.
+        if !seenIDs.contains(finalID) {
+          seenIDs.insert(finalID)
+          remappedIDs.append(finalID)
+        }
+      }
+
+      playlists[i].trackIDs = remappedIDs
     }
   }
 

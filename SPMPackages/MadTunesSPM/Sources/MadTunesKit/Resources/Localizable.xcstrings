@@ -2244,6 +2244,34 @@
         }
       }
     },
+    "i18n:Import.CleanupDuplicates" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cleaning up duplicate tracks…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重複トラックを整理中…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在清理重复曲目…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在清理重複曲目…"
+          }
+        }
+      }
+    },
     "i18n:Import.ImportFiles" : {
       "localizations" : {
         "en" : {
