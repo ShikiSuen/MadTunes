@@ -13,6 +13,10 @@ import CoreAudio
 import AppKit
 #endif
 
+#if canImport(MediaPlayer)
+import MediaPlayer
+#endif
+
 // MARK: - PlayLoopBehavior
 
 public enum PlayLoopBehavior: Sendable {
@@ -57,6 +61,12 @@ public final class AudioPlayer {
     Task { @MainActor in
       await observeVolumeChanges()
     }
+    // Phase 105: Setup remote command center.
+    #if canImport(MediaPlayer)
+    Task { @MainActor in
+      self.setupRemoteCommandCenter()
+    }
+    #endif
   }
 
   // MARK: Public
@@ -161,6 +171,10 @@ public final class AudioPlayer {
       avPlayer.play()
     }
     isPlaying.toggle()
+    // Phase 105: Update Now Playing Info.
+    #if canImport(MediaPlayer)
+    updateNowPlayingInfo()
+    #endif
   }
 
   public func stop() async {
@@ -173,6 +187,10 @@ public final class AudioPlayer {
     currentTime = 0
     duration = 0
     isPlaying = false
+    // Phase 105: Clear Now Playing Info.
+    #if canImport(MediaPlayer)
+    clearNowPlayingInfo()
+    #endif
   }
 
   /// Remove tracks from the current queue.
@@ -239,6 +257,10 @@ public final class AudioPlayer {
     let cmTime = CMTime(seconds: time, preferredTimescale: 600)
     currentTime = time
     await avPlayer.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
+    // Phase 105: Update Now Playing Info.
+    #if canImport(MediaPlayer)
+    updateNowPlayingInfo()
+    #endif
   }
 
   // MARK: Private
@@ -449,6 +471,10 @@ public final class AudioPlayer {
               )
             }
           }
+          // Phase 105: Update Now Playing Info when track is ready to play.
+          #if canImport(MediaPlayer)
+          self.updateNowPlayingInfo()
+          #endif
         case .failed:
           print("[AudioPlayer] itemStatusObservation AVPlayerGeneration Status Failure.")
           Self.playErrorBeep()
@@ -477,6 +503,10 @@ public final class AudioPlayer {
           let secs = CMTimeGetSeconds(dur)
           if secs.isFinite, secs > 0 { self.duration = secs }
         }
+        // Phase 105: Update Now Playing Info periodically.
+        #if canImport(MediaPlayer)
+        self.updateNowPlayingInfo()
+        #endif
       }
     }
   }
@@ -555,4 +585,101 @@ public final class AudioPlayer {
     activeSecurityScopedURL?.stopAccessingSecurityScopedResource()
     activeSecurityScopedURL = nil
   }
+
+  // MARK: - Now Playing Info (Control Center / Lock Screen)
+
+  #if canImport(MediaPlayer)
+  /// Phase 105: Configure MPRemoteCommandCenter for Control Center / Lock Screen controls.
+  @MainActor
+  private func setupRemoteCommandCenter() {
+    let commandCenter = MPRemoteCommandCenter.shared()
+
+    // Play command
+    commandCenter.playCommand.addTarget { [weak self] _ in
+      guard let self = self else { return .commandFailed }
+      Task { @MainActor in
+        await self.togglePlayPause()
+      }
+      return .success
+    }
+
+    // Pause command
+    commandCenter.pauseCommand.addTarget { [weak self] _ in
+      guard let self = self else { return .commandFailed }
+      Task { @MainActor in
+        await self.togglePlayPause()
+      }
+      return .success
+    }
+
+    // Toggle play/pause command
+    commandCenter.togglePlayPauseCommand.addTarget { [weak self] _ in
+      guard let self = self else { return .commandFailed }
+      Task { @MainActor in
+        await self.togglePlayPause()
+      }
+      return .success
+    }
+
+    // Next track command
+    commandCenter.nextTrackCommand.addTarget { [weak self] _ in
+      guard let self = self else { return .commandFailed }
+      Task { @MainActor in
+        await self.next()
+      }
+      return .success
+    }
+
+    // Previous track command
+    commandCenter.previousTrackCommand.addTarget { [weak self] _ in
+      guard let self = self else { return .commandFailed }
+      Task { @MainActor in
+        await self.previous()
+      }
+      return .success
+    }
+
+    // Change playback position (seek) command
+    commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
+      guard let self = self,
+            let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+      Task { @MainActor in
+        await self.seek(to: event.positionTime)
+      }
+      return .success
+    }
+
+    // Enable all commands by default
+    commandCenter.playCommand.isEnabled = true
+    commandCenter.pauseCommand.isEnabled = true
+    commandCenter.togglePlayPauseCommand.isEnabled = true
+    commandCenter.nextTrackCommand.isEnabled = true
+    commandCenter.previousTrackCommand.isEnabled = true
+    commandCenter.changePlaybackPositionCommand.isEnabled = true
+  }
+
+  /// Phase 105: Update MPNowPlayingInfoCenter with current playback state.
+  @MainActor
+  private func updateNowPlayingInfo() {
+    var nowPlayingInfo: [String: Any] = [:]
+
+    if let track = currentTrack {
+      nowPlayingInfo[MPMediaItemPropertyTitle] = track.title
+      nowPlayingInfo[MPMediaItemPropertyArtist] = track.artist
+      nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = track.albumTitle
+      nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = track.duration
+    }
+
+    nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+    nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+
+    MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+  }
+
+  /// Phase 105: Clear Now Playing Info when playback stops.
+  @MainActor
+  private func clearNowPlayingInfo() {
+    MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+  }
+  #endif
 }
