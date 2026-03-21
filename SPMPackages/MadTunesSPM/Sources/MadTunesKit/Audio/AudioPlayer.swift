@@ -605,20 +605,20 @@ public final class AudioPlayer {
   private func setupRemoteCommandCenter() {
     let commandCenter = MPRemoteCommandCenter.shared()
 
-    // Play command
+    // Play command — only resume when paused (Phase 107 fix: was togglePlayPause).
     commandCenter.playCommand.addTarget { [weak self] _ in
       guard let self = self else { return .commandFailed }
       Task { @MainActor in
-        await self.togglePlayPause()
+        if !self.isPlaying { await self.togglePlayPause() }
       }
       return .success
     }
 
-    // Pause command
+    // Pause command — only pause when playing (Phase 107 fix: was togglePlayPause).
     commandCenter.pauseCommand.addTarget { [weak self] _ in
       guard let self = self else { return .commandFailed }
       Task { @MainActor in
-        await self.togglePlayPause()
+        if self.isPlaying { await self.togglePlayPause() }
       }
       return .success
     }
