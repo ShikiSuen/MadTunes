@@ -1,5 +1,7 @@
 # MadTunes，一款 macOS 上用於檔案響度測量的工具。 #
 
+[![Download on the App Store](https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg)](https://apps.apple.com/us/app/madtunes/id6760667980)
+
 MadTunes 是一款面向發燒友與音樂製作人的本地音樂播放器，採用經典 iTunes 11 風格的格狀瀏覽體驗，提供準確、純淨的高保真音訊播放。
 
 > 請見下方「Description」章節。

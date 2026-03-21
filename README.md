@@ -1,5 +1,7 @@
 # MadTunes, a tool for loudness measurement of files on macOS. #
 
+[![Download on the App Store](https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg)](https://apps.apple.com/us/app/madtunes/id6760667980)
+
 MadTunes is a local music player designed for audiophiles and music producers, featuring a classic iTunes 11-style grid browsing experience with accurate, pure high-fidelity audio playback.
 
 > See `Description` chapter below.
