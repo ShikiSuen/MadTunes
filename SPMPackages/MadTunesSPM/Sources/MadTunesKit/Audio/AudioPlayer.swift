@@ -36,6 +36,17 @@ public final class AudioPlayer {
   // MARK: - Init
 
   nonisolated public init() {
+    // Phase 104: Configure audio session for background playback on iOS.
+    #if os(iOS)
+    do {
+      let session = AVAudioSession.sharedInstance()
+      try session.setCategory(.playback, mode: .default, options: [])
+      try session.setActive(true)
+    } catch {
+      print("[AudioPlayer] Failed to configure audio session: \(error)")
+    }
+    #endif
+
     // actor work including library access must occur on main actor.
     Task { @MainActor in
       // take a snapshot so we know what IDs existed prior to any change.
