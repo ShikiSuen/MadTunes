@@ -12,12 +12,19 @@ import Foundation
 actor ArtworkProcessor {
   static let shared = ArtworkProcessor()
 
-  /// Resizes raw artwork data to 512×512 and encodes as JPEG.
+  /// Resizes raw artwork data to 400×400 and encodes as JPEG.
   /// Returns original data on failure.
   func process(_ raw: Data) -> Data {
+    let dimension: CGFloat
+    if ThisDevice.isLegacyDeviceOrInsufficientRAM {
+      dimension = 256
+    } else {
+      dimension = 400
+    }
+
     func resizeCGImage(_ cgImage: CGImage?) -> CGImage? {
       cgImage?.directResized(
-        size: CGSize(width: 512, height: 512),
+        size: CGSize(width: dimension, height: dimension),
         preserveAspectRatio: true
       )
     }
@@ -31,7 +38,14 @@ actor ArtworkProcessor {
       return resizeCGImage(CGImage.instantiate(data: raw, forceJPEG: true))
     }()
 
-    if let resizedData = cgImage?.encodeToFileData(as: .jpeg(quality: 0.85)) {
+    let format: CGImage.CGImageExportFormat
+    if ThisDevice.isIntelProcessor || ThisDevice.isLegacyDeviceOrInsufficientRAM {
+      format = .jpeg(quality: 0.5)
+    } else {
+      format = .jpeg(quality: 0.8)
+    }
+
+    if let resizedData = cgImage?.encodeToFileData(as: format) {
       print("[ArtworkProcessor] \(useJPEGHint ? "JPEGHint" : "default") decode successful")
       return resizedData
     } else {
