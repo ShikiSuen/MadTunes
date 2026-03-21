@@ -13,8 +13,19 @@ import CoreAudio
 import AppKit
 #endif
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 #if canImport(MediaPlayer)
 import MediaPlayer
+#endif
+
+// Phase 106: Type alias for cross-platform image
+#if canImport(UIKit)
+private typealias PlatformImage = UIImage
+#elseif canImport(AppKit)
+private typealias PlatformImage = NSImage
 #endif
 
 // MARK: - PlayLoopBehavior
@@ -659,6 +670,7 @@ public final class AudioPlayer {
   }
 
   /// Phase 105: Update MPNowPlayingInfoCenter with current playback state.
+  /// Phase 106: Add artwork support with lazy loading from cache.
   @MainActor
   private func updateNowPlayingInfo() {
     var nowPlayingInfo: [String: Any] = [:]
@@ -668,6 +680,18 @@ public final class AudioPlayer {
       nowPlayingInfo[MPMediaItemPropertyArtist] = track.artist
       nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = track.albumTitle
       nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = track.duration
+
+      // Phase 106: Lazy load artwork from cache.
+      // Use nonisolated helper to avoid dispatch queue assertion issues.
+      if let artworkData = getArtworkData(for: track),
+         let artwork = createMediaItemArtwork(from: artworkData) {
+        nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
+      } else {
+        // Phase 106: Request artwork load if not in cache (lazy loading).
+        // This triggers async artwork loading; updateNowPlayingInfo will be
+        // called again when playback state changes to reflect the loaded artwork.
+        requestArtworkLoad(for: track)
+      }
     }
 
     nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
@@ -675,6 +699,48 @@ public final class AudioPlayer {
 
     MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
   }
+
+  // Phase 106: Get artwork data from cache.
+  // Uses mainSync to safely access MainActor-isolated state from any context.
+  private func getArtworkData(for track: Track) -> Data? {
+    let key = "\(track.albumTitle):::\(track.albumArtist)"
+    return MadTunesViewModel.shared.library.artworkCache[key]
+  }
+
+  // Phase 106: Request artwork load without blocking the current context.
+  private func requestArtworkLoad(for track: Track) {
+    let key = "\(track.albumTitle):::\(track.albumArtist)"
+    MadTunesViewModel.shared.library.requestArtworkLoad(
+      forAlbumKey: key,
+      sampleTrackURL: track.fileURL,
+      sampleTrackBookmark: track.bookmarkData
+    )
+  }
+
+  // Phase 106: Create MPMediaItemArtwork from cached data.
+  // Note: This method is nonisolated because MPMediaItemArtwork's handler
+  // is called on a background queue by the system.
+  #if canImport(MediaPlayer)
+  nonisolated private func createMediaItemArtwork(from data: Data) -> MPMediaItemArtwork? {
+    // Pre-create the image on the caller's context (MainActor)
+    // Then capture it in the closure which runs on background queue
+    let image: PlatformImage? = {
+      guard let cgImage = CGImage.instantiate(data: data) else { return nil }
+      #if canImport(UIKit)
+      return UIImage(cgImage: cgImage)
+      #elseif canImport(AppKit)
+      return NSImage(cgImage: cgImage, size: NSSize(width: 600, height: 600))
+      #else
+      return nil
+      #endif
+    }()
+
+    guard let platformImage = image else { return nil }
+    let size = CGSize(width: 600, height: 600)
+
+    return MPMediaItemArtwork(boundsSize: size) { _ in platformImage }
+  }
+  #endif
 
   /// Phase 105: Clear Now Playing Info when playback stops.
   @MainActor
