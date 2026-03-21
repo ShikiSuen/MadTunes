@@ -72,6 +72,10 @@ public final class MusicLibrary {
 
   public var artworkCache: [String: Data] = [:]
 
+  /// Phase 107: Dynamic capacity — at least max(20, visibleGridItems + 10).
+  /// Updated by AlbumGridViewModel when grid dimensions change.
+  public var artworkCacheCapacity: Int = 50
+
   // MARK: - Favorites
 
   /// 喜好項目播放清單（系統預設，不可刪除）
@@ -335,11 +339,12 @@ public final class MusicLibrary {
         }
       }
 
-      var data = await MetadataReader.readArtwork(from: trackURL)
+      let rawData = await MetadataReader.readArtwork(from: trackURL)
       artworkLoadingKeys.remove(key)
 
       // Phase 92: Use dedicated ArtworkProcessor actor instead of
       // per-request Task.detached, reducing thread-pool handoff overhead.
+      var data = rawData
       if let raw = data {
         data = await ArtworkProcessor.shared.process(raw)
       }
@@ -524,7 +529,6 @@ public final class MusicLibrary {
 
   private var albumIDMap: [String: UUID] = [:]
   private var artworkCacheOrder: [String] = [] // FIFO order for LRU eviction
-  private let artworkCacheCapacity = 50 // Limit to ~10MB (50 × 200KB avg)
   private var artworkAttemptedKeys: Set<String> = []
   private var activeSecurityScopedURLs: [URL] = []
   nonisolated private let importProgressDebouncer: Debouncer = .init(delay: 1)
@@ -893,7 +897,6 @@ public final class MusicLibrary {
   }
 
   /// Store artwork data in cache with deferred LRU eviction when capacity is exceeded.
-  /// Capacity: 50 items (~10MB at 200KB per image)
   /// Eviction is deferred to avoid removing items while they're being displayed.
   private func cacheArtwork(_ data: Data, forKey key: String) {
     // If key already exists, remove it from order to re-add at the end (mark as recently used)

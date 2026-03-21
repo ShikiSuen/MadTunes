@@ -200,6 +200,8 @@ struct AlbumGridView: View {
         .drawingGroup()
       }
       .scrollContentBackground(.hidden)
+      // Phase 107: Set initial cache capacity based on visible grid items.
+      .onAppear { gridVM.updateArtworkCacheCapacity() }
       // Phase 96: expandedAlbumID scroll (data scheduling moved to ViewModel).
       // Phase 98: In Intel Mac mode, skip auto-scroll to ExpandedAlbumView;
       // scrolling to AlbumGridItemView is handled in the safeAreaInset onChange.
@@ -214,6 +216,7 @@ struct AlbumGridView: View {
         }
       }
       .onChange(of: canvasWidth) { oldWidth, newWidth in
+        gridVM.updateArtworkCacheCapacity()
         guard oldWidth != newWidth, let expandedID = gridVM.expandedAlbumID else { return }
         let wasVisible = gridVM.expandedAlbumWasInView
         guard wasVisible else { return }

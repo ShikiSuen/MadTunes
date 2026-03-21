@@ -153,6 +153,13 @@ final class AlbumGridViewModel {
     observeCurrentAlbumsChange()
   }
 
+  /// Phase 107: Update the artwork cache capacity based on visible grid items.
+  /// Formula: max(20, gridPageSize + 10).
+  func updateArtworkCacheCapacity() {
+    guard let mainVM else { return }
+    mainVM.library.artworkCacheCapacity = max(20, gridPageSize + 10)
+  }
+
   // MARK: - DoubleClick Handlers
 
   func onTrackDoubleClicked(_ track: Track, albumTracks: [Track]) {

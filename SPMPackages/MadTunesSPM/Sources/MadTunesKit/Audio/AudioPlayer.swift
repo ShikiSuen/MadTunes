@@ -701,7 +701,6 @@ public final class AudioPlayer {
   }
 
   // Phase 106: Get artwork data from cache.
-  // Uses mainSync to safely access MainActor-isolated state from any context.
   private func getArtworkData(for track: Track) -> Data? {
     let key = "\(track.albumTitle):::\(track.albumArtist)"
     return MadTunesViewModel.shared.library.artworkCache[key]
