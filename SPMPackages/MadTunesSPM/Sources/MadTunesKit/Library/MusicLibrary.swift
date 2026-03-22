@@ -231,11 +231,7 @@ public final class MusicLibrary {
     // Step 2: Load persisted tracks.
     let descriptor = FetchDescriptor<PersistedTrack>()
     guard let persisted = try? context.fetch(descriptor) else { return }
-    var loadedTracks: [Track] = []
-    for pt in persisted {
-      guard let track = pt.toTrack() else { continue }
-      loadedTracks.append(track)
-    }
+    var loadedTracks: [Track] = persisted.compactMap(\.asTrack)
     guard !loadedTracks.isEmpty else {
       // 即使沒有曲目，也要載入播放清單
       loadPersistedPlaylists()

@@ -67,7 +67,7 @@ final class PersistedTrack {
   var year: Int?
   var fallbackFieldsRawValue: Int = 0
 
-  func toTrack() -> Track? {
+  var asTrack: Track? {
     guard let url = URL(string: fileURLString) else { return nil }
     var track = Track(
       id: id,
