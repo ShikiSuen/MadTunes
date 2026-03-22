@@ -18,7 +18,18 @@ import SwiftUI
 final class AlbumTableViewModel {
   // MARK: Lifecycle
 
-  init() {}
+  init() {
+    // Phase 109: Load persisted column state once at init to avoid
+    // JSON decoding from @AppStorage on every read during scroll.
+    if let raw = UserDefaults.standard.string(forKey: TableColumnType.columnWidthsKey),
+       let dict = [String: CGFloat](rawValue: raw) {
+      self._columnWidths = dict
+    }
+    if let raw = UserDefaults.standard.string(forKey: TableColumnType.userDefaultsKey),
+       let dict = [String: Bool](rawValue: raw) {
+      self._tableColumnVisibility = dict
+    }
+  }
 
   // MARK: Internal
 
@@ -65,12 +76,24 @@ final class AlbumTableViewModel {
 
   var tableColumnVisibility: [String: Bool] {
     get { access(keyPath: \.tableColumnVisibility); return _tableColumnVisibility }
-    set { withMutation(keyPath: \.tableColumnVisibility) { _tableColumnVisibility = newValue } }
+    set {
+      withMutation(keyPath: \.tableColumnVisibility) {
+        _tableColumnVisibility = newValue
+        // Phase 109: Write-through to UserDefaults.
+        UserDefaults.standard.set(newValue.rawValue, forKey: TableColumnType.userDefaultsKey)
+      }
+    }
   }
 
   var columnWidths: [String: CGFloat] {
     get { access(keyPath: \.columnWidths); return _columnWidths }
-    set { withMutation(keyPath: \.columnWidths) { _columnWidths = newValue } }
+    set {
+      withMutation(keyPath: \.columnWidths) {
+        _columnWidths = newValue
+        // Phase 109: Write-through to UserDefaults.
+        UserDefaults.standard.set(newValue.rawValue, forKey: TableColumnType.columnWidthsKey)
+      }
+    }
   }
 
   /// Returns visible columns in display order.
@@ -572,14 +595,14 @@ final class AlbumTableViewModel {
   // MARK: - Column Visibility
 
   /// Per-column visibility (persisted to UserDefaults).
-  /// Phase 97: @AppStorage + @ObservationIgnored bridge for @Observable compatibility.
-  @ObservationIgnored @AppStorage(wrappedValue: [:], TableColumnType.userDefaultsKey)
-  private var _tableColumnVisibility: [String: Bool]
+  /// Phase 109: Plain stored property; loaded at init, write-through on set.
+  /// Replaces @AppStorage to eliminate JSON decoding on every read.
+  @ObservationIgnored private var _tableColumnVisibility: [String: Bool] = [:]
 
   /// Per-column widths (persisted to UserDefaults).
-  /// Phase 97: @AppStorage + @ObservationIgnored bridge for @Observable compatibility.
-  @ObservationIgnored @AppStorage(wrappedValue: [:], TableColumnType.columnWidthsKey)
-  private var _columnWidths: [String: CGFloat]
+  /// Phase 109: Plain stored property; loaded at init, write-through on set.
+  /// Replaces @AppStorage to eliminate JSON decoding on every read.
+  @ObservationIgnored private var _columnWidths: [String: CGFloat] = [:]
 
   // MARK: - Display Buffer Methods
 

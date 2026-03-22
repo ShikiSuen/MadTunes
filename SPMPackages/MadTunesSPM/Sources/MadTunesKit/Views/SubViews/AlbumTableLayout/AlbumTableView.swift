@@ -212,6 +212,8 @@ struct AlbumTableView: View {
   @ViewBuilder
   private func listTrackList(scrollProxy proxy: ScrollViewProxy) -> some View {
     let canReorder = vm.tableVM.canReorderCurrentPlaylist
+    // Phase 109: Snapshot column widths to avoid per-cell @Observable access.
+    let cachedColumnWidths = tableVM.columnWidths
     List(selection: Bindable(vm).selectedTrackIDs) {
       ForEach(Array(tableVM.displayedTracks.enumerated()), id: \.element.id) { index, track in
         TableTrackRowView(
@@ -219,7 +221,8 @@ struct AlbumTableView: View {
           index: index,
           visibleColumns: visibleColumns,
           currentTrackID: currentTrackID,
-          isTrackSelected: vm.selectedTrackIDs.contains(track.id)
+          isTrackSelected: vm.selectedTrackIDs.contains(track.id),
+          columnWidths: cachedColumnWidths
         )
         .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
         .listRowBackground(alternatingRowBackground(at: index, trackID: track.id))
@@ -383,19 +386,26 @@ struct AlbumTableView: View {
   @ViewBuilder
   private func nativeTableList(scrollProxy proxy: ScrollViewProxy) -> some View {
     let canReorder = vm.tableVM.canReorderCurrentPlaylist
+    // Phase 109: Pre-compute index map for O(1) lookup per row,
+    // replacing O(n) firstIndex(where:) that caused massive Track copying.
+    let displayedTracks = tableVM.displayedTracks
+    let indexMap = Dictionary(uniqueKeysWithValues: displayedTracks.enumerated().map { ($1.id, $0) })
+    // Phase 109: Snapshot column widths to avoid per-cell @Observable access.
+    let cachedColumnWidths = tableVM.columnWidths
     Table(of: Track.self, selection: Bindable(vm).selectedTrackIDs) {
       TableColumn("Tracks".description) { track in
-        let index = tableVM.displayedTracks.firstIndex(where: { $0.id == track.id }) ?? 0
+        let index = indexMap[track.id] ?? 0
         TableTrackRowView(
           track: track,
           index: index,
           visibleColumns: visibleColumns,
           currentTrackID: currentTrackID,
-          isTrackSelected: vm.selectedTrackIDs.contains(track.id)
+          isTrackSelected: vm.selectedTrackIDs.contains(track.id),
+          columnWidths: cachedColumnWidths
         )
       }
     } rows: {
-      ForEach(tableVM.displayedTracks) { track in
+      ForEach(displayedTracks) { track in
         if canReorder {
           TableRow(track)
             .draggable(track)
@@ -523,13 +533,15 @@ private struct TableTrackRowView: View {
     index: Int,
     visibleColumns: [TableColumnType],
     currentTrackID: UUID?,
-    isTrackSelected: Bool
+    isTrackSelected: Bool,
+    columnWidths: [String: CGFloat]
   ) {
     self.track = track
     self.index = index
     self.visibleColumns = visibleColumns
     self.currentTrackID = currentTrackID
     self.isTrackSelected = isTrackSelected
+    self.columnWidths = columnWidths
   }
 
   // MARK: Internal
@@ -537,7 +549,10 @@ private struct TableTrackRowView: View {
   var body: some View {
     #if canImport(AppKit) && !canImport(UIKit)
     // SUNT mode: bare row content, no extra styling.
+    // Phase 109: Fixed height to short-circuit NSTableView's automatic
+    // row height calculation (was ~25% of CPU in constraint solving).
     rowContent
+      .frame(height: 20)
     #else
     // List mode: visibility-gated rendering with Phase 88 pattern.
     Color.clear
@@ -557,7 +572,6 @@ private struct TableTrackRowView: View {
 
   // MARK: Private
 
-  @State private var vm: MadTunesViewModel = .shared
   #if !canImport(AppKit) || canImport(UIKit)
   @State private var isVisible = false
   #endif
@@ -567,19 +581,21 @@ private struct TableTrackRowView: View {
   private let visibleColumns: [TableColumnType]
   private let currentTrackID: UUID?
   private let isTrackSelected: Bool
-
-  private var tableVM: AlbumTableViewModel { vm.tableVM }
+  // Phase 109: Snapshotted column widths, passed from parent to avoid
+  // per-cell @Observable access and JSON decode during scroll.
+  private let columnWidths: [String: CGFloat]
 
   @ViewBuilder private var rowContent: some View {
     HStack(spacing: 0) {
       ForEach(Array(visibleColumns.enumerated()), id: \.element) { colIdx, column in
         let isTrailingColumn = colIdx == visibleColumns.count - 1
-        let columnWidth = isTrailingColumn ? nil : tableVM.columnWidth(for: column)
+        // Phase 109: Use snapshotted dictionary directly instead of ViewModel access.
+        let colWidth: CGFloat? = isTrailingColumn ? nil : (columnWidths[column.rawValue] ?? column.defaultWidth)
         cellContent(for: column)
           .font(.callout)
           .lineLimit(1)
           .padding(.horizontal, 6)
-          .frame(width: columnWidth, alignment: .leading)
+          .frame(width: colWidth, alignment: .leading)
         if !isTrailingColumn {
           Spacer().frame(width: 1)
         }
