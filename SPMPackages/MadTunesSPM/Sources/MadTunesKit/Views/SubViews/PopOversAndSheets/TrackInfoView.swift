@@ -26,44 +26,44 @@ struct TrackInfoView: View {
         // 基本資訊
         Section(String(localized: "i18n:TrackInfo.Sections.BasicInfo", bundle: #bundle)) {
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.Title", bundle: #bundle),
-            value: track.title,
+            label: Text("i18n:TrackInfo.Labels.Title", bundle: #bundle),
+            value: Text(verbatim: track.title),
             isFallback: track.fallbackFields.contains(.title)
           )
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.Artist", bundle: #bundle),
-            value: track.artist,
+            label: Text("i18n:TrackInfo.Labels.Artist", bundle: #bundle),
+            value: Text(verbatim: track.artist),
             isFallback: track.fallbackFields.contains(.artist)
           )
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.Album", bundle: #bundle),
-            value: track.albumTitle,
+            label: Text("i18n:TrackInfo.Labels.Album", bundle: #bundle),
+            value: Text(verbatim: track.albumTitle),
             isFallback: track.fallbackFields.contains(.albumTitle)
           )
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.AlbumArtist", bundle: #bundle),
-            value: track.albumArtist.isEmpty ? "—" : track.albumArtist,
+            label: Text("i18n:TrackInfo.Labels.AlbumArtist", bundle: #bundle),
+            value: Text(verbatim: track.albumArtist.isEmpty ? "—" : track.albumArtist),
             isFallback: track.fallbackFields.contains(.albumArtist)
           )
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.TrackNumber", bundle: #bundle),
-            value: track.trackNumber > 0 ? String(track.trackNumber) : "—"
+            label: Text("i18n:TrackInfo.Labels.TrackNumber", bundle: #bundle),
+            value: Text(verbatim: track.trackNumber > 0 ? String(track.trackNumber) : "—")
           )
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.DiscNumber", bundle: #bundle),
-            value: track.discNumber > 0 ? String(track.discNumber) : "—"
+            label: Text("i18n:TrackInfo.Labels.DiscNumber", bundle: #bundle),
+            value: Text(verbatim: track.discNumber > 0 ? String(track.discNumber) : "—")
           )
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.Duration", bundle: #bundle),
-            value: formatDuration(track.duration)
+            label: Text("i18n:TrackInfo.Labels.Duration", bundle: #bundle),
+            value: Text(verbatim: formatDuration(track.duration))
           )
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.Genre", bundle: #bundle),
-            value: track.genre.isEmpty ? "—" : track.genre
+            label: Text("i18n:TrackInfo.Labels.Genre", bundle: #bundle),
+            value: Text(verbatim: track.genre.isEmpty ? "—" : track.genre)
           )
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.Year", bundle: #bundle),
-            value: track.year.map(String.init) ?? "—"
+            label: Text("i18n:TrackInfo.Labels.Year", bundle: #bundle),
+            value: Text(verbatim: track.year.map(String.init) ?? "—")
           )
         }
 
@@ -78,13 +78,13 @@ struct TrackInfoView: View {
         // 檔案資訊
         Section(String(localized: "i18n:TrackInfo.Sections.FileInfo", bundle: #bundle)) {
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.FilePath", bundle: #bundle),
-            value: track.fileURL.path
+            label: Text("i18n:TrackInfo.Labels.FilePath", bundle: #bundle),
+            value: Text(verbatim: track.fileURL.path)
           )
           if let fileSize = detailedMetadata?.fileSize {
             InfoRow(
-              label: String(localized: "i18n:TrackInfo.Labels.FileSize", bundle: #bundle),
-              value: formatFileSize(fileSize)
+              label: Text("i18n:TrackInfo.Labels.FileSize", bundle: #bundle),
+              value: Text(verbatim: formatFileSize(fileSize))
             )
           }
         }
@@ -93,44 +93,32 @@ struct TrackInfoView: View {
         if let detailed = detailedMetadata {
           Section(String(localized: "i18n:TrackInfo.Sections.AudioFormat", bundle: #bundle)) {
             InfoRow(
-              label: String(localized: "i18n:TrackInfo.Labels.Codec", bundle: #bundle),
-              value: detailed.codec ?? "—"
+              label: Text("i18n:TrackInfo.Labels.Codec", bundle: #bundle),
+              value: Text(verbatim: detailed.codec?.uppercased() ?? "—")
             )
             if let bitDepth = detailed.bitDepth {
               InfoRow(
-                label: String(localized: "i18n:TrackInfo.Labels.BitDepth", bundle: #bundle),
-                value: String(
-                  localized: "i18n:TrackInfo.Values.BitDepthFormat",
-                  defaultValue: "\(bitDepth)-bit",
-                  bundle: #bundle
-                )
+                label: Text("i18n:TrackInfo.Labels.BitDepth", bundle: #bundle),
+                value: Text("i18n:TrackInfo.Values.BitDepthFormat:\(bitDepth)", bundle: #bundle)
               )
             }
             if let sampleRate = detailed.sampleRate {
               InfoRow(
-                label: String(localized: "i18n:TrackInfo.Labels.SampleRate", bundle: #bundle),
-                value: formatSampleRate(sampleRate)
+                label: Text("i18n:TrackInfo.Labels.SampleRate", bundle: #bundle),
+                value: Text(verbatim: formatSampleRate(sampleRate))
               )
             }
             if let channelCount = detailed.channelCount {
               InfoRow(
-                label: String(localized: "i18n:TrackInfo.Labels.Channels", bundle: #bundle),
-                value: channelCount == 1 ? String(localized: "i18n:TrackInfo.Values.Mono", bundle: #bundle) :
-                  String(
-                    localized: "i18n:TrackInfo.Values.ChannelCountFormat",
-                    defaultValue: "\(channelCount)ch",
-                    bundle: #bundle
-                  )
+                label: Text("i18n:TrackInfo.Labels.Channels", bundle: #bundle),
+                value: channelCount == 1 ? Text("i18n:TrackInfo.Values.Mono", bundle: #bundle) :
+                  Text("i18n:TrackInfo.Values.ChannelCountFormat:\(channelCount)", bundle: #bundle)
               )
             }
             if let bitrate = detailed.bitrate {
               InfoRow(
-                label: String(localized: "i18n:TrackInfo.Labels.Bitrate", bundle: #bundle),
-                value: String(
-                  localized: "i18n:TrackInfo.Values.BitrateFormat",
-                  defaultValue: "\(bitrate / 1000) kbps",
-                  bundle: #bundle
-                )
+                label: Text("i18n:TrackInfo.Labels.Bitrate", bundle: #bundle),
+                value: Text("i18n:TrackInfo.Values.BitrateFormat:\(bitrate)", bundle: #bundle)
               )
             }
           }
@@ -175,34 +163,46 @@ struct MultiTrackInfoView: View {
       List {
         // 統計資訊
         Section(String(localized: "i18n:TrackInfo.Sections.Statistics", bundle: #bundle)) {
-          InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Tracks", bundle: #bundle), value: "\(tracks.count)")
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.TotalDuration", bundle: #bundle),
-            value: formatDuration(totalDuration)
+            label: Text("i18n:TrackInfo.Labels.Tracks", bundle: #bundle),
+            value: Text(verbatim: "\(tracks.count)")
           )
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.TotalFileSize", bundle: #bundle),
-            value: totalFileSize.map(formatFileSize) ?? "—"
+            label: Text("i18n:TrackInfo.Labels.TotalDuration", bundle: #bundle),
+            value: Text(verbatim: formatDuration(totalDuration))
           )
           InfoRow(
-            label: String(localized: "i18n:TrackInfo.Labels.AverageTrackLength", bundle: #bundle),
-            value: formatDuration(averageDuration)
+            label: Text("i18n:TrackInfo.Labels.TotalFileSize", bundle: #bundle),
+            value: Text(verbatim: totalFileSize.map(formatFileSize) ?? "—")
+          )
+          InfoRow(
+            label: Text("i18n:TrackInfo.Labels.AverageTrackLength", bundle: #bundle),
+            value: Text(verbatim: formatDuration(averageDuration))
           )
 
           if let commonAlbum = commonAlbum, !commonAlbum.isEmpty {
-            InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Album", bundle: #bundle), value: commonAlbum)
+            InfoRow(
+              label: Text("i18n:TrackInfo.Labels.Album", bundle: #bundle),
+              value: Text(verbatim: commonAlbum)
+            )
           }
           if let commonArtist = commonArtist, !commonArtist.isEmpty {
-            InfoRow(label: String(localized: "i18n:TrackInfo.Labels.Artist", bundle: #bundle), value: commonArtist)
+            InfoRow(
+              label: Text("i18n:TrackInfo.Labels.Artist", bundle: #bundle),
+              value: Text(verbatim: commonArtist)
+            )
           }
           if let commonAlbumArtist = commonAlbumArtist, !commonAlbumArtist.isEmpty {
             InfoRow(
-              label: String(localized: "i18n:TrackInfo.Labels.AlbumArtist", bundle: #bundle),
-              value: commonAlbumArtist
+              label: Text("i18n:TrackInfo.Labels.AlbumArtist", bundle: #bundle),
+              value: Text(verbatim: commonAlbumArtist)
             )
           }
           if let yearRange = yearRange {
-            InfoRow(label: String(localized: "i18n:TrackInfo.Labels.YearRange", bundle: #bundle), value: yearRange)
+            InfoRow(
+              label: Text("i18n:TrackInfo.Labels.YearRange", bundle: #bundle),
+              value: Text(verbatim: yearRange)
+            )
           }
         }
 
@@ -210,12 +210,10 @@ struct MultiTrackInfoView: View {
         Section(String(localized: "i18n:TrackInfo.Sections.AudioFormats", bundle: #bundle)) {
           ForEach(Array(codecCounts.sorted(by: { $0.value > $1.value })), id: \.key) { codec, count in
             InfoRow(
-              label: codec.isEmpty ? String(localized: "i18n:TrackInfo.Values.Unknown", bundle: #bundle) : codec,
-              value: String(
-                localized: "i18n:TrackInfo.Values.TrackCountFormat",
-                defaultValue: "\(count) tracks",
-                bundle: #bundle
-              )
+              label: codec.isEmpty
+                ? Text("i18n:TrackInfo.Values.Unknown", bundle: #bundle)
+                : Text(verbatim: codec),
+              value: Text("i18n:Unit:Track:\(count)", bundle: #bundle)
             )
           }
         }
@@ -289,7 +287,7 @@ struct MultiTrackInfoView: View {
 private struct InfoRow: View {
   // MARK: Lifecycle
 
-  init(label: String, value: String, isFallback: Bool = false) {
+  init(label: Text, value: Text, isFallback: Bool = false) {
     self.label = label
     self.value = value
     self.isFallback = isFallback
@@ -299,19 +297,19 @@ private struct InfoRow: View {
 
   var body: some View {
     LabeledContent {
-      Text(value)
+      value
         .strikethrough(isFallback, color: .secondary)
         .foregroundStyle(isFallback ? .secondary : .primary)
         .textSelection(.enabled)
     } label: {
-      Text(label)
+      label
     }
   }
 
   // MARK: Private
 
-  private let label: String
-  private let value: String
+  private let label: Text
+  private let value: Text
   private var isFallback: Bool = false
 }
 

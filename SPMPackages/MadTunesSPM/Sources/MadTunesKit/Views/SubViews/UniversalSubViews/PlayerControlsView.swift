@@ -47,11 +47,7 @@ struct PlayerControlsView: View {
       }
     } message: {
       let tracksToDeleteCount = 1
-      Text(String(
-        localized: "i18n:Alert.RemoveTracksMessage",
-        defaultValue: "This will remove \(tracksToDeleteCount) track(s) from the library. The original files will not be deleted.",
-        bundle: #bundle
-      ))
+      Text("i18n:Alert.RemoveTracksMessage:\(tracksToDeleteCount)", bundle: #bundle)
     }
     .alert(
       String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),

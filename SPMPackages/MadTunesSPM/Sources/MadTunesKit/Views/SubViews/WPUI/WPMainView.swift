@@ -173,11 +173,7 @@ struct WPMainView: View {
         phoneVM.albumsToDelete = []
       }
     } message: {
-      Text(String(
-        localized: "i18n:Alert.RemoveAlbumsMessage",
-        defaultValue: "This will remove \(phoneVM.albumsToDelete.count) album(s) from the library. The original files will not be deleted.",
-        bundle: #bundle
-      ))
+      Text("i18n:Alert.RemoveAlbumsMessage:\(phoneVM.albumsToDelete.count)", bundle: #bundle)
     }
     .alert(
       String(localized: "i18n:Alert.RemoveFromLibraryTitle", bundle: #bundle),
@@ -192,11 +188,7 @@ struct WPMainView: View {
         phoneVM.tracksToDelete = []
       }
     } message: {
-      Text(String(
-        localized: "i18n:Alert.RemoveTracksMessage",
-        defaultValue: "This will remove \(phoneVM.tracksToDelete.count) track(s) from the library. The original files will not be deleted.",
-        bundle: #bundle
-      ))
+      Text("i18n:Alert.RemoveTracksMessage:\(phoneVM.tracksToDelete.count)", bundle: #bundle)
     }
     .alert(
       String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),

@@ -32,7 +32,7 @@ struct PlayingQueueView: View {
         }
         .buttonStyle(.plain)
         .help(String(localized: "i18n:Queue.ScrambleHelp", bundle: #bundle))
-        Text(String(localized: "i18n:Queue.TrackCount", defaultValue: "\(player.queue.count) tracks", bundle: #bundle))
+        Text("i18n:Unit:Track:\(player.queue.count)", bundle: #bundle)
           .font(.caption)
           .foregroundStyle(.secondary)
       }

@@ -96,11 +96,7 @@ struct AlbumGridView: View {
           gridVM.albumsToDelete = []
         }
       } message: {
-        Text(String(
-          localized: "i18n:Alert.RemoveAlbumsMessage",
-          defaultValue: "This will remove \(gridVM.albumsToDelete.count) album(s) from the library. The original files will not be deleted.",
-          bundle: #bundle
-        ))
+        Text("i18n:Alert.RemoveAlbumsMessage:\(gridVM.albumsToDelete.count)", bundle: #bundle)
       }
       .alert(
         String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),

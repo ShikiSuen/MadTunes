@@ -135,11 +135,7 @@ struct ExpandedAlbumView: View {
         tracksToDelete = []
       }
     } message: {
-      Text(String(
-        localized: "i18n:Alert.RemoveTracksMessage",
-        defaultValue: "This will remove \(tracksToDelete.count) track(s) from the library. The original files will not be deleted.",
-        bundle: #bundle
-      ))
+      Text("i18n:Alert.RemoveTracksMessage:\(tracksToDelete.count)", bundle: #bundle)
     }
     .alert(
       String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),
@@ -358,11 +354,7 @@ struct ExpandedAlbumView: View {
 
   @ViewBuilder private var songCountAndLengthView: some View {
     HStack {
-      Text(String(
-        localized: "i18n:ExpandedAlbum.SongCount",
-        defaultValue: "\(album.tracks.count) songs",
-        bundle: #bundle
-      ))
+      Text("i18n:Unit:Track:\(album.tracks.count)", bundle: #bundle)
       Spacer()
       Text(formatDuration(album.totalDuration))
     }

@@ -133,11 +133,7 @@ struct AlbumTableView: View {
         tableVM.tracksToDelete = []
       }
     } message: {
-      Text(String(
-        localized: "i18n:Alert.RemoveTracksMessage",
-        defaultValue: "This will remove \(tableVM.tracksToDelete.count) track(s) from the library. The original files will not be deleted.",
-        bundle: #bundle
-      ))
+      Text("i18n:Alert.RemoveTracksMessage:\(tableVM.tracksToDelete.count)", bundle: #bundle)
     }
     .alert(
       String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),

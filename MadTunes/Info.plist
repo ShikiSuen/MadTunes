@@ -67,6 +67,14 @@
 		<string>ja</string>
 		<string>zh-Hans</string>
 		<string>zh-Hant</string>
+		<string>ko</string>
+		<string>fr</string>
+		<string>de</string>
+		<string>es</string>
+		<string>pt-BR</string>
+		<string>ru</string>
+		<string>tr</string>
+		<string>it</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict>

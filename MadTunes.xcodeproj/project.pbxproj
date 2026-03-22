@@ -144,6 +144,14 @@
 				"zh-Hant",
 				"zh-Hans",
 				ja,
+				fr,
+				de,
+				es,
+				"pt-BR",
+				ru,
+				tr,
+				ko,
+				it,
 			);
 			mainGroup = AA000020000000000000000A;
 			packageReferences = (
