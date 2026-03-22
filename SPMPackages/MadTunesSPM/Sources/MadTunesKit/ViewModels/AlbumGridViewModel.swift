@@ -153,13 +153,6 @@ final class AlbumGridViewModel {
     observeCurrentAlbumsChange()
   }
 
-  /// Phase 107: Update the artwork cache capacity based on visible grid items.
-  /// Formula: max(20, gridPageSize + 10).
-  func updateArtworkCacheCapacity() {
-    guard let mainVM else { return }
-    mainVM.library.artworkCacheCapacity = max(20, gridPageSize + 10)
-  }
-
   // MARK: - DoubleClick Handlers
 
   func onTrackDoubleClicked(_ track: Track, albumTracks: [Track]) {
@@ -526,7 +519,7 @@ final class AlbumGridViewModel {
   // MARK: - Computed Helpers
 
   /// Groups a flat filtered track list back into Album objects, preserving
-  /// original album metadata (id, artworkData) via `unfilteredAlbums`.
+  /// original album metadata (id) via `unfilteredAlbums`.
   private func buildAlbumsFromFilteredTracks(_ filteredTracks: [Track]) -> [Album] {
     let filteredIDs = Set(filteredTracks.map(\.id))
     let albums = unfilteredAlbums.compactMap { album -> Album? in
@@ -536,8 +529,7 @@ final class AlbumGridViewModel {
         id: album.id,
         title: album.title,
         artist: album.artist,
-        tracks: matching,
-        artworkData: album.artworkData
+        tracks: matching
       )
     }
     return sortedAlbums(albums)

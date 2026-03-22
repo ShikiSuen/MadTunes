@@ -171,6 +171,9 @@ public final class AudioPlayer {
     activeSecurityScopedURL = bookmarkScopedURL
 
     currentTrack = track
+    // Phase 108: Reset cached Now Playing artwork for new track.
+    nowPlayingArtworkData = nil
+    nowPlayingArtworkKey = nil
     playViaAVPlayer(url: playbackURL)
   }
 
@@ -670,7 +673,7 @@ public final class AudioPlayer {
   }
 
   /// Phase 105: Update MPNowPlayingInfoCenter with current playback state.
-  /// Phase 106: Add artwork support with lazy loading from cache.
+  /// Phase 108: Artwork loaded asynchronously from SwiftData cache.
   @MainActor
   private func updateNowPlayingInfo() {
     var nowPlayingInfo: [String: Any] = [:]
@@ -681,16 +684,13 @@ public final class AudioPlayer {
       nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = track.albumTitle
       nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = track.duration
 
-      // Phase 106: Lazy load artwork from cache.
-      // Use nonisolated helper to avoid dispatch queue assertion issues.
-      if let artworkData = getArtworkData(for: track),
-         let artwork = createMediaItemArtwork(from: artworkData) {
+      // Phase 108: Use cached artwork if already loaded for current track.
+      if let data = nowPlayingArtworkData,
+         let artwork = createMediaItemArtwork(from: data) {
         nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
       } else {
-        // Phase 106: Request artwork load if not in cache (lazy loading).
-        // This triggers async artwork loading; updateNowPlayingInfo will be
-        // called again when playback state changes to reflect the loaded artwork.
-        requestArtworkLoad(for: track)
+        // Kick off async artwork load; will call updateNowPlayingInfo again.
+        loadNowPlayingArtwork(for: track)
       }
     }
 
@@ -700,20 +700,26 @@ public final class AudioPlayer {
     MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
   }
 
-  // Phase 106: Get artwork data from cache.
-  private func getArtworkData(for track: Track) -> Data? {
-    let key = "\(track.albumTitle):::\(track.albumArtist)"
-    return MadTunesViewModel.shared.library.artworkCache[key]
-  }
+  /// Phase 108: Stored artwork data for the currently playing track.
+  private var nowPlayingArtworkData: Data?
+  /// Phase 108: Album key for which `nowPlayingArtworkData` was loaded.
+  private var nowPlayingArtworkKey: String?
 
-  // Phase 106: Request artwork load without blocking the current context.
-  private func requestArtworkLoad(for track: Track) {
+  /// Phase 108: Asynchronously load artwork from SwiftData for Now Playing info.
+  private func loadNowPlayingArtwork(for track: Track) {
     let key = "\(track.albumTitle):::\(track.albumArtist)"
-    MadTunesViewModel.shared.library.requestArtworkLoad(
-      forAlbumKey: key,
-      sampleTrackURL: track.fileURL,
-      sampleTrackBookmark: track.bookmarkData
-    )
+    guard key != nowPlayingArtworkKey else { return } // already loading / loaded
+    Task {
+      let result = await MadTunesViewModel.shared.library.loadArtwork(
+        forAlbumKey: key,
+        sampleTrackURL: track.fileURL,
+        sampleTrackBookmark: track.bookmarkData
+      )
+      guard currentTrack?.id == track.id else { return } // track changed while loading
+      nowPlayingArtworkData = result?.data
+      nowPlayingArtworkKey = key
+      updateNowPlayingInfo()
+    }
   }
 
   // Phase 106: Create MPMediaItemArtwork from cached data.
@@ -744,6 +750,8 @@ public final class AudioPlayer {
   /// Phase 105: Clear Now Playing Info when playback stops.
   @MainActor
   private func clearNowPlayingInfo() {
+    nowPlayingArtworkData = nil
+    nowPlayingArtworkKey = nil
     MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
   }
   #endif

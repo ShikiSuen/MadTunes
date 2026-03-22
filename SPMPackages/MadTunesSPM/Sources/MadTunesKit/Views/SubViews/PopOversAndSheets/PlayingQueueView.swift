@@ -57,11 +57,23 @@ struct PlayingQueueView: View {
               queueCount: player.queue.count,
               isCurrent: index == player.currentIndex,
               isHighlighted: index == highlightedIndex,
-              artworkData: artworkData(for: track),
+              artworkData: queueArtworkCache[vm.library.albumKey(title: track.albumTitle, artist: track.albumArtist)],
               onRemove: { removeFromQueue(at: index) },
               onMoveUp: { moveQueueItem(from: index, to: index - 1) },
               onMoveDown: { moveQueueItem(from: index, to: index + 2) }
             )
+            .task(id: track.id) {
+              let key = vm.library.albumKey(title: track.albumTitle, artist: track.albumArtist)
+              guard queueArtworkCache[key] == nil else { return }
+              let result = await vm.library.loadArtwork(
+                forAlbumKey: key,
+                sampleTrackURL: track.fileURL,
+                sampleTrackBookmark: track.bookmarkData
+              )
+              if let data = result?.data {
+                queueArtworkCache[key] = data
+              }
+            }
             .listRowBackground(
               rowBackground(for: index)
             )
@@ -98,6 +110,8 @@ struct PlayingQueueView: View {
 
   @Environment(MadTunesViewModel.self) private var vm
   @State private var highlightedIndex: Int?
+  /// Phase 108: Per-popover artwork cache (non-observable, no cascade).
+  @State private var queueArtworkCache: [String: Data] = [:]
 
   private var dynamicHeight: CGFloat? {
     guard !player.queue.isEmpty else { return nil }
@@ -114,11 +128,6 @@ struct PlayingQueueView: View {
     } else {
       return Color.clear
     }
-  }
-
-  private func artworkData(for track: Track) -> Data? {
-    let key = vm.library.albumKey(title: track.albumTitle, artist: track.albumArtist)
-    return vm.library.artworkCache[key]
   }
 
   private func removeFromQueue(at index: Int) {

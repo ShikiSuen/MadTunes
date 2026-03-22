@@ -13,8 +13,7 @@ public struct Album: Identifiable, Sendable {
     id: UUID = UUID(),
     title: String,
     artist: String,
-    tracks: [Track] = [],
-    artworkData: Data? = nil
+    tracks: [Track] = []
   ) {
     self.id = id
     self.title = title
@@ -26,7 +25,6 @@ public struct Album: Identifiable, Sendable {
         < ($1.discNumber, $1.trackNumber, $1.title)
     }
     self.allTrackIDsSet = .init(tracks.map(\.id))
-    self.artworkData = artworkData
   }
 
   // MARK: Public
@@ -36,7 +34,6 @@ public struct Album: Identifiable, Sendable {
   public let artist: String
   public let tracks: [Track]
   public let allTrackIDsSet: Set<UUID>
-  public var artworkData: Data?
 
   public var totalDuration: TimeInterval {
     tracks.reduce(0) { $0 + $1.duration }

@@ -62,6 +62,12 @@ final class MadTunesViewModel {
   var columnBrowserSelectedSongArtists: Set<String> = []
   var columnBrowserSelectedAlbumTitles: Set<String> = []
 
+  /// Phase 108: Stored artwork for the currently playing track.
+  /// Loaded asynchronously from SwiftData when the current track changes.
+  var currentTrackArtworkData: Data?
+  /// Phase 108: Pre-computed dominant color for the current track's artwork.
+  var currentTrackDominantColor: Color?
+
   var useTableView: Bool {
     get { access(keyPath: \.useTableView); return _useTableView }
     set { withMutation(keyPath: \.useTableView) { _useTableView = newValue } }
@@ -148,12 +154,6 @@ final class MadTunesViewModel {
     return titles.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
   }
 
-  var currentTrackArtwork: Data? {
-    guard let track = player.currentTrack else { return nil }
-    let key = library.albumKey(title: track.albumTitle, artist: track.albumArtist)
-    return library.artworkCache[key]
-  }
-
   /// Single source of truth: all displayable tracks after applying all filters.
   /// Does NOT apply table sort — call `currentTracksDisplayed` for the sorted version.
   var filteredTracksBase: [Track] {
@@ -217,7 +217,7 @@ final class MadTunesViewModel {
         guard !remaining.isEmpty else { return nil }
         return Album(
           id: album.id, title: album.title, artist: album.artist,
-          tracks: remaining, artworkData: album.artworkData
+          tracks: remaining
         )
       }
     }
@@ -567,6 +567,7 @@ final class MadTunesViewModel {
   }
 
   /// Phase 96: When the current track changes, load artwork for it.
+  /// Phase 108: Loads from SwiftData cache into stored properties.
   private func observeCurrentTrackChange() {
     withObservationTracking {
       _ = self.player.currentTrack?.id
@@ -575,11 +576,22 @@ final class MadTunesViewModel {
         guard let self else { return }
         if let track = self.player.currentTrack {
           let key = self.library.albumKey(title: track.albumTitle, artist: track.albumArtist)
-          self.library.requestArtworkLoad(
+          let result = await self.library.loadArtwork(
             forAlbumKey: key,
             sampleTrackURL: track.fileURL,
             sampleTrackBookmark: track.bookmarkData
           )
+          self.currentTrackArtworkData = result?.data
+          if let h = result?.dominantColorHue,
+             let s = result?.dominantColorSaturation,
+             let b = result?.dominantColorBrightness {
+            self.currentTrackDominantColor = Color(hue: h, saturation: s, brightness: b)
+          } else {
+            self.currentTrackDominantColor = nil
+          }
+        } else {
+          self.currentTrackArtworkData = nil
+          self.currentTrackDominantColor = nil
         }
         self.observeCurrentTrackChange()
       }
@@ -694,8 +706,7 @@ final class MadTunesViewModel {
             id: album.id,
             title: album.title,
             artist: album.artist,
-            tracks: matching,
-            artworkData: album.artworkData
+            tracks: matching
           ))
         }
       }

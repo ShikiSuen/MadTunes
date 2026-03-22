@@ -4,9 +4,8 @@
 
 import SwiftUI
 
-/// Artwork view with lazy loading. Shows a WinUI3ProgressRing placeholder
-/// while artwork is being loaded, then transitions to the actual artwork
-/// or a music-note fallback.
+/// Phase 108: Artwork view with lazy loading from SwiftData cache.
+/// Each instance uses its own @State — no observable dictionary, no cascade re-renders.
 struct LazyAlbumArtworkView: View {
   // MARK: Lifecycle
 
@@ -18,28 +17,32 @@ struct LazyAlbumArtworkView: View {
   // MARK: Internal
 
   var body: some View {
-    let key = vm.library.albumKey(title: album.title, artist: album.artist)
-    let cachedArtwork = vm.library.artworkCache[key]
-    // let isLoading = viewModel.library.artworkLoadingKeys.contains(key)
-
-    ArtworkView(data: cachedArtwork, alwaysGlossy: alwaysGlossy)
+    ArtworkView(data: artworkData, dominantColor: dominantColor, alwaysGlossy: alwaysGlossy)
       .task {
-        guard cachedArtwork == nil, let track = album.tracks.first else { return }
-        vm.library.requestArtworkLoad(
+        guard artworkData == nil, let track = album.tracks.first else { return }
+        let key = vm.library.albumKey(title: album.title, artist: album.artist)
+        let result = await vm.library.loadArtwork(
           forAlbumKey: key,
           sampleTrackURL: track.fileURL,
           sampleTrackBookmark: track.bookmarkData
         )
+        if let result {
+          artworkData = result.data
+          if let h = result.dominantColorHue, let s = result.dominantColorSaturation,
+             let b = result.dominantColorBrightness {
+            dominantColor = Color(hue: h, saturation: s, brightness: b)
+          }
+        }
       }
-      .animation(
-        .interactiveSpring.nerf(vm.gridVM.legacyHardwareMode),
-        value: cachedArtwork?.hashValue
-      )
   }
 
   // MARK: Private
 
   @Environment(MadTunesViewModel.self) private var vm
+
+  /// Phase 108: Per-view state — isolated from other album tiles.
+  @State private var artworkData: Data?
+  @State private var dominantColor: Color?
 
   private let album: Album
   private let alwaysGlossy: Bool

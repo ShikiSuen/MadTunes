@@ -39,6 +39,12 @@ public final class MusicLibrary {
 
   nonisolated public init() {
     self._modelContainer = Self.makeModelContainer()
+    // Phase 108: Create a dedicated SwiftData container for artwork caching.
+    if let container = ArtworkCacheStore.makeContainer() {
+      self._artworkCacheStore = ArtworkCacheStore(modelContainer: container)
+    } else {
+      self._artworkCacheStore = nil
+    }
   }
 
   // MARK: Public
@@ -68,13 +74,11 @@ public final class MusicLibrary {
   /// library update occurs (e.g. removal of tracks).
   public var changeID: UUID = .init()
 
-  // MARK: - Internal State
+  // MARK: - Artwork Cache (Phase 108: SwiftData-backed)
 
-  public var artworkCache: [String: Data] = [:]
-
-  /// Phase 107: Dynamic capacity — at least max(20, visibleGridItems + 10).
-  /// Updated by AlbumGridViewModel when grid dimensions change.
-  public var artworkCacheCapacity: Int = 50
+  /// Phase 108: Background actor for on-disk artwork cache.
+  /// Replaces the former in-memory `artworkCache: [String: Data]` dictionary.
+  public nonisolated let _artworkCacheStore: ArtworkCacheStore?
 
   // MARK: - Favorites
 
@@ -291,12 +295,13 @@ public final class MusicLibrary {
       try? context.delete(model: PersistedPlaylist.self)
       try? context.save()
     }
+    // Phase 108: Clear artwork SwiftData cache.
+    Task { await _artworkCacheStore?.removeAll() }
     // Clear in-memory state.
     tracks.removeAll()
     albums.removeAll()
-    artworkCache.removeAll()
-    artworkCacheOrder.removeAll()
     artworkAttemptedKeys.removeAll()
+    artworkLoadingContinuations.removeAll()
     albumIDMap.removeAll()
     if !playlists.isEmpty {
       playlists[0].trackIDs = []
@@ -307,55 +312,90 @@ public final class MusicLibrary {
     hasLoadedPersistence = false
   }
 
-  // MARK: - Lazy Artwork Loading
+  // MARK: - Lazy Artwork Loading (Phase 108: SwiftData-backed)
 
-  /// Request lazy artwork loading for an album. Called by views on appear.
-  public func requestArtworkLoad(
+  /// Phase 108: Load artwork for an album, returning cached data from SwiftData
+  /// or loading from the audio file if not yet cached.
+  /// Concurrent callers for the same key are coalesced — only one load runs,
+  /// and all callers receive the same result.
+  public func loadArtwork(
     forAlbumKey key: String,
     sampleTrackURL: URL,
     sampleTrackBookmark: Data?
-  ) {
-    if artworkCache[key] != nil { return }
-    if artworkAttemptedKeys.contains(key) { return }
-    artworkAttemptedKeys.insert(key)
-    artworkLoadingKeys.insert(key)
-    Task {
-      var trackURL = sampleTrackURL
+  ) async
+    -> ArtworkCacheResult? {
+    // 1. Check SwiftData cache (fast path — background actor).
+    if let cached = await _artworkCacheStore?.fetchArtwork(forKey: key) {
+      return cached
+    }
 
-      // Phase 80: In sandbox environments (e.g. iOS Simulator), the stored
-      // file URL may not remain directly readable after relaunch. If the URL
-      // is not readable, but we have a per-track bookmark, resolve it and
-      // use the resolved URL to load artwork.
-      if !FileManager.default.isReadableFile(atPath: trackURL.path),
-         let bookmark = sampleTrackBookmark,
-         let resolved = Self.resolveBookmark(bookmark) {
-        if resolved.startAccessingSecurityScopedResource() {
-          activeSecurityScopedURLs.append(resolved)
-          trackURL = resolved
-        }
-      }
-
-      let rawData = await MetadataReader.readArtwork(from: trackURL)
-      artworkLoadingKeys.remove(key)
-
-      // Phase 92: Use dedicated ArtworkProcessor actor instead of
-      // per-request Task.detached, reducing thread-pool handoff overhead.
-      var data = rawData
-      if let raw = data {
-        data = await ArtworkProcessor.shared.process(raw)
-      }
-
-      if let data {
-        self.cacheArtwork(data, forKey: key)
-      }
-
-      // Update the corresponding Album in-place so views refresh.
-      if let idx = self.albums.firstIndex(
-        where: { self.albumKey(title: $0.title, artist: $0.artist) == key }
-      ) {
-        self.albums[idx].artworkData = data
+    // 2. If a load is already in progress, suspend and wait for it.
+    if artworkLoadingKeys.contains(key) {
+      return await withCheckedContinuation { continuation in
+        artworkLoadingContinuations[key, default: []].append(continuation)
       }
     }
+
+    // 3. If already attempted and not loading → definitively no artwork.
+    if artworkAttemptedKeys.contains(key) {
+      return nil
+    }
+
+    // 4. Start loading.
+    artworkAttemptedKeys.insert(key)
+    artworkLoadingKeys.insert(key)
+
+    var trackURL = sampleTrackURL
+
+    // Phase 80: resolve bookmark in sandbox environments.
+    if !FileManager.default.isReadableFile(atPath: trackURL.path),
+       let bookmark = sampleTrackBookmark,
+       let resolved = Self.resolveBookmark(bookmark) {
+      if resolved.startAccessingSecurityScopedResource() {
+        activeSecurityScopedURLs.append(resolved)
+        trackURL = resolved
+      }
+    }
+
+    let rawData = await MetadataReader.readArtwork(from: trackURL)
+
+    // Phase 92: Use dedicated ArtworkProcessor actor.
+    var data = rawData
+    if let raw = data {
+      data = await ArtworkProcessor.shared.process(raw)
+    }
+
+    var result: ArtworkCacheResult?
+
+    if let data {
+      // Phase 108: Compute dominant color once and store alongside artwork.
+      let hsb = ArtworkView.computeDominantHSB(from: data)
+
+      await _artworkCacheStore?.store(
+        imageData: data,
+        dominantColorHue: hsb?.h,
+        dominantColorSaturation: hsb?.s,
+        dominantColorBrightness: hsb?.b,
+        forKey: key
+      )
+
+      result = ArtworkCacheResult(
+        data: data,
+        dominantColorHue: hsb?.h,
+        dominantColorSaturation: hsb?.s,
+        dominantColorBrightness: hsb?.b
+      )
+    }
+
+    // 5. Resume all suspended callers.
+    artworkLoadingKeys.remove(key)
+    if let waiters = artworkLoadingContinuations.removeValue(forKey: key) {
+      for waiter in waiters {
+        waiter.resume(returning: result)
+      }
+    }
+
+    return result
   }
 
   // MARK: - Playlists
@@ -502,8 +542,7 @@ public final class MusicLibrary {
         id: id,
         title: value.title,
         artist: value.artist,
-        tracks: value.tracks,
-        artworkData: artworkCache[key]
+        tracks: value.tracks
       )
     }.sorted {
       $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
@@ -520,11 +559,10 @@ public final class MusicLibrary {
 
   // MARK: - Artwork Cache State
 
-  /// Track deferred eviction to avoid race conditions with active display
-  private var pendingDeferredEvictionTask: Task<Void, Never>?
+  /// Phase 108: Continuations for callers waiting on an in-progress artwork load.
+  private var artworkLoadingContinuations: [String: [CheckedContinuation<ArtworkCacheResult?, Never>]] = [:]
 
   private var albumIDMap: [String: UUID] = [:]
-  private var artworkCacheOrder: [String] = [] // FIFO order for LRU eviction
   private var artworkAttemptedKeys: Set<String> = []
   private var activeSecurityScopedURLs: [URL] = []
   nonisolated private let importProgressDebouncer: Debouncer = .init(delay: 1)
@@ -858,8 +896,7 @@ public final class MusicLibrary {
         id: id,
         title: value.title,
         artist: value.artist,
-        tracks: value.tracks,
-        artworkData: artworkCache[key]
+        tracks: value.tracks
       )
     }.sorted {
       $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
@@ -871,77 +908,6 @@ public final class MusicLibrary {
     let id = UUID()
     albumIDMap[key] = id
     return id
-  }
-
-  // MARK: - LRU Artwork Cache Management
-
-  /// Check if artwork for a given cache key is currently in active display use.
-  /// Returns true if:
-  /// - The key is in `artworkLoadingKeys` (currently loading/displaying), OR
-  /// - An Album with this key has non-nil `artworkData` (visible in UI)
-  private func isArtworkInUse(forKey key: String) -> Bool {
-    // Check if currently loading
-    if artworkLoadingKeys.contains(key) { return true }
-
-    // Check if any album with this key has artwork data loaded in memory
-    let albumKey = key
-    if let albumIndex = albums.firstIndex(where: { albumKey == self.albumKey(title: $0.title, artist: $0.artist) }) {
-      return albums[albumIndex].artworkData != nil
-    }
-
-    return false
-  }
-
-  /// Store artwork data in cache with deferred LRU eviction when capacity is exceeded.
-  /// Eviction is deferred to avoid removing items while they're being displayed.
-  private func cacheArtwork(_ data: Data, forKey key: String) {
-    // If key already exists, remove it from order to re-add at the end (mark as recently used)
-    if artworkCache[key] != nil {
-      artworkCacheOrder.removeAll { $0 == key }
-    }
-    artworkCache[key] = data
-    artworkCacheOrder.append(key)
-
-    // Schedule deferred eviction instead of evicting immediately
-    // This prevents removing items while views are still displaying them
-    performDeferredEviction()
-  }
-
-  /// Perform deferred LRU eviction with visibility checking.
-  /// Scheduled asynchronously to avoid concurrent display conflicts.
-  private func performDeferredEviction() {
-    // Cancel any pending eviction task to avoid queueing up multiple tasks
-    pendingDeferredEvictionTask?.cancel()
-
-    // Schedule eviction to run after a short delay (0.5 seconds)
-    // This gives current display operations time to complete before eviction
-    pendingDeferredEvictionTask = Task {
-      // Wait before attempting eviction
-      try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-
-      // Only proceed with eviction if not already cancelled
-      guard !Task.isCancelled else { return }
-
-      // Evict oldest items if capacity exceeded, but only if not in active use
-      while artworkCache.count > artworkCacheCapacity {
-        // Find the first item that is NOT in active use
-        var evicted = false
-        for i in 0 ..< artworkCacheOrder.count {
-          let keyToCheck = artworkCacheOrder[i]
-          if !isArtworkInUse(forKey: keyToCheck) {
-            // Safe to evict: not currently loading or displaying
-            artworkCache.removeValue(forKey: keyToCheck)
-            artworkCacheOrder.remove(at: i)
-            evicted = true
-            break
-          }
-        }
-
-        // If we couldn't find any item safe to evict, stop trying
-        // This means all cached items are currently in use
-        if !evicted { break }
-      }
-    }
   }
 
   private func scanDirectory(url: URL) -> [URL] {

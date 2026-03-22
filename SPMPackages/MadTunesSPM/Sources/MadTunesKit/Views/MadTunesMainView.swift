@@ -104,7 +104,7 @@ struct MadTunesMainView: View {
               .ignoresSafeArea(.all)
               BottomBarBackground()
             }
-            PlayerControlsView(player: vm.player, artworkData: vm.currentTrackArtwork)
+            PlayerControlsView(player: vm.player, artworkData: vm.currentTrackArtworkData)
               .fixedSize()
               .frame(maxWidth: .infinity)
               .padding([.horizontal, .bottom], 12)

@@ -19,7 +19,6 @@ public protocol MusicLibraryProviding: AnyObject {
   var isImporting: Bool { get }
   var hasLoadedPersistence: Bool { get }
   var changeID: UUID { get set }
-  var artworkCache: [String: Data] { get }
   var artworkLoadingKeys: Set<String> { get }
   var importProgress: ImportProgress { get }
   var favoritesPlaylist: Playlist { get }
@@ -32,11 +31,12 @@ public protocol MusicLibraryProviding: AnyObject {
 
   // MARK: - Lazy Artwork
 
-  func requestArtworkLoad(
+  /// Phase 108: Load artwork from SwiftData cache or audio file.
+  func loadArtwork(
     forAlbumKey key: String,
     sampleTrackURL: URL,
     sampleTrackBookmark: Data?
-  )
+  ) async -> ArtworkCacheResult?
 
   // MARK: - Playlist CRUD
 

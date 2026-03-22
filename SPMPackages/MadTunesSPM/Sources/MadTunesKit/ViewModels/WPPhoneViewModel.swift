@@ -237,10 +237,7 @@ final class WPPhoneViewModel {
         id: UUID(),
         title: first.albumTitle,
         artist: first.albumArtist,
-        tracks: tracks,
-        artworkData: mainVM.library.artworkCache[
-          mainVM.library.albumKey(title: first.albumTitle, artist: first.albumArtist)
-        ]
+        tracks: tracks
       )
     }.sorted { $0.artist.localizedCaseInsensitiveCompare($1.artist) == .orderedAscending }
 

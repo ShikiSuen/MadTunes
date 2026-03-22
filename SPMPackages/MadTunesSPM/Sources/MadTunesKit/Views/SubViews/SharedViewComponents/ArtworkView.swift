@@ -10,8 +10,10 @@ import SwiftUI
 struct ArtworkView: View {
   // MARK: Lifecycle
 
-  init(data: Data?, alwaysGlossy: Bool = false) {
+  /// Phase 108: Added `precomputedDominantColor` to skip per-render pixel scanning.
+  init(data: Data?, dominantColor: Color? = nil, alwaysGlossy: Bool = false) {
     self.data = data
+    self.precomputedDominantColor = dominantColor
     self.alwaysGlossy = alwaysGlossy
   }
 
@@ -22,7 +24,8 @@ struct ArtworkView: View {
     ZStack {
       let glass = GlassyAlbumOverlay()
       if let data, let image = Self.makeImage(from: data) {
-        Self.dominantColor(from: data) ?? Color.gray.opacity(0.3)
+        // Phase 108: Use pre-computed color when available, skip expensive pixel scan.
+        precomputedDominantColor ?? Self.dominantColor(from: data) ?? Color.gray.opacity(0.3)
         image
           .resizable()
           .aspectRatio(contentMode: .fit)
@@ -153,11 +156,33 @@ struct ArtworkView: View {
     return Color.gray.opacity(0.3)
   }
 
+  /// Phase 108: Compute dominant color as HSB tuple for storage in SwiftData.
+  /// Returns nil when no suitable chromatic candidate is found.
+  static func computeDominantHSB(from data: Data) -> (h: Double, s: Double, b: Double)? {
+    guard let color = dominantColor(from: data) else { return nil }
+    // Resolve the SwiftUI Color to HSB via platform-native conversion.
+    #if canImport(UIKit)
+    var h: CGFloat = 0; var s: CGFloat = 0; var b: CGFloat = 0; var a: CGFloat = 0
+    UIColor(color).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+    return (h: Double(h), s: Double(s), b: Double(b))
+    #elseif canImport(AppKit)
+    guard let nsColor = NSColor(color).usingColorSpace(.deviceRGB) else { return nil }
+    return (
+      h: Double(nsColor.hueComponent),
+      s: Double(nsColor.saturationComponent),
+      b: Double(nsColor.brightnessComponent)
+    )
+    #else
+    return nil
+    #endif
+  }
+
   // MARK: Private
 
   @Environment(\.colorScheme) private var colorScheme
 
   private let data: Data?
+  private let precomputedDominantColor: Color?
   private let alwaysGlossy: Bool
 
   // MARK: - Platform Image Conversion

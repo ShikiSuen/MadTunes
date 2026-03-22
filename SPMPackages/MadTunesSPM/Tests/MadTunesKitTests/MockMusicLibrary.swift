@@ -23,7 +23,6 @@ final class MockMusicLibrary: MusicLibraryProviding {
   var isImporting = false
   var hasLoadedPersistence = true
   var changeID = UUID()
-  var artworkCache: [String: Data] = [:]
   var artworkLoadingKeys: Set<String> = []
   var importProgress = ImportProgress()
 
@@ -42,7 +41,12 @@ final class MockMusicLibrary: MusicLibraryProviding {
 
   // MARK: - Lazy Artwork (no-op)
 
-  func requestArtworkLoad(forAlbumKey _: String, sampleTrackURL _: URL, sampleTrackBookmark _: Data?) {}
+  func loadArtwork(
+    forAlbumKey _: String,
+    sampleTrackURL _: URL,
+    sampleTrackBookmark _: Data?
+  ) async
+    -> ArtworkCacheResult? { nil }
 
   // MARK: - Playlist CRUD
 
