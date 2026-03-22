@@ -2,6 +2,7 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `MIT License`.
 
+import CryptoKit
 import Foundation
 
 // MARK: - Duration Formatting
@@ -18,18 +19,14 @@ func formatDuration(_ duration: TimeInterval) -> String {
   return String(format: "%d:%02d", minutes, seconds)
 }
 
-// MARK: - Array Chunking
+// MARK: - String to MD5
 
-extension Array {
-  /// Splits the array into chunks of the specified size.
-  /// - Parameter size: The maximum size of each chunk (must be > 0).
-  /// - Returns: An array of chunks. Returns empty array if `size` <= 0 or if the original array is empty.
-  func chunked(into size: Int) -> [[Element]] {
-    // Defensive: guard against invalid size and empty array to avoid runtime issues with stride.
-    guard size > 0, !isEmpty else { return [] }
-    return stride(from: 0, to: count, by: size).map {
-      Array(self[$0 ..< Swift.min($0 + size, count)])
-    }
+extension String {
+  /// - returns: the String, as an MD5 hash.
+  public var md5: String {
+    Insecure.MD5.hash(data: Data(utf8)).map {
+      String(format: "%02hhx", $0)
+    }.joined()
   }
 }
 
@@ -125,4 +122,112 @@ public func tokensAllMatchAcrossFields(_ tokens: Set<String>, fields: [String]) 
   }
 
   return true
+}
+
+// MARK: - UUID Impl.
+
+extension UUID {
+  /// Converts an MD5 hash string into a UUID.
+  /// - Parameter md5: A 32-character hexadecimal MD5 hash string.
+  /// - Throws: An error if the MD5 string is invalid.
+  /// - Returns: A UUID generated from the MD5 hash.
+  public static func fromMD5(_ md5: String) throws -> UUID {
+    // Ensure the MD5 string is valid (32 characters, hexadecimal)
+    guard md5.count == 32, md5.range(of: "^[a-fA-F0-9]{32}$", options: .regularExpression) != nil else {
+      throw NSError(domain: "InvalidMD5", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid MD5 string."])
+    }
+
+    // Convert the MD5 string into raw bytes
+    var bytes = [UInt8]()
+    var index = md5.startIndex
+    for _ in 0 ..< 16 {
+      let nextIndex = md5.index(index, offsetBy: 2)
+      if let byte = UInt8(md5[index ..< nextIndex], radix: 16) {
+        bytes.append(byte)
+      }
+      index = nextIndex
+    }
+
+    // Convert the raw bytes into a UUID
+    let uuid = UUID(uuid: (
+      bytes[0],
+      bytes[1],
+      bytes[2],
+      bytes[3],
+      bytes[4],
+      bytes[5],
+      bytes[6],
+      bytes[7],
+      bytes[8],
+      bytes[9],
+      bytes[10],
+      bytes[11],
+      bytes[12],
+      bytes[13],
+      bytes[14],
+      bytes[15]
+    ))
+    return uuid
+  }
+}
+
+// MARK: - Collection Extensions.
+
+extension Collection {
+  public func chunked(into size: Int) -> [[Self.Element]] where Self.Index == Int {
+    stride(from: 0, to: count, by: size).map {
+      Array(self[$0 ..< Swift.min($0 + size, self.count)])
+    }
+  }
+
+  public func indicesMeeting(condition: (Element) throws -> Bool) rethrows -> [Index]? {
+    let indices = try indices.filter { try condition(self[$0]) }
+    return indices.isEmpty ? nil : indices
+  }
+}
+
+// MARK: - Debug Message Printer
+
+extension String {
+  public static func printDebug(
+    _ items: Any..., separator: String = " ", terminator: String = "\n"
+  ) {
+    #if DEBUG
+    print(items, separator: separator, terminator: terminator)
+    #endif
+  }
+
+  public static func printNSLog4Debug(
+    _ format: String,
+    _ args: any CVarArg...
+  ) {
+    #if DEBUG
+    NSLog(format, args)
+    #endif
+  }
+}
+
+// MARK: - Ask Bundle to tell App Build Number.
+
+extension Bundle {
+  public static func getAppVersionAndBuild() throws -> (version: String, build: String) {
+    guard let infoDictionary = Bundle.main.infoDictionary else {
+      throw NSError(
+        domain: "AppInfoError",
+        code: 213,
+        userInfo: [NSLocalizedDescriptionKey: "Failed to get the app's Info.plist."]
+      )
+    }
+
+    guard let version = infoDictionary["CFBundleShortVersionString"] as? String,
+          let build = infoDictionary["CFBundleVersion"] as? String else {
+      throw NSError(
+        domain: "AppInfoError",
+        code: 233,
+        userInfo: [NSLocalizedDescriptionKey: "Version or build number is missing."]
+      )
+    }
+
+    return (version, build)
+  }
 }
