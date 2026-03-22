@@ -156,8 +156,10 @@ struct WPProgressScrubber: View {
     VStack(spacing: 4) {
       // Slider.
       GeometryReader { geo in
+        // Phase 110: scrubbing stays true during async seek to prevent visual jerk.
+        let displayFraction = scrubbing ? scrubFraction : player.currentTime / player.duration
         let fraction = player.duration > 0
-          ? min(max(scrubbing ? scrubFraction : player.currentTime / player.duration, 0), 1)
+          ? min(max(displayFraction, 0), 1)
           : 0
 
         ZStack(alignment: .leading) {
@@ -185,8 +187,12 @@ struct WPProgressScrubber: View {
               scrubFraction = max(0, min(value.location.x / geo.size.width, 1))
             }
             .onEnded { _ in
-              Task { await player.seek(to: scrubFraction * player.duration) }
-              scrubbing = false
+              Task {
+                // Phase 110: Keep scrubbing true until seek completes.
+                let targetFraction = scrubFraction
+                await player.seek(to: targetFraction * player.duration)
+                scrubbing = false
+              }
             }
         )
       }

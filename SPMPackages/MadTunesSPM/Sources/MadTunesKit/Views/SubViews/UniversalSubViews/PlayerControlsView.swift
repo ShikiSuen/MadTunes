@@ -213,9 +213,7 @@ struct PlayerControlsView: View {
             currentTime: player.currentTime,
             duration: player.duration,
             onSeek: { seekTarget in
-              Task {
-                await player.seek(to: seekTarget)
-              }
+              await player.seek(to: seekTarget)
             }
           )
 
@@ -444,7 +442,7 @@ struct PlayerControlsView: View {
 struct ProgressScrubber: View {
   // MARK: Lifecycle
 
-  init(currentTime: TimeInterval, duration: TimeInterval, onSeek: @escaping (TimeInterval) -> Void) {
+  init(currentTime: TimeInterval, duration: TimeInterval, onSeek: @escaping (TimeInterval) async -> Void) {
     self.currentTime = currentTime
     self.duration = duration
     self.onSeek = onSeek
@@ -455,9 +453,9 @@ struct ProgressScrubber: View {
 
   var body: some View {
     GeometryReader { geometry in
-      let fraction = duration > 0
-        ? (isDragging ? dragValue : currentTime) / duration
-        : 0
+      // Phase 110: isDragging stays true during async seek to prevent visual jerk.
+      let displayTime = isDragging ? dragValue : currentTime
+      let fraction = duration > 0 ? displayTime / duration : 0
       let clampedFraction = min(max(fraction, 0), 1)
 
       ZStack(alignment: .leading) {
@@ -478,8 +476,12 @@ struct ProgressScrubber: View {
             dragValue = pct * duration
           }
           .onEnded { _ in
-            isDragging = false
-            onSeek(dragValue)
+            let target = dragValue
+            Task {
+              // Phase 110: Keep isDragging true until seek completes.
+              await onSeek(target)
+              isDragging = false
+            }
           }
       )
       .frame(height: 8, alignment: .center)
@@ -493,7 +495,7 @@ struct ProgressScrubber: View {
 
   private let currentTime: TimeInterval
   private let duration: TimeInterval
-  private let onSeek: (TimeInterval) -> Void
+  private let onSeek: (TimeInterval) async -> Void
 }
 
 // MARK: - EqualSideLayout
