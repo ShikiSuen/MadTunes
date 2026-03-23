@@ -498,6 +498,20 @@ public final class MusicLibrary {
     persistAllPlaylistsDebounced()
   }
 
+  /// Phase 115: Replace a static playlist's trackIDs with a new ordered array (persistent sort).
+  /// Only allowed for Favorites (system index 1) and user-defined static playlists.
+  public func reorderPlaylistTracks(playlistID: UUID, newTrackIDs: [UUID]) {
+    guard let playlistIndex = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+    let playlist = playlists[playlistIndex]
+    guard playlist.kind == .staticList
+      || (playlist.kind == .system && playlistIndex == 1)
+    else {
+      return
+    }
+    playlists[playlistIndex].trackIDs = newTrackIDs
+    persistAllPlaylistsDebounced()
+  }
+
   /// 從資料庫中移除指定曲目（包含 SwiftData 持久層），並從所有播放清單中清理其引用
   public func removeTracks(ids: Set<UUID>) {
     // bump observable token so anyone watching knows something changed

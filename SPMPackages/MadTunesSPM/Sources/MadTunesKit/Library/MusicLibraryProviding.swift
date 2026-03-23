@@ -55,6 +55,8 @@ public protocol MusicLibraryProviding: AnyObject {
 
   func addTracks(_ trackIDs: Set<UUID>, toPlaylist playlistID: UUID)
   func moveTracks(_ trackIDs: [UUID], inPlaylist playlistID: UUID, toIndex: Int)
+  /// Phase 115: Replace a playlist’s trackIDs with a new ordered array (persistent sort).
+  func reorderPlaylistTracks(playlistID: UUID, newTrackIDs: [UUID])
   func removeTracks(ids: Set<UUID>)
   func tracks(for playlist: Playlist) -> [Track]
   func albums(for playlist: Playlist) -> [Album]

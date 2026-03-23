@@ -114,6 +114,11 @@ final class MockMusicLibrary: MusicLibraryProviding {
     playlists[idx].trackIDs = newOrder
   }
 
+  func reorderPlaylistTracks(playlistID: UUID, newTrackIDs: [UUID]) {
+    guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+    playlists[idx].trackIDs = newTrackIDs
+  }
+
   func removeTracks(ids: Set<UUID>) {
     tracks.removeAll { ids.contains($0.id) }
     albums = buildAlbums(from: tracks)

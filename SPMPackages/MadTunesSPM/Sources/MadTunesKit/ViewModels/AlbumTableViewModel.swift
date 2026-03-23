@@ -212,6 +212,21 @@ final class AlbumTableViewModel {
     return false
   }
 
+  /// Phase 115: Whether the current playlist is a static playlist (Favorites or user-created).
+  /// Used to determine if column sorting should persist to the playlist track order.
+  var isCurrentPlaylistStatic: Bool {
+    guard let mainVM else { return false }
+    guard let playlistID = mainVM.selectedPlaylistID,
+          let index = mainVM.library.playlists.firstIndex(where: { $0.id == playlistID })
+    else {
+      return false
+    }
+    if index == 0 { return false }
+    let playlist = mainVM.library.playlists[index]
+    let isFavorites = playlist.kind == .system && index == 1
+    return isFavorites || playlist.kind == .staticList
+  }
+
   // MARK: - Phase 96: ViewModel-level Observations
 
   /// Called by MadTunesViewModel after mainVM is assigned.
@@ -232,9 +247,11 @@ final class AlbumTableViewModel {
     return arrow
   }
 
-  // Phase 44: Clear sorting (switch back to album order)
+  // Phase 44 / Phase 115: Clear sorting (switch back to album/playlist order)
   func clearTableSorting() {
     tableSortCriteria = []
+    lastPersistentSortColumn = nil
+    lastPersistentSortAscending = true
   }
 
   // Phase 44 / Phase 115: Set or toggle column sort.
@@ -243,6 +260,12 @@ final class AlbumTableViewModel {
   func setTableSort(column: TableColumnType) {
     // Sorting and edit mode are mutually exclusive.
     isEditModeActive = false
+
+    // Phase 115: Static playlists use persistent sort that commits to playlist order.
+    if isCurrentPlaylistStatic {
+      applyPersistentSort(column: column)
+      return
+    }
 
     let compound = isCompoundSortAllowed
 
@@ -628,11 +651,42 @@ final class AlbumTableViewModel {
   /// Replaces @AppStorage to eliminate JSON decoding on every read.
   @ObservationIgnored private var _columnWidths: [String: CGFloat] = [:]
 
+  /// Phase 115: Tracks the last persistent sort column for toggle direction on static playlists.
+  private var lastPersistentSortColumn: TableColumnType?
+  private var lastPersistentSortAscending = true
+
   // MARK: - Display Buffer Methods
 
   /// Coalesced/batched update (Phase 56). Progressively appends tracks
   /// in batches to keep the UI responsive during large imports.
   private var displayedTracksUpdateTask: Task<Void, Never>?
+
+  /// Phase 115: Sort the current static playlist's tracks by column and persist the new order.
+  /// Clicking the same column toggles ascending/descending; clicking a different column sorts ascending.
+  private func applyPersistentSort(column: TableColumnType) {
+    guard let mainVM else { return }
+    guard let playlistID = mainVM.selectedPlaylistID else { return }
+
+    // Determine sort direction: toggle if same column, ascending for new column.
+    let ascending: Bool
+    if lastPersistentSortColumn == column {
+      ascending = !lastPersistentSortAscending
+    } else {
+      ascending = true
+    }
+
+    // Get current tracks in playlist order, sort them, extract new ID order.
+    let tracks = mainVM.filteredTracksBase
+    let sorted = sortedTracks(tracks, by: [(column: column, ascending: ascending)])
+    let newTrackIDs = sorted.map(\.id)
+
+    // Commit to persistence.
+    mainVM.library.reorderPlaylistTracks(playlistID: playlistID, newTrackIDs: newTrackIDs)
+
+    // Update tracking state for toggle direction.
+    lastPersistentSortColumn = column
+    lastPersistentSortAscending = ascending
+  }
 
   /// Compares two tracks by a single sort criterion.
   private func compareTracks(
