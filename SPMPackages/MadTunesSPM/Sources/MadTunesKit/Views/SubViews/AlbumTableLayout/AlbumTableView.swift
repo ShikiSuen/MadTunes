@@ -19,6 +19,7 @@ enum TableColumnType: String, CaseIterable, Identifiable {
   case genre = "Genre"
   case year = "Year"
   case folder = "Folder"
+  case fileExtension = "FileExtension"
 
   // MARK: Internal
 
@@ -39,6 +40,7 @@ enum TableColumnType: String, CaseIterable, Identifiable {
     case .genre: String(localized: "i18n:Table.Column.Genre", bundle: #bundle)
     case .year: String(localized: "i18n:Table.Column.Year", bundle: #bundle)
     case .folder: String(localized: "i18n:Table.Column.Folder", bundle: #bundle)
+    case .fileExtension: String(localized: "i18n:Table.Column.FileExtension", bundle: #bundle)
     }
   }
 
@@ -54,6 +56,7 @@ enum TableColumnType: String, CaseIterable, Identifiable {
     case .genre: 100
     case .year: 60
     case .folder: 150
+    case .fileExtension: 65
     }
   }
 
@@ -63,7 +66,7 @@ enum TableColumnType: String, CaseIterable, Identifiable {
       true // Phase 45: Always visible
     case .albumArtist, .albumTitle, .artist, .genre, .length, .name:
       true
-    case .folder, .trackNumber, .year:
+    case .fileExtension, .folder, .trackNumber, .year:
       false
     }
   }
@@ -652,6 +655,9 @@ private struct TableTrackRowView: View {
     case .folder:
       Text(verbatim: (track.folderPath as NSString).lastPathComponent)
         .help(Text(verbatim: track.fileURL.path(percentEncoded: false)))
+    case .fileExtension:
+      Text(verbatim: track.fileExtension)
+        .help(Text(verbatim: track.fileExtension))
     }
   }
 }

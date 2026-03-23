@@ -258,6 +258,8 @@ final class AlbumTableViewModel {
         return ascending ? y0 < y1 : y0 > y1
       case .folder:
         return ascending ? $0.folderPath < $1.folderPath : $0.folderPath > $1.folderPath
+      case .fileExtension:
+        return ascending ? $0.fileExtension < $1.fileExtension : $0.fileExtension > $1.fileExtension
       case .playingIndicator:
         return ascending ? $0.title < $1.title : $0.title > $1.title
       }
