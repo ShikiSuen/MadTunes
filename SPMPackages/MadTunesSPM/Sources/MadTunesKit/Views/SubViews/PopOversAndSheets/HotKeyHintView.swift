@@ -95,13 +95,30 @@ struct HotKeyHintView: View {
       )
     }
     .tint(.primary)
-    .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
-      ScrollView {
-        popoverContent
-          .padding(12)
-          .frame(minWidth: 260)
+    #if targetEnvironment(macCatalyst)
+      .sheet(isPresented: $isPopoverPresented) {
+        NavigationStack {
+          ScrollView {
+            popoverContent
+          }
+          .toolbar {
+            Button {
+              isPopoverPresented = false
+            } label: {
+              Image(systemName: "xmark")
+            }
+          }
+        }
       }
-    }
+    #else
+      .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
+        ScrollView {
+          popoverContent
+            .padding(12)
+            .frame(minWidth: 260)
+        }
+      }
+    #endif
   }
 
   @ViewBuilder var popoverContent: some View {
