@@ -19,6 +19,8 @@ struct MadTunesMainView: View {
       preferredCompactColumn: $viewColumn
     ) {
       SidebarView(library: vm.library, selectedPlaylistID: $vm.selectedPlaylistID)
+        .disabled(vm.library.isImporting)
+        .saturation(vm.library.isImporting ? 0 : 1)
         .background {
           Group {
             if colorScheme == .dark {
