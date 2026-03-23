@@ -70,8 +70,8 @@ struct PlayingQueueView: View {
                 sampleTrackURL: track.fileURL,
                 sampleTrackBookmark: track.bookmarkData
               )
-              if let data = result?.data {
-                queueArtworkCache[key] = data
+              if let data = result?.data, let image = ArtworkView.makeImage(from: data) {
+                queueArtworkCache[key] = image
               }
             }
             .listRowBackground(
@@ -111,7 +111,8 @@ struct PlayingQueueView: View {
   @Environment(MadTunesViewModel.self) private var vm
   @State private var highlightedIndex: Int?
   /// Phase 108: Per-popover artwork cache (non-observable, no cascade).
-  @State private var queueArtworkCache: [String: Data] = [:]
+  /// Phase 112: Store decoded Image instead of raw Data to avoid JPEG re-decode.
+  @State private var queueArtworkCache: [String: Image] = [:]
 
   private var dynamicHeight: CGFloat? {
     guard !player.queue.isEmpty else { return nil }
@@ -221,7 +222,7 @@ struct PlayingQueueRow: View {
     queueCount: Int,
     isCurrent: Bool,
     isHighlighted: Bool,
-    artworkData: Data?,
+    artworkData: Image?,
     onRemove: @escaping () -> Void,
     onMoveUp: @escaping () -> Void,
     onMoveDown: @escaping () -> Void
@@ -244,14 +245,14 @@ struct PlayingQueueRow: View {
   let queueCount: Int
   let isCurrent: Bool
   let isHighlighted: Bool
-  let artworkData: Data?
+  let artworkData: Image?
   let onRemove: () -> Void
   let onMoveUp: () -> Void
   let onMoveDown: () -> Void
 
   var body: some View {
     HStack(spacing: 10) {
-      ArtworkView(data: artworkData, alwaysGlossy: true)
+      ArtworkView(image: artworkData, alwaysGlossy: true)
         .frame(width: 36, height: 36)
 
       VStack(alignment: .leading, spacing: 1) {

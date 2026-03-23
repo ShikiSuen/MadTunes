@@ -21,7 +21,7 @@ struct WPNowPlayingSection: View {
           Spacer().frame(height: 12)
 
           // Album artwork.
-          ArtworkView(data: vm.currentTrackArtworkData, alwaysGlossy: true)
+          ArtworkView(image: vm.currentTrackArtworkData, alwaysGlossy: true)
             .frame(width: artworkSize, height: artworkSize)
             .clipShape(.rect)
             .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)

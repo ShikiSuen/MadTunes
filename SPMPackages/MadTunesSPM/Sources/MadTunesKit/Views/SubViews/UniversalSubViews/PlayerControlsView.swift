@@ -10,7 +10,7 @@ import SwiftUI
 struct PlayerControlsView: View {
   // MARK: Lifecycle
 
-  init(player: AudioPlayer, artworkData: Data? = nil, sansBezel: Bool = false) {
+  init(player: AudioPlayer, artworkData: Image? = nil, sansBezel: Bool = false) {
     self.player = player
     self.artworkData = artworkData
     self.sansBezel = sansBezel
@@ -67,7 +67,7 @@ struct PlayerControlsView: View {
   @ViewBuilder var coreComponent: some View {
     HStack(spacing: 16) {
       let artWorkViewHeight: Double = (sansBezel ? 28 : 40) * vm.uiFactor
-      ArtworkView(data: artworkData, alwaysGlossy: true)
+      ArtworkView(image: artworkData, alwaysGlossy: true)
         .background {
           ZStack {
             Color.gray
@@ -251,7 +251,7 @@ struct PlayerControlsView: View {
 
   @State private var player: AudioPlayer
 
-  private var artworkData: Data?
+  private var artworkData: Image?
   private var sansBezel = false
 
   private var useTouchScreenCompact: Bool {

@@ -64,7 +64,7 @@ final class MadTunesViewModel {
 
   /// Phase 108: Stored artwork for the currently playing track.
   /// Loaded asynchronously from SwiftData when the current track changes.
-  var currentTrackArtworkData: Data?
+  var currentTrackArtworkData: Image?
   /// Phase 108: Pre-computed dominant color for the current track's artwork.
   var currentTrackDominantColor: Color?
 
@@ -581,7 +581,11 @@ final class MadTunesViewModel {
             sampleTrackURL: track.fileURL,
             sampleTrackBookmark: track.bookmarkData
           )
-          self.currentTrackArtworkData = result?.data
+          if let imageData = result?.data, let cgImage = CGImage.instantiate(data: imageData) {
+            self.currentTrackArtworkData = Image(decorative: cgImage, scale: 1)
+          } else {
+            self.currentTrackArtworkData = nil
+          }
           if let h = result?.dominantColorHue,
              let s = result?.dominantColorSaturation,
              let b = result?.dominantColorBrightness {

@@ -34,7 +34,7 @@ struct WPMiniPlayerBar: View {
 
         HStack(spacing: 12) {
           // Artwork thumbnail.
-          ArtworkView(data: vm.currentTrackArtworkData)
+          ArtworkView(image: vm.currentTrackArtworkData)
             .frame(width: 40, height: 40)
             .clipShape(.rect)
 

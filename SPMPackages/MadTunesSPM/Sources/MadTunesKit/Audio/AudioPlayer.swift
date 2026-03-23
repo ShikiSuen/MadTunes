@@ -17,9 +17,7 @@ import AppKit
 import UIKit
 #endif
 
-#if canImport(MediaPlayer)
 import MediaPlayer
-#endif
 
 // Phase 106: Type alias for cross-platform image
 #if canImport(UIKit)
@@ -73,11 +71,9 @@ public final class AudioPlayer {
       await observeVolumeChanges()
     }
     // Phase 105: Setup remote command center.
-    #if canImport(MediaPlayer)
     Task { @MainActor in
       self.setupRemoteCommandCenter()
     }
-    #endif
   }
 
   // MARK: Public
@@ -186,9 +182,7 @@ public final class AudioPlayer {
     }
     isPlaying.toggle()
     // Phase 105: Update Now Playing Info.
-    #if canImport(MediaPlayer)
     updateNowPlayingInfo()
-    #endif
   }
 
   public func stop() async {
@@ -202,9 +196,7 @@ public final class AudioPlayer {
     duration = 0
     isPlaying = false
     // Phase 105: Clear Now Playing Info.
-    #if canImport(MediaPlayer)
     clearNowPlayingInfo()
-    #endif
   }
 
   /// Remove tracks from the current queue.
@@ -272,9 +264,7 @@ public final class AudioPlayer {
     currentTime = time
     await avPlayer.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
     // Phase 105: Update Now Playing Info.
-    #if canImport(MediaPlayer)
     updateNowPlayingInfo()
-    #endif
   }
 
   // MARK: Private
@@ -291,6 +281,11 @@ public final class AudioPlayer {
   // MARK: - Queue Management
 
   private var previousLibraryTrackIDs: Set<UUID> = []
+
+  /// Phase 108: Stored artwork data for the currently playing track.
+  private var nowPlayingArtworkData: MPMediaItemArtwork?
+  /// Phase 108: Album key for which `nowPlayingArtworkData` was loaded.
+  private var nowPlayingArtworkKey: String?
 
   // MARK: - Utilities
 
@@ -486,9 +481,7 @@ public final class AudioPlayer {
             }
           }
           // Phase 105: Update Now Playing Info when track is ready to play.
-          #if canImport(MediaPlayer)
           self.updateNowPlayingInfo()
-          #endif
         case .failed:
           print("[AudioPlayer] itemStatusObservation AVPlayerGeneration Status Failure.")
           Self.playErrorBeep()
@@ -518,9 +511,7 @@ public final class AudioPlayer {
           if secs.isFinite, secs > 0 { self.duration = secs }
         }
         // Phase 105: Update Now Playing Info periodically.
-        #if canImport(MediaPlayer)
         self.updateNowPlayingInfo()
-        #endif
       }
     }
   }
@@ -602,7 +593,6 @@ public final class AudioPlayer {
 
   // MARK: - Now Playing Info (Control Center / Lock Screen)
 
-  #if canImport(MediaPlayer)
   /// Phase 105: Configure MPRemoteCommandCenter for Control Center / Lock Screen controls.
   @MainActor
   private func setupRemoteCommandCenter() {
@@ -685,8 +675,7 @@ public final class AudioPlayer {
       nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = track.duration
 
       // Phase 108: Use cached artwork if already loaded for current track.
-      if let data = nowPlayingArtworkData,
-         let artwork = createMediaItemArtwork(from: data) {
+      if let artwork = nowPlayingArtworkData {
         nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
       } else {
         // Kick off async artwork load; will call updateNowPlayingInfo again.
@@ -700,11 +689,6 @@ public final class AudioPlayer {
     MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
   }
 
-  /// Phase 108: Stored artwork data for the currently playing track.
-  private var nowPlayingArtworkData: Data?
-  /// Phase 108: Album key for which `nowPlayingArtworkData` was loaded.
-  private var nowPlayingArtworkKey: String?
-
   /// Phase 108: Asynchronously load artwork from SwiftData for Now Playing info.
   private func loadNowPlayingArtwork(for track: Track) {
     let key = "\(track.albumTitle):::\(track.albumArtist)"
@@ -716,7 +700,11 @@ public final class AudioPlayer {
         sampleTrackBookmark: track.bookmarkData
       )
       guard currentTrack?.id == track.id else { return } // track changed while loading
-      nowPlayingArtworkData = result?.data
+      if let data = result?.data {
+        nowPlayingArtworkData = createMediaItemArtwork(from: data)
+      } else {
+        nowPlayingArtworkData = nil
+      }
       nowPlayingArtworkKey = key
       updateNowPlayingInfo()
     }
@@ -725,7 +713,6 @@ public final class AudioPlayer {
   // Phase 106: Create MPMediaItemArtwork from cached data.
   // Note: This method is nonisolated because MPMediaItemArtwork's handler
   // is called on a background queue by the system.
-  #if canImport(MediaPlayer)
   nonisolated private func createMediaItemArtwork(from data: Data) -> MPMediaItemArtwork? {
     // Pre-create the image on the caller's context (MainActor)
     // Then capture it in the closure which runs on background queue
@@ -745,7 +732,6 @@ public final class AudioPlayer {
 
     return MPMediaItemArtwork(boundsSize: size) { _ in platformImage }
   }
-  #endif
 
   /// Phase 105: Clear Now Playing Info when playback stops.
   @MainActor
@@ -754,5 +740,4 @@ public final class AudioPlayer {
     nowPlayingArtworkKey = nil
     MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
   }
-  #endif
 }

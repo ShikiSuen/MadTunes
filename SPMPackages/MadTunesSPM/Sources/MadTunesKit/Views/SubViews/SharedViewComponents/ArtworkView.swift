@@ -11,13 +11,6 @@ struct ArtworkView: View {
   // MARK: Lifecycle
 
   /// Phase 108: Added `precomputedDominantColor` to skip per-render pixel scanning.
-  init(data: Data?, dominantColor: Color? = nil, alwaysGlossy: Bool = false) {
-    self.resolvedImage = data.flatMap { Self.makeImage(from: $0) }
-    self.hasData = data != nil
-    self.precomputedDominantColor = dominantColor
-    self.alwaysGlossy = alwaysGlossy
-  }
-
   /// Phase 111: Init accepting a pre-decoded Image to avoid repeated JPEG decode.
   init(image: Image?, dominantColor: Color? = nil, alwaysGlossy: Bool = false) {
     self.resolvedImage = image
