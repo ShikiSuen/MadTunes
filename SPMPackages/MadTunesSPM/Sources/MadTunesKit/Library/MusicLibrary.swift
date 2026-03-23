@@ -405,6 +405,12 @@ public final class MusicLibrary {
     persistAllPlaylists()
   }
 
+  /// Phase 116: Create a dynamic playlist.
+  public func addDynamicPlaylist(name: String) {
+    playlists.append(Playlist(name: name, kind: .dynamicList))
+    persistAllPlaylists()
+  }
+
   public func removePlaylist(at index: Int) {
     // 只允許刪除非系統播放清單（index > 1，保留 All Music 和 Favorites）
     guard index > 1, index < playlists.count else { return }

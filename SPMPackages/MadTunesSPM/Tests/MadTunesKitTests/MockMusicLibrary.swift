@@ -54,6 +54,10 @@ final class MockMusicLibrary: MusicLibraryProviding {
     playlists.append(Playlist(name: name, kind: .staticList))
   }
 
+  func addDynamicPlaylist(name: String) {
+    playlists.append(Playlist(name: name, kind: .dynamicList))
+  }
+
   func removePlaylist(at index: Int) {
     guard playlists.indices.contains(index) else { return }
     playlists.remove(at: index)

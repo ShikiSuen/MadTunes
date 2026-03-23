@@ -41,6 +41,8 @@ public protocol MusicLibraryProviding: AnyObject {
   // MARK: - Playlist CRUD
 
   func addPlaylist(name: String)
+  /// Phase 116: Create a dynamic playlist.
+  func addDynamicPlaylist(name: String)
   func removePlaylist(at index: Int)
   func removePlaylist(id: UUID)
   func renamePlaylist(id: UUID, newName: String)

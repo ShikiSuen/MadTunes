@@ -33,9 +33,55 @@ struct SidebarView: View {
         }
       }
 
+      // Phase 116: Dynamic playlists section.
+      Section(String(localized: "i18n:Sidebar.Sections.DynamicPlaylists", bundle: #bundle)) {
+        ForEach(dynamicPlaylists) { playlist in
+          Label(playlist.name, systemImage: "gearshape.2")
+            .tag(playlist.id)
+            .contextMenu {
+              Button {
+                alertText = playlist.name
+                alertKind = .rename(playlist.id)
+              } label: {
+                Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
+              }
+              Button(role: .destructive) {
+                if selectedPlaylistID == playlist.id {
+                  selectedPlaylistID = library.playlists.first?.id
+                }
+                library.removePlaylist(id: playlist.id)
+              } label: {
+                Label(String(localized: "i18n:Common.Delete", bundle: #bundle), systemImage: "trash")
+              }
+            }
+        }
+        .onDelete { indexSet in
+          let playlists = dynamicPlaylists
+          for index in indexSet {
+            let playlist = playlists[index]
+            if selectedPlaylistID == playlist.id {
+              selectedPlaylistID = library.playlists.first?.id
+            }
+            library.removePlaylist(id: playlist.id)
+          }
+        }
+
+        Button {
+          alertText = ""
+          alertKind = .newDynamicPlaylist
+        } label: {
+          Label(
+            String(localized: "i18n:Sidebar.NewDynamicPlaylist", bundle: #bundle),
+            systemImage: "plus"
+          )
+          .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonBorderShape(.capsule)
+        .buttonStyle(.borderedProminent)
+      }
+
       Section(String(localized: "i18n:Sidebar.Sections.Playlists", bundle: #bundle)) {
-        // 只顯示 index >= 2 的播放清單（跳過 All Music 和 Favorites）
-        ForEach(Array(library.playlists.dropFirst(2).enumerated()), id: \.element.id) { _, playlist in
+        ForEach(staticPlaylists) { playlist in
           Label(playlist.name, systemImage: "music.note.list")
             .tag(playlist.id)
             .contextMenu {
@@ -56,15 +102,13 @@ struct SidebarView: View {
             }
         }
         .onDelete { indexSet in
-          // Offset by 2 because dropFirst(2) removes "All Music" and "Favorites"
+          let playlists = staticPlaylists
           for index in indexSet {
-            // Phase 86: Reset selectedPlaylistID if the swipe-to-deleted playlist was selected.
-            let actualIndex = index + 2
-            if actualIndex < library.playlists.count,
-               selectedPlaylistID == library.playlists[actualIndex].id {
+            let playlist = playlists[index]
+            if selectedPlaylistID == playlist.id {
               selectedPlaylistID = library.playlists.first?.id
             }
-            library.removePlaylist(at: actualIndex)
+            library.removePlaylist(id: playlist.id)
           }
         }
 
@@ -97,6 +141,7 @@ struct SidebarView: View {
 
   private enum AlertKind: Identifiable {
     case newPlaylist
+    case newDynamicPlaylist
     case rename(UUID)
 
     // MARK: Internal
@@ -104,6 +149,7 @@ struct SidebarView: View {
     var id: String {
       switch self {
       case .newPlaylist: return "new"
+      case .newDynamicPlaylist: return "newDynamic"
       case let .rename(id): return id.uuidString
       }
     }
@@ -116,11 +162,22 @@ struct SidebarView: View {
 
   private var library: MusicLibrary
 
+  /// Phase 116: User-created dynamic playlists.
+  private var dynamicPlaylists: [Playlist] {
+    library.playlists.dropFirst(2).filter { $0.kind == .dynamicList }
+  }
+
+  /// Phase 116: User-created static playlists.
+  private var staticPlaylists: [Playlist] {
+    library.playlists.dropFirst(2).filter { $0.kind == .staticList }
+  }
+
   // MARK: - Alert helpers
 
   private var alertTitle: String {
     switch alertKind {
     case .newPlaylist: return String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle)
+    case .newDynamicPlaylist: return String(localized: "i18n:Sidebar.Alert.NewDynamicPlaylistTitle", bundle: #bundle)
     case .rename: return String(localized: "i18n:Sidebar.Alert.RenamePlaylistTitle", bundle: #bundle)
     case nil: return ""
     }
@@ -128,7 +185,8 @@ struct SidebarView: View {
 
   private var alertPlaceholder: String {
     switch alertKind {
-    case .newPlaylist: return String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle)
+    case .newDynamicPlaylist, .newPlaylist:
+      return String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle)
     case .rename: return String(localized: "i18n:Sidebar.Alert.NewNamePlaceholder", bundle: #bundle)
     case nil: return ""
     }
@@ -136,7 +194,8 @@ struct SidebarView: View {
 
   private var alertConfirmLabel: String {
     switch alertKind {
-    case .newPlaylist: return String(localized: "i18n:Common.Create", bundle: #bundle)
+    case .newDynamicPlaylist, .newPlaylist:
+      return String(localized: "i18n:Common.Create", bundle: #bundle)
     case .rename: return String(localized: "i18n:Common.Rename", bundle: #bundle)
     case nil: return String(localized: "i18n:Common.OK", bundle: #bundle)
     }
@@ -155,6 +214,8 @@ struct SidebarView: View {
     switch alertKind {
     case .newPlaylist:
       library.addPlaylist(name: name)
+    case .newDynamicPlaylist:
+      library.addDynamicPlaylist(name: name)
     case let .rename(id):
       library.renamePlaylist(id: id, newName: name)
     case nil:
