@@ -54,7 +54,7 @@ struct TrackContextMenu: View {
         Label(String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle), systemImage: "plus")
       }
       Divider()
-      ForEach(Array(library.playlists.dropFirst(2))) { playlist in
+      ForEach(Array(library.playlists.dropFirst(2).filter { $0.kind == .staticList })) { playlist in
         Button {
           library.addTracks(trackIDs, toPlaylist: playlist.id)
         } label: {
