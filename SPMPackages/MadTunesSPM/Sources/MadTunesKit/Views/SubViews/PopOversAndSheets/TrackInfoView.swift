@@ -116,9 +116,11 @@ struct TrackInfoView: View {
               )
             }
             if let bitrate = detailed.bitrate {
+              // Phase 113: bitrate is stored in bps; divide by 1024 and round to nearest kbps.
+              let kbps = (bitrate + 512) / 1024
               InfoRow(
                 label: Text("i18n:TrackInfo.Labels.Bitrate", bundle: #bundle),
-                value: Text("i18n:TrackInfo.Values.BitrateFormat:\(bitrate)", bundle: #bundle)
+                value: Text("i18n:TrackInfo.Values.BitrateFormat:\(kbps)", bundle: #bundle)
               )
             }
           }
