@@ -234,12 +234,27 @@ final class AlbumTableViewModel {
     observeCurrentTracksChange()
   }
 
-  // Phase 44 / Phase 114 / Phase 115: Get sort indicator for column header.
-  // Shows priority subscript when compound sorting is active (dynamic playlists).
+  // Phase 44 / Phase 114 / Phase 115 / Phase 116: Get sort indicator for column header.
+  // Static playlists: shows ▲/▼ for the last persistent-sort column if track order is unchanged.
+  // Dynamic playlists: shows priority subscript when compound sorting is active.
   func sortIndicator(for column: TableColumnType) -> String? {
+    // Phase 116: Static playlists use persistent sort indicator.
+    if isCurrentPlaylistStatic {
+      guard column == lastPersistentSortColumn else { return nil }
+      // Verify the playlist order hasn't been manually changed (drag-reorder).
+      if let storedHash = lastPersistentSortTrackIDsHash,
+         let mainVM, let playlistID = mainVM.selectedPlaylistID,
+         let playlist = mainVM.library.playlists.first(where: { $0.id == playlistID }) {
+        guard playlist.trackIDs.hashValue == storedHash else { return nil }
+      } else {
+        return nil
+      }
+      return lastPersistentSortAscending ? " ▲" : " ▼"
+    }
+    // Dynamic playlists: compound sort indicator.
     guard let idx = tableSortCriteria.firstIndex(where: { $0.column == column }) else { return nil }
     let arrow = tableSortCriteria[idx].ascending ? " ▲" : " ▼"
-    if tableSortCriteria.count * 1 > 1 {
+    if tableSortCriteria.count > 1 {
       let subscripts: [Character] = ["₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"]
       let priority = idx < subscripts.count ? String(subscripts[idx]) : "\(idx + 1)"
       return arrow + priority
@@ -247,11 +262,12 @@ final class AlbumTableViewModel {
     return arrow
   }
 
-  // Phase 44 / Phase 115: Clear sorting (switch back to album/playlist order)
+  // Phase 44 / Phase 115 / Phase 116: Clear sorting (switch back to album/playlist order)
   func clearTableSorting() {
     tableSortCriteria = []
     lastPersistentSortColumn = nil
     lastPersistentSortAscending = true
+    lastPersistentSortTrackIDsHash = nil
   }
 
   // Phase 44 / Phase 115: Set or toggle column sort.
@@ -654,6 +670,9 @@ final class AlbumTableViewModel {
   /// Phase 115: Tracks the last persistent sort column for toggle direction on static playlists.
   private var lastPersistentSortColumn: TableColumnType?
   private var lastPersistentSortAscending = true
+  /// Phase 116: hashValue of trackIDs after persistent sort, for sort indicator validation.
+  /// Cleared on playlist switch or when the user manually drag-reorders.
+  private var lastPersistentSortTrackIDsHash: Int?
 
   // MARK: - Display Buffer Methods
 
@@ -683,9 +702,10 @@ final class AlbumTableViewModel {
     // Commit to persistence.
     mainVM.library.reorderPlaylistTracks(playlistID: playlistID, newTrackIDs: newTrackIDs)
 
-    // Update tracking state for toggle direction.
+    // Update tracking state for toggle direction and sort indicator validation.
     lastPersistentSortColumn = column
     lastPersistentSortAscending = ascending
+    lastPersistentSortTrackIDsHash = newTrackIDs.hashValue
   }
 
   /// Compares two tracks by a single sort criterion.
