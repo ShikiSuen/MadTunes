@@ -27,28 +27,6 @@ final class PersistedTrack {
     self.fallbackFieldsRawValue = track.fallbackFields.rawValue
   }
 
-  /// Raw-value initialiser used by `PersistedSchemaMigrationPlan`.
-  init(
-    id: UUID, fileURLString: String, bookmarkData: Data? = nil,
-    title: String, artist: String, albumTitle: String, albumArtist: String,
-    trackNumber: Int, discNumber: Int, duration: Double,
-    genre: String, year: Int? = nil, fallbackFieldsRawValue: Int = 0
-  ) {
-    self.id = id
-    self.fileURLString = fileURLString
-    self.bookmarkData = bookmarkData
-    self.title = title
-    self.artist = artist
-    self.albumTitle = albumTitle
-    self.albumArtist = albumArtist
-    self.trackNumber = trackNumber
-    self.discNumber = discNumber
-    self.duration = duration
-    self.genre = genre
-    self.year = year
-    self.fallbackFieldsRawValue = fallbackFieldsRawValue
-  }
-
   // MARK: Internal
 
   // Note: 此處不宜將 fileURLString 標為 Unique。該專案已經有對應的重複排除機制了，所以不用擔心。
