@@ -68,8 +68,9 @@ final class AlbumTableViewModel {
   var newPlaylistName = ""
   var trackIDsForNewPlaylist: Set<UUID> = []
 
-  /// Phase 44 / Phase 114: Table view column sorting criteria stack.
-  /// Single-element for dynamic playlists, multi-element compound sort for static playlists.
+  /// Phase 44 / Phase 114 / Phase 115: Table view column sorting criteria stack.
+  /// Multi-element compound sort for dynamic playlists (All Music); not used for static playlists
+  /// (which apply persistent sorts directly to the playlist track order).
   var tableSortCriteria: [(column: TableColumnType, ascending: Bool)] = []
 
   /// Phase 69: Whether iOS edit mode (multi-select) is active.
@@ -192,8 +193,9 @@ final class AlbumTableViewModel {
 
   // MARK: - Table Sorting
 
-  /// Phase 114: Whether the current playlist allows compound (multi-column) sorting.
-  /// Enabled for Favorites and user static playlists; disabled for All Music and dynamic playlists.
+  /// Phase 115: Whether the current playlist allows compound (multi-column) sorting.
+  /// Enabled for All Music and dynamic playlists; disabled for Favorites and static playlists
+  /// (which use persistent sorting instead).
   var isCompoundSortAllowed: Bool {
     guard let mainVM else { return false }
     guard let playlistID = mainVM.selectedPlaylistID,
@@ -201,10 +203,13 @@ final class AlbumTableViewModel {
     else {
       return false
     }
-    if index == 0 { return false }
+    // All Music (index 0) supports compound sort.
+    if index == 0 { return true }
     let playlist = mainVM.library.playlists[index]
-    let isFavorites = playlist.kind == .system && index == 1
-    return isFavorites || playlist.kind == .staticList
+    // Dynamic playlists support compound sort.
+    if playlist.kind == .dynamicList { return true }
+    // Favorites and static playlists use persistent sort, not compound.
+    return false
   }
 
   // MARK: - Phase 96: ViewModel-level Observations
@@ -214,8 +219,8 @@ final class AlbumTableViewModel {
     observeCurrentTracksChange()
   }
 
-  // Phase 44 / Phase 114: Get sort indicator for column header.
-  // Shows priority subscript when compound sorting is active.
+  // Phase 44 / Phase 114 / Phase 115: Get sort indicator for column header.
+  // Shows priority subscript when compound sorting is active (dynamic playlists).
   func sortIndicator(for column: TableColumnType) -> String? {
     guard let idx = tableSortCriteria.firstIndex(where: { $0.column == column }) else { return nil }
     let arrow = tableSortCriteria[idx].ascending ? " ▲" : " ▼"
@@ -232,9 +237,9 @@ final class AlbumTableViewModel {
     tableSortCriteria = []
   }
 
-  // Phase 44 / Phase 114: Set or toggle column sort.
-  // On static playlists: compound sort — new columns are prepended as primary.
-  // On dynamic playlists: single-column sort — new column replaces all.
+  // Phase 44 / Phase 115: Set or toggle column sort.
+  // On dynamic playlists (incl. All Music): compound sort — new columns are prepended as primary.
+  // On static playlists: persistent sort — physically reorders playlist trackIDs.
   func setTableSort(column: TableColumnType) {
     // Sorting and edit mode are mutually exclusive.
     isEditModeActive = false

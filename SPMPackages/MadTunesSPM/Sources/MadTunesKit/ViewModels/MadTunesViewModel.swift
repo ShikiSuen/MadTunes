@@ -411,6 +411,8 @@ final class MadTunesViewModel {
     tableVM.tableSelectionAnchorID = nil
     tableVM.tableSelectionCursorID = nil
     tableVM.isEditModeActive = false
+    // Phase 115: Clear table sort so it doesn't leak across playlists.
+    tableVM.clearTableSorting()
     resetColumnBrowserFilters()
     if !searchTokens(from: searchText).isEmpty {
       searchText = ""
