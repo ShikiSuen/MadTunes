@@ -525,11 +525,12 @@ final class AlbumGridViewModel {
     let albums = unfilteredAlbums.compactMap { album -> Album? in
       let matching = album.tracks.filter { filteredIDs.contains($0.id) }
       guard !matching.isEmpty else { return nil }
+      // Phase 111: Use presorted init — filtered tracks retain album's existing sort order.
       return Album(
         id: album.id,
         title: album.title,
         artist: album.artist,
-        tracks: matching
+        presortedTracks: matching
       )
     }
     return sortedAlbums(albums)
@@ -862,6 +863,8 @@ final class AlbumGridViewModel {
     Task {
       try? await Task.sleep(for: .milliseconds(50))
       expandedAlbumID = newID
+      // Phase 111: Clear stale frame when closing expanded album.
+      if newID == nil { expandedAlbumFrame = nil }
     }
   }
 }

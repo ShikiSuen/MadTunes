@@ -101,14 +101,13 @@ struct ExpandedAlbumView: View {
         .fill(showBackground ? Color.secondary.opacity(0.1) : Color.clear)
     )
     .padding(.horizontal, 4 * vm.uiFactor)
-    .background(
-      GeometryReader { geo in
-        Color.clear.preference(
-          key: ExpandedAlbumFramePreferenceKey.self,
-          value: geo.frame(in: .named("albumGrid"))
-        )
-      }
-    )
+    // Phase 111: Write frame directly to ViewModel instead of
+    // ExpandedAlbumFramePreferenceKey to avoid preference propagation overhead.
+    .onGeometryChange(for: CGRect.self) { geo in
+      geo.frame(in: .named("albumGrid"))
+    } action: { frame in
+      vm.gridVM.expandedAlbumFrame = frame
+    }
     .sheet(isPresented: $isTrackInfoPresented) {
       if tracksForTrackInfo.count == 1, let track = tracksForTrackInfo.first {
         TrackInfoView(

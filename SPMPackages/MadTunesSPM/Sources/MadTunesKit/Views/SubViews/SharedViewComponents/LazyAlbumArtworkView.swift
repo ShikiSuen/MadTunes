@@ -17,9 +17,11 @@ struct LazyAlbumArtworkView: View {
   // MARK: Internal
 
   var body: some View {
-    ArtworkView(data: artworkData, dominantColor: dominantColor, alwaysGlossy: alwaysGlossy)
+    // Phase 111: Pass pre-decoded Image instead of raw Data to avoid
+    // JPEG decode on every body evaluation during scroll.
+    ArtworkView(image: decodedImage, dominantColor: dominantColor, alwaysGlossy: alwaysGlossy)
       .task {
-        guard artworkData == nil, let track = album.tracks.first else { return }
+        guard decodedImage == nil, let track = album.tracks.first else { return }
         let key = vm.library.albumKey(title: album.title, artist: album.artist)
         let result = await vm.library.loadArtwork(
           forAlbumKey: key,
@@ -27,7 +29,7 @@ struct LazyAlbumArtworkView: View {
           sampleTrackBookmark: track.bookmarkData
         )
         if let result {
-          artworkData = result.data
+          decodedImage = ArtworkView.makeImage(from: result.data)
           if let h = result.dominantColorHue, let s = result.dominantColorSaturation,
              let b = result.dominantColorBrightness {
             dominantColor = Color(hue: h, saturation: s, brightness: b)
@@ -40,8 +42,8 @@ struct LazyAlbumArtworkView: View {
 
   @Environment(MadTunesViewModel.self) private var vm
 
-  /// Phase 108: Per-view state — isolated from other album tiles.
-  @State private var artworkData: Data?
+  /// Phase 111: Per-view state — decode once and cache the Image, not raw Data.
+  @State private var decodedImage: Image?
   @State private var dominantColor: Color?
 
   private let album: Album

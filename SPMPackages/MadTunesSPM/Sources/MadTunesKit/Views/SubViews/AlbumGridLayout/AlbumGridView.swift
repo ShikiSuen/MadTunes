@@ -123,7 +123,9 @@ struct AlbumGridView: View {
   private var minItemWidth: CGFloat { 160 * vm.uiFactor }
 
   private var albums: [Album] {
-    gridVM.currentAlbumsDisplayed
+    // Phase 111: Use cached display buffer instead of recomputing
+    // currentAlbumsDisplayed on every access (was ~12.8% CPU).
+    gridVM.displayedAlbums
   }
 
   // Phase 53: Only show playing indicator when actively playing.
@@ -184,16 +186,12 @@ struct AlbumGridView: View {
         .onPreferenceChange(AlbumFramePreferenceKey.self) { frames in
           gridVM.albumFrames = frames
         }
-        .onPreferenceChange(ExpandedAlbumFramePreferenceKey.self) { frame in
-          gridVM.expandedAlbumFrame = frame
-        }
         .background {
           rubberBandDragLayer
         }
         .overlay {
           rubberBandRectOverlay
         }
-        .drawingGroup()
       }
       .scrollContentBackground(.hidden)
       // Phase 96: expandedAlbumID scroll (data scheduling moved to ViewModel).
@@ -341,7 +339,8 @@ struct AlbumGridView: View {
           isExpanded: isExpanded,
           isSelected: isSelected,
           isCursor: isCursor,
-          isMultipleSelection: isMultiSelection
+          isMultipleSelection: isMultiSelection,
+          legacyHardwareMode: gridVM.legacyHardwareMode
         )
         .background(
           GeometryReader { geo in
@@ -456,18 +455,5 @@ private struct AlbumFramePreferenceKey: PreferenceKey {
   }
 }
 
-// MARK: - ExpandedAlbumFramePreferenceKey
-
-// Frame of the expanded album detail pane. Used by the blank-area tap
-// recogniser in the background layer so that clicking inside the pane itself
-// does not close it.
-struct ExpandedAlbumFramePreferenceKey: PreferenceKey {
-  nonisolated static var defaultValue: CGRect? { nil }
-
-  nonisolated static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
-    // always take the latest non-nil value
-    if let next = nextValue() {
-      value = next
-    }
-  }
-}
+// Phase 111: ExpandedAlbumFramePreferenceKey removed — replaced with
+// .onGeometryChange in ExpandedAlbumView writing directly to ViewModel.

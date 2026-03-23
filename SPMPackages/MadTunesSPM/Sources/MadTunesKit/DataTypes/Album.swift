@@ -25,6 +25,25 @@ public struct Album: Identifiable, Sendable {
         < ($1.discNumber, $1.trackNumber, $1.title)
     }
     self.allTrackIDsSet = .init(tracks.map(\.id))
+    // Phase 111: Cache year at init time to avoid O(n) per-comparison during sorting.
+    self.year = self.tracks.compactMap(\.year).min()
+  }
+
+  /// Phase 111: Internal init accepting already-sorted tracks.
+  /// Skips the sort step — use only when `tracks` are already in
+  /// (disc, track#, title) order (e.g. filtered subsets of an existing album).
+  init(
+    id: UUID,
+    title: String,
+    artist: String,
+    presortedTracks tracks: [Track]
+  ) {
+    self.id = id
+    self.title = title
+    self.artist = artist
+    self.tracks = tracks
+    self.allTrackIDsSet = .init(tracks.map(\.id))
+    self.year = tracks.compactMap(\.year).min()
   }
 
   // MARK: Public
@@ -34,6 +53,9 @@ public struct Album: Identifiable, Sendable {
   public let artist: String
   public let tracks: [Track]
   public let allTrackIDsSet: Set<UUID>
+
+  /// Phase 111: Cached at init — the earliest year among the album's tracks, if available.
+  public let year: Int?
 
   public var totalDuration: TimeInterval {
     tracks.reduce(0) { $0 + $1.duration }
@@ -50,11 +72,6 @@ public struct Album: Identifiable, Sendable {
   public var showDiscNumber: Bool {
     let distinct = Set(tracks.map(\.discNumber))
     return distinct.count > 1
-  }
-
-  /// The earliest year among the album's tracks, if available.
-  public var year: Int? {
-    tracks.compactMap(\.year).min()
   }
 }
 

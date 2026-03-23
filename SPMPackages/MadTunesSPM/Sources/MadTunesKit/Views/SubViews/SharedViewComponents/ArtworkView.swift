@@ -12,7 +12,16 @@ struct ArtworkView: View {
 
   /// Phase 108: Added `precomputedDominantColor` to skip per-render pixel scanning.
   init(data: Data?, dominantColor: Color? = nil, alwaysGlossy: Bool = false) {
-    self.data = data
+    self.resolvedImage = data.flatMap { Self.makeImage(from: $0) }
+    self.hasData = data != nil
+    self.precomputedDominantColor = dominantColor
+    self.alwaysGlossy = alwaysGlossy
+  }
+
+  /// Phase 111: Init accepting a pre-decoded Image to avoid repeated JPEG decode.
+  init(image: Image?, dominantColor: Color? = nil, alwaysGlossy: Bool = false) {
+    self.resolvedImage = image
+    self.hasData = image != nil
     self.precomputedDominantColor = dominantColor
     self.alwaysGlossy = alwaysGlossy
   }
@@ -23,9 +32,9 @@ struct ArtworkView: View {
     // ZStack 更快一些。
     ZStack {
       let glass = GlassyAlbumOverlay()
-      if let data, let image = Self.makeImage(from: data) {
+      if let image = resolvedImage {
         // Phase 108: Use pre-computed color when available, skip expensive pixel scan.
-        precomputedDominantColor ?? Self.dominantColor(from: data) ?? Color.gray.opacity(0.3)
+        precomputedDominantColor ?? Color.gray.opacity(0.3)
         image
           .resizable()
           .aspectRatio(contentMode: .fit)
@@ -177,20 +186,22 @@ struct ArtworkView: View {
     #endif
   }
 
+  // MARK: - Platform Image Conversion
+
+  /// Phase 111: Made internal for LazyAlbumArtworkView’s one-time decode.
+  static func makeImage(from data: Data) -> Image? {
+    guard let cgImage = CGImage.instantiate(data: data) else { return nil }
+    return Image(decorative: cgImage, scale: 1)
+  }
+
   // MARK: Private
 
   @Environment(\.colorScheme) private var colorScheme
 
-  private let data: Data?
+  private let resolvedImage: Image?
+  private let hasData: Bool
   private let precomputedDominantColor: Color?
   private let alwaysGlossy: Bool
-
-  // MARK: - Platform Image Conversion
-
-  private static func makeImage(from data: Data) -> Image? {
-    guard let cgImage = CGImage.instantiate(data: data) else { return nil }
-    return Image(decorative: cgImage, scale: 1)
-  }
 
   /// Convert RGB (0…1) to HSB (0…1).
   private static func rgbToHSB(

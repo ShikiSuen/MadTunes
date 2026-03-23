@@ -214,19 +214,22 @@ struct AlbumTableView: View {
     let canReorder = vm.tableVM.canReorderCurrentPlaylist
     // Phase 109: Snapshot column widths to avoid per-cell @Observable access.
     let cachedColumnWidths = tableVM.columnWidths
+    // Phase 111: Snapshot visible columns to avoid per-row recomputation.
+    let cachedVisibleColumns = visibleColumns
     List(selection: Bindable(vm).selectedTrackIDs) {
       ForEach(Array(tableVM.displayedTracks.enumerated()), id: \.element.id) { index, track in
         TableTrackRowView(
           track: track,
           index: index,
-          visibleColumns: visibleColumns,
+          visibleColumns: cachedVisibleColumns,
           currentTrackID: currentTrackID,
           isTrackSelected: vm.selectedTrackIDs.contains(track.id),
           columnWidths: cachedColumnWidths
         )
         .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
         .listRowBackground(alternatingRowBackground(at: index, trackID: track.id))
-        .drawingGroup()
+        // Phase 111: Removed .drawingGroup() — per-row bitmap rasterization
+        // adds significant overhead on macCatalyst/UIKit for simple text rows.
         .tag(track.id)
       }
       .onMove(perform: onRowMoveActionProvider(canReorder: canReorder))

@@ -15,13 +15,15 @@ struct AlbumGridItemView: View {
     isExpanded: Bool,
     isSelected: Bool,
     isCursor: Bool,
-    isMultipleSelection: Bool
+    isMultipleSelection: Bool,
+    legacyHardwareMode: Bool
   ) {
     self.album = album
     self.isExpanded = isExpanded
     self.isSelected = isSelected
     self.isCursor = isCursor
     self.isMultipleSelection = isMultipleSelection
+    self.legacyHardwareMode = legacyHardwareMode
   }
 
   // MARK: Internal
@@ -65,7 +67,7 @@ struct AlbumGridItemView: View {
       .padding(.horizontal, isExpanded ? 4 : 8)
       .padding(.bottom, 4)
     }
-    .animation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode), value: isExpanded)
+    .animation(.interactiveSpring.nerf(legacyHardwareMode), value: isExpanded)
     .background {
       if showSelectedStatus {
         selectionBackground
@@ -75,13 +77,13 @@ struct AlbumGridItemView: View {
 
   // MARK: Private
 
-  @State private var vm = MadTunesViewModel.shared
-
+  // Phase 111: Removed @State vm to eliminate per-tile @Observable subscription.
   private let album: Album
   private let isExpanded: Bool
   private let isSelected: Bool
   private let isCursor: Bool
   private let isMultipleSelection: Bool
+  private let legacyHardwareMode: Bool
 
   @ViewBuilder private var selectionBackground: some View {
     if isCursor {
