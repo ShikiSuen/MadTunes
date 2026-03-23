@@ -68,8 +68,9 @@ final class AlbumTableViewModel {
   var newPlaylistName = ""
   var trackIDsForNewPlaylist: Set<UUID> = []
 
-  /// Phase 44: Table view column sorting (column type, ascending?)
-  var tableSortCriteria: (column: TableColumnType, ascending: Bool)?
+  /// Phase 44 / Phase 114: Table view column sorting criteria stack.
+  /// Single-element for dynamic playlists, multi-element compound sort for static playlists.
+  var tableSortCriteria: [(column: TableColumnType, ascending: Bool)] = []
 
   /// Phase 69: Whether iOS edit mode (multi-select) is active.
   var isEditModeActive = false
@@ -110,8 +111,8 @@ final class AlbumTableViewModel {
   var currentTracksDisplayed: [Track] {
     guard let mainVM else { return [] }
     let tracks = mainVM.filteredTracksBase
-    guard let criteria = tableSortCriteria else { return tracks }
-    return sortedTracks(tracks, by: criteria)
+    guard !tableSortCriteria.isEmpty else { return tracks }
+    return sortedTracks(tracks, by: tableSortCriteria)
   }
 
   /// Whether the currently selected playlist supports drag‑reordering.
@@ -135,7 +136,7 @@ final class AlbumTableViewModel {
     // Don't allow reordering while the table is sorted or filtered, since the
     // visible order would not map cleanly back to the playlist order.
     let canReorder = (isFavorites || isStatic)
-      && tableSortCriteria == nil
+      && tableSortCriteria.isEmpty
       && mainVM.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       && !mainVM.isColumnBrowserFiltering
     return canReorder
@@ -148,7 +149,7 @@ final class AlbumTableViewModel {
   /// displayed list and therefore cannot be mixed with manual multi-selection.
   var canEnterEditMode: Bool {
     guard !OS.isAppKit else { return false }
-    guard tableSortCriteria == nil else { return false }
+    guard tableSortCriteria.isEmpty else { return false }
     guard let mainVM else { return false }
     guard let playlistID = mainVM.selectedPlaylistID,
           let index = mainVM.library.playlists.firstIndex(where: { $0.id == playlistID })
@@ -189,6 +190,23 @@ final class AlbumTableViewModel {
     return max(1, Int((canvasHeight - 80) / 24))
   }
 
+  // MARK: - Table Sorting
+
+  /// Phase 114: Whether the current playlist allows compound (multi-column) sorting.
+  /// Enabled for Favorites and user static playlists; disabled for All Music and dynamic playlists.
+  var isCompoundSortAllowed: Bool {
+    guard let mainVM else { return false }
+    guard let playlistID = mainVM.selectedPlaylistID,
+          let index = mainVM.library.playlists.firstIndex(where: { $0.id == playlistID })
+    else {
+      return false
+    }
+    if index == 0 { return false }
+    let playlist = mainVM.library.playlists[index]
+    let isFavorites = playlist.kind == .system && index == 1
+    return isFavorites || playlist.kind == .staticList
+  }
+
   // MARK: - Phase 96: ViewModel-level Observations
 
   /// Called by MadTunesViewModel after mainVM is assigned.
@@ -196,73 +214,72 @@ final class AlbumTableViewModel {
     observeCurrentTracksChange()
   }
 
-  // MARK: - Table Sorting
-
-  // Phase 44: Get sort indicator for column header
+  // Phase 44 / Phase 114: Get sort indicator for column header.
+  // Shows priority subscript when compound sorting is active.
   func sortIndicator(for column: TableColumnType) -> String? {
-    guard let criteria = tableSortCriteria, criteria.column == column else { return nil }
-    return criteria.ascending ? " ▲" : " ▼"
+    guard let idx = tableSortCriteria.firstIndex(where: { $0.column == column }) else { return nil }
+    let arrow = tableSortCriteria[idx].ascending ? " ▲" : " ▼"
+    if tableSortCriteria.count * 1 > 1 {
+      let subscripts: [Character] = ["₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"]
+      let priority = idx < subscripts.count ? String(subscripts[idx]) : "\(idx + 1)"
+      return arrow + priority
+    }
+    return arrow
   }
 
   // Phase 44: Clear sorting (switch back to album order)
   func clearTableSorting() {
-    tableSortCriteria = nil
+    tableSortCriteria = []
   }
 
-  // Phase 44: Set or toggle column sort
+  // Phase 44 / Phase 114: Set or toggle column sort.
+  // On static playlists: compound sort — new columns are prepended as primary.
+  // On dynamic playlists: single-column sort — new column replaces all.
   func setTableSort(column: TableColumnType) {
     // Sorting and edit mode are mutually exclusive.
     isEditModeActive = false
 
-    if let current = tableSortCriteria, current.column == column {
-      // Toggle direction
-      let newAscending = !current.ascending
-      if newAscending {
-        // Third click: clear sort
-        tableSortCriteria = nil
+    let compound = isCompoundSortAllowed
+
+    if let existingIdx = tableSortCriteria.firstIndex(where: { $0.column == column }) {
+      if existingIdx == 0 {
+        // Primary column: toggle direction.
+        let newAscending = !tableSortCriteria[0].ascending
+        if newAscending {
+          // Third click on primary: remove it.
+          if compound, tableSortCriteria.count * 1 > 1 {
+            tableSortCriteria.removeFirst()
+          } else {
+            tableSortCriteria = []
+          }
+        } else {
+          tableSortCriteria[0] = (column: column, ascending: newAscending)
+        }
       } else {
-        tableSortCriteria = (column: column, ascending: newAscending)
+        // Non-primary column in compound mode: promote to primary, keep direction.
+        let entry = tableSortCriteria.remove(at: existingIdx)
+        tableSortCriteria.insert(entry, at: 0)
       }
     } else {
-      tableSortCriteria = (column: column, ascending: true)
+      // New column.
+      if compound {
+        tableSortCriteria.insert((column: column, ascending: true), at: 0)
+      } else {
+        tableSortCriteria = [(column: column, ascending: true)]
+      }
     }
   }
 
-  /// Sorts tracks by the given table column criteria.
-  /// Uses pre-computed `Track.folderPath` to avoid repeated URL operations.
-  func sortedTracks(_ tracks: [Track], by criteria: (column: TableColumnType, ascending: Bool)) -> [Track] {
-    let ascending = criteria.ascending
-    return tracks.sorted {
-      switch criteria.column {
-      case .name:
-        return ascending ? $0.title < $1.title : $0.title > $1.title
-      case .length:
-        return ascending ? $0.duration < $1.duration : $0.duration > $1.duration
-      case .artist:
-        return ascending ? $0.artist < $1.artist : $0.artist > $1.artist
-      case .albumTitle:
-        return ascending ? $0.albumTitle < $1.albumTitle : $0.albumTitle > $1.albumTitle
-      case .albumArtist:
-        return ascending ? $0.albumArtist < $1.albumArtist : $0.albumArtist > $1.albumArtist
-      case .trackNumber:
-        let disc0 = $0.discNumber, disc1 = $1.discNumber
-        let track0 = $0.trackNumber, track1 = $1.trackNumber
-        if disc0 != disc1 {
-          return ascending ? disc0 < disc1 : disc0 > disc1
-        }
-        return ascending ? track0 < track1 : track0 > track1
-      case .genre:
-        return ascending ? $0.genre < $1.genre : $0.genre > $1.genre
-      case .year:
-        let y0 = $0.year ?? Int.min, y1 = $1.year ?? Int.min
-        return ascending ? y0 < y1 : y0 > y1
-      case .folder:
-        return ascending ? $0.folderPath < $1.folderPath : $0.folderPath > $1.folderPath
-      case .fileExtension:
-        return ascending ? $0.fileExtension < $1.fileExtension : $0.fileExtension > $1.fileExtension
-      case .playingIndicator:
-        return ascending ? $0.title < $1.title : $0.title > $1.title
+  /// Phase 114: Sorts tracks by an ordered list of criteria (compound sort).
+  /// The first element is the primary sort key; subsequent elements break ties.
+  func sortedTracks(_ tracks: [Track], by criteriaStack: [(column: TableColumnType, ascending: Bool)]) -> [Track] {
+    guard !criteriaStack.isEmpty else { return tracks }
+    return tracks.sorted { lhs, rhs in
+      for criteria in criteriaStack {
+        let order = compareTracks(lhs, rhs, by: criteria)
+        if order != .orderedSame { return order == .orderedAscending }
       }
+      return false
     }
   }
 
@@ -611,6 +628,60 @@ final class AlbumTableViewModel {
   /// Coalesced/batched update (Phase 56). Progressively appends tracks
   /// in batches to keep the UI responsive during large imports.
   private var displayedTracksUpdateTask: Task<Void, Never>?
+
+  /// Compares two tracks by a single sort criterion.
+  private func compareTracks(
+    _ lhs: Track, _ rhs: Track,
+    by criteria: (column: TableColumnType, ascending: Bool)
+  )
+    -> ComparisonResult {
+    let ascending = criteria.ascending
+    let raw: ComparisonResult
+    switch criteria.column {
+    case .name:
+      raw = lhs.title.localizedStandardCompare(rhs.title)
+    case .length:
+      raw = lhs.duration < rhs.duration ? .orderedAscending
+        : lhs.duration > rhs.duration ? .orderedDescending : .orderedSame
+    case .artist:
+      raw = lhs.artist.localizedStandardCompare(rhs.artist)
+    case .albumTitle:
+      raw = lhs.albumTitle.localizedStandardCompare(rhs.albumTitle)
+    case .albumArtist:
+      raw = lhs.albumArtist.localizedStandardCompare(rhs.albumArtist)
+    case .trackNumber:
+      let disc: ComparisonResult = lhs.discNumber == rhs.discNumber ? .orderedSame
+        : lhs.discNumber < rhs.discNumber ? .orderedAscending : .orderedDescending
+      if disc != .orderedSame {
+        raw = disc
+      } else if lhs.trackNumber < rhs.trackNumber {
+        raw = .orderedAscending
+      } else if lhs.trackNumber > rhs.trackNumber {
+        raw = .orderedDescending
+      } else {
+        raw = .orderedSame
+      }
+    case .genre:
+      raw = lhs.genre.localizedStandardCompare(rhs.genre)
+    case .year:
+      let y0 = lhs.year ?? Int.min, y1 = rhs.year ?? Int.min
+      raw = y0 < y1 ? .orderedAscending : y0 > y1 ? .orderedDescending : .orderedSame
+    case .folder:
+      raw = lhs.folderPath.localizedStandardCompare(rhs.folderPath)
+    case .fileExtension:
+      raw = lhs.fileExtension.localizedStandardCompare(rhs.fileExtension)
+    case .playingIndicator:
+      raw = lhs.title.localizedStandardCompare(rhs.title)
+    }
+    if !ascending {
+      switch raw {
+      case .orderedAscending: return .orderedDescending
+      case .orderedDescending: return .orderedAscending
+      case .orderedSame: return .orderedSame
+      }
+    }
+    return raw
+  }
 
   // MARK: - Phase 96: Private Observations
 
