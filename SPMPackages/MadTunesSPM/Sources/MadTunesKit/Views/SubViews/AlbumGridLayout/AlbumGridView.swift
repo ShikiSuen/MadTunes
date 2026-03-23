@@ -163,6 +163,7 @@ struct AlbumGridView: View {
         LazyVStack(alignment: .leading, spacing: spacing) {
           ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
             albumRow(row, columnCount: columnCount)
+              .drawingGroup()
 
             // Expanded detail for the expanded album (if it belongs to this row).
             if !gridVM.legacyHardwareMode, let expandedAlbum = row.first(where: { $0.id == gridVM.expandedAlbumID }) {
@@ -174,6 +175,7 @@ struct AlbumGridView: View {
                 selectedTrackIDs: Bindable(vm).selectedTrackIDs,
                 onClose: { gridVM.expandedAlbumID = nil }
               )
+              .drawingGroup()
               .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
               .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
               .onAppear { gridVM.expandedAlbumWasInView = true }
@@ -192,6 +194,9 @@ struct AlbumGridView: View {
         .overlay {
           rubberBandRectOverlay
         }
+        // 對整個 AlbumGridView 的 drawingGroup 對 Intel Mac 負擔太大，所以拆除。
+        // 但對每個 Row 仍舊有必要施加，否則在 Apple Silicon Mac 上的 FPS 會從 full (60fps) 掉到 30fps 以下，非常噁心。
+        // 相關的實作已經套用到上文了，施加對象是 albumRow 與 ExpandedAlbumView 副本。
       }
       .scrollContentBackground(.hidden)
       // Phase 96: expandedAlbumID scroll (data scheduling moved to ViewModel).
