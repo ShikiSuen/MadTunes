@@ -49,6 +49,7 @@ public struct Track: Identifiable, Hashable, Sendable {
     self.id = id
     self.fileURL = fileURL
     self.folderPath = fileURL.deletingLastPathComponent().path
+    self.fileExtension = fileURL.pathExtension.lowercased()
     self.title = title ?? fileURL.deletingPathExtension().lastPathComponent
     self.artist = artist
     self.albumTitle = albumTitle
@@ -71,6 +72,8 @@ public struct Track: Identifiable, Hashable, Sendable {
   public let fileURL: URL
   /// Pre-computed folder path for efficient sorting (avoids repeated URL operations).
   public let folderPath: String
+  /// Phase 114: Pre-computed file extension for display and sorting.
+  public let fileExtension: String
   public var title: String
   public var artist: String
   public var albumTitle: String
