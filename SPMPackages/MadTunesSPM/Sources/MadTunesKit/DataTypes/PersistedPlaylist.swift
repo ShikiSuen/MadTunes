@@ -18,7 +18,8 @@ final class PersistedPlaylist {
     trackIDs: [UUID] = [],
     isSystemPlaylist: Bool = false,
     sortIndex: Int = 0,
-    kindRawValue: String = PlaylistKind.staticList.rawValue
+    kindRawValue: String = PlaylistKind.staticList.rawValue,
+    compoundSortData: Data = Data()
   ) {
     self.id = id
     self.name = name
@@ -26,6 +27,7 @@ final class PersistedPlaylist {
     self.isSystemPlaylist = isSystemPlaylist
     self.sortIndex = sortIndex
     self.kindRawValue = kindRawValue
+    self.compoundSortData = compoundSortData
   }
 
   // MARK: Internal
@@ -36,6 +38,8 @@ final class PersistedPlaylist {
   var isSystemPlaylist: Bool
   var sortIndex: Int
   var kindRawValue: String
+  /// Phase 116: Persisted compound sort settings for dynamic playlists (JSON-encoded).
+  var compoundSortData: Data = Data()
 
   var kind: PlaylistKind {
     PlaylistKind(rawValue: kindRawValue) ?? .staticList
@@ -47,7 +51,8 @@ final class PersistedPlaylist {
       id: id,
       name: name,
       trackIDs: trackIDs,
-      kind: kind
+      kind: kind,
+      compoundSortData: compoundSortData
     )
   }
 }

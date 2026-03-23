@@ -512,6 +512,14 @@ public final class MusicLibrary {
     persistAllPlaylistsDebounced()
   }
 
+  /// Phase 116: Update a dynamic playlist's compound sort data (JSON-encoded).
+  public func updateCompoundSortData(playlistID: UUID, data: Data) {
+    guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+    guard playlists[idx].kind == .dynamicList else { return }
+    playlists[idx].compoundSortData = data
+    persistAllPlaylistsDebounced()
+  }
+
   /// 從資料庫中移除指定曲目（包含 SwiftData 持久層），並從所有播放清單中清理其引用
   public func removeTracks(ids: Set<UUID>) {
     // bump observable token so anyone watching knows something changed
@@ -801,6 +809,7 @@ public final class MusicLibrary {
           existing.isSystemPlaylist = entry.playlist.isSystemPlaylist
           existing.sortIndex = entry.index
           existing.kindRawValue = entry.playlist.kind.rawValue
+          existing.compoundSortData = entry.playlist.compoundSortData
           newPlaylistIDs.remove(existing.id)
         } else {
           context.delete(existing)
@@ -814,7 +823,8 @@ public final class MusicLibrary {
           trackIDs: entry.playlist.trackIDs,
           isSystemPlaylist: entry.playlist.isSystemPlaylist,
           sortIndex: entry.index,
-          kindRawValue: entry.playlist.kind.rawValue
+          kindRawValue: entry.playlist.kind.rawValue,
+          compoundSortData: entry.playlist.compoundSortData
         ))
       }
       try context.save()

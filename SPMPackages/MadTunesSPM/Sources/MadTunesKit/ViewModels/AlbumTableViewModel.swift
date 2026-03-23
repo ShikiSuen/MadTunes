@@ -6,6 +6,14 @@ import Foundation
 import Observation
 import SwiftUI
 
+// MARK: - CompoundSortEntry
+
+/// Phase 116: Codable entry for persisting compound sort criteria as JSON.
+private struct CompoundSortEntry: Codable {
+  let column: String
+  let ascending: Bool
+}
+
 // MARK: - AlbumTableViewModel
 
 /// Phase 60: Sub-ViewModel for AlbumTableView.
@@ -312,6 +320,9 @@ final class AlbumTableViewModel {
         tableSortCriteria = [(column: column, ascending: true)]
       }
     }
+
+    // Phase 116: Persist compound sort for dynamic playlists.
+    persistCompoundSort()
   }
 
   /// Phase 114: Sorts tracks by an ordered list of criteria (compound sort).
@@ -653,7 +664,34 @@ final class AlbumTableViewModel {
     return .handled
   }
 
+  /// Phase 116: Load persisted compound sort criteria for the current dynamic playlist.
+  /// Called after playlist switch to restore the saved sort state.
+  func loadCompoundSortForCurrentPlaylist() {
+    guard let mainVM, let playlistID = mainVM.selectedPlaylistID,
+          let index = mainVM.library.playlists.firstIndex(where: { $0.id == playlistID })
+    else { return }
+
+    let data: Data?
+    if index == 0 {
+      data = UserDefaults.standard.data(forKey: Self.allMusicCompoundSortKey)
+    } else if mainVM.library.playlists[index].kind == .dynamicList {
+      let d = mainVM.library.playlists[index].compoundSortData
+      data = d.isEmpty ? nil : d
+    } else {
+      return
+    }
+
+    guard let data, let entries = try? JSONDecoder().decode([CompoundSortEntry].self, from: data) else { return }
+    tableSortCriteria = entries.compactMap { entry in
+      guard let column = TableColumnType(rawValue: entry.column) else { return nil }
+      return (column: column, ascending: entry.ascending)
+    }
+  }
+
   // MARK: Private
+
+  /// Phase 116: UserDefaults key for All Music compound sort persistence.
+  private static let allMusicCompoundSortKey = "MadTunes.allMusicCompoundSort"
 
   // MARK: - Column Visibility
 
@@ -706,6 +744,31 @@ final class AlbumTableViewModel {
     lastPersistentSortColumn = column
     lastPersistentSortAscending = ascending
     lastPersistentSortTrackIDsHash = newTrackIDs.hashValue
+  }
+
+  /// Phase 116: Persist the current compound sort criteria for the active dynamic playlist.
+  /// All Music: saves to UserDefaults. Other dynamic playlists: saves to SwiftData via library.
+  private func persistCompoundSort() {
+    guard let mainVM, let playlistID = mainVM.selectedPlaylistID,
+          let index = mainVM.library.playlists.firstIndex(where: { $0.id == playlistID })
+    else { return }
+
+    let entries = tableSortCriteria.map {
+      CompoundSortEntry(column: $0.column.rawValue, ascending: $0.ascending)
+    }
+
+    if index == 0 {
+      // All Music: persist to UserDefaults.
+      if entries.isEmpty {
+        UserDefaults.standard.removeObject(forKey: Self.allMusicCompoundSortKey)
+      } else if let data = try? JSONEncoder().encode(entries) {
+        UserDefaults.standard.set(data, forKey: Self.allMusicCompoundSortKey)
+      }
+    } else if mainVM.library.playlists[index].kind == .dynamicList {
+      // Dynamic playlist: persist to SwiftData.
+      let data = (try? JSONEncoder().encode(entries)) ?? Data()
+      mainVM.library.updateCompoundSortData(playlistID: playlistID, data: data)
+    }
   }
 
   /// Compares two tracks by a single sort criterion.

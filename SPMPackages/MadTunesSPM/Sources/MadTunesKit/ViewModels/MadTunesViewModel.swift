@@ -413,6 +413,8 @@ final class MadTunesViewModel {
     tableVM.isEditModeActive = false
     // Phase 115: Clear table sort so it doesn't leak across playlists.
     tableVM.clearTableSorting()
+    // Phase 116: Restore persisted compound sort for the incoming dynamic playlist.
+    tableVM.loadCompoundSortForCurrentPlaylist()
     resetColumnBrowserFilters()
     if !searchTokens(from: searchText).isEmpty {
       searchText = ""
@@ -561,6 +563,9 @@ final class MadTunesViewModel {
         self._previousSelectedPlaylistID = newValue
         if oldValue != nil, oldValue != newValue {
           self.onPlaylistSwitched()
+        } else if oldValue == nil, newValue != nil {
+          // Phase 116: Initial playlist selection — load persisted compound sort.
+          self.tableVM.loadCompoundSortForCurrentPlaylist()
         }
         self.observeSelectedPlaylistIDChange()
       }
