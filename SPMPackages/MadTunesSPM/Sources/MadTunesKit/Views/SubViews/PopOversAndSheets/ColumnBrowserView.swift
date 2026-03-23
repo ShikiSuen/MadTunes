@@ -81,26 +81,24 @@ struct ColumnBrowserView: View {
         onSelectionChange: {}
       )
 
-      if vm.screenVM.windowSizeObserved.width < 810 {
+      if OS.type == .macOS {
         Grid(horizontalSpacing: 0, verticalSpacing: 0) {
           GridRow {
             view1
+            view2
+            view3
             view4
           }
+        }
+      } else {
+        Grid(horizontalSpacing: 0, verticalSpacing: 0) {
           GridRow {
             view2
             view3
           }
-        }
-      } else {
-        ViewThatFits {
-          Grid(horizontalSpacing: 0, verticalSpacing: 0) {
-            GridRow {
-              view1
-              view2
-              view3
-              view4
-            }
+          GridRow {
+            view1
+            view4
           }
         }
       }
