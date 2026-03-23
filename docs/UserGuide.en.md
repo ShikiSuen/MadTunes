@@ -64,6 +64,11 @@ The sidebar is located on the left and contains the following sections:
 - **All Music**: Displays all tracks in the library
 - **Favorites**: Displays tracks marked as favorites (click the heart icon to add)
 
+**Dynamic Playlists**
+- Rule-driven playlists that automatically match tracks based on predicates
+- Right-click to rename or delete; use the "+" button to create
+- On iPhone WPUI, tap the Gear-shaped button to open the dedicated Predicate editor
+
 **Playlists**
 - User-created static playlists
 - Right-click to create, rename, or delete playlists
@@ -246,6 +251,8 @@ and Folder (the parent folder name – hover to see the full path).
 - **Column Visibility**: Right-click the table header to show/hide columns via toggle menu.
 - **Column Resizing**: Drag the dividers between column headers to adjust column widths. Widths are persisted across sessions.
 - **Sorting**: Click column header to sort by that column (once for ascending ▲, again for descending ▼, third click to clear and restore album order)
+- **Compound Sort** (All Music only): Click additional column headers to add secondary/tertiary sort criteria. Each header shows a subscript number indicating its priority (e.g. ▲₁ ▼₂).
+- **Persistent Sort** (Favorites & static playlists): Clicking a column header permanently reorders the playlist’s tracks by that column. Click the same column again to toggle between ascending and descending. The reordered sequence is saved automatically.
 
 ### Playlist Track Reordering
 
