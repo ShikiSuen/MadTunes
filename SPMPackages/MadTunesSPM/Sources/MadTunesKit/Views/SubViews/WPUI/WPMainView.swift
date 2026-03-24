@@ -248,15 +248,8 @@ struct WPMainView: View {
       }
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
     }
-    // Predicate editor sheet for dynamic playlists.
-    .sheet(item: $phoneVM.predicateEditorPlaylist) { playlist in
-      WPPredicateEditorView(playlist: playlist, library: vm.library)
-        .interactiveDismissDisabled(true)
-        .environment(phoneVM)
-    }
     .tint(phoneVM.wpAccentColor.color)
     .environment(\.colorScheme, .dark)
-    .fontWidth(.condensed)
     .task {
       await vm.library.loadPersistedData()
       vm.selectedPlaylistID = vm.library.playlists.first?.id

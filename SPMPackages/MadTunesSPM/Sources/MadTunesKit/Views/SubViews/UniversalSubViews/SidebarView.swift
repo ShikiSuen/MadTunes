@@ -41,7 +41,7 @@ struct SidebarView: View {
             .contextMenu {
               if playlist.kind == .dynamicList {
                 Button {
-                  predicateEditorPlaylist = playlist
+                  mainVM.openPredicateEditor(for: playlist)
                 } label: {
                   Label(
                     String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
@@ -92,9 +92,6 @@ struct SidebarView: View {
       }
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
     }
-    .sheet(item: $predicateEditorPlaylist) { playlist in
-      PredicateEditorView(playlist: playlist, library: library)
-    }
   }
 
   // MARK: Private
@@ -115,12 +112,11 @@ struct SidebarView: View {
     }
   }
 
+  @Environment(MadTunesViewModel.self) private var mainVM
   @Binding private var selectedPlaylistID: UUID?
   // Alert state — shared across both "New Playlist" and "Rename"
   @State private var alertKind: AlertKind?
   @State private var alertText = ""
-  /// Phase 117: Playlist to edit predicates for (sheet presentation).
-  @State private var predicateEditorPlaylist: Playlist?
 
   private var library: MusicLibrary
 

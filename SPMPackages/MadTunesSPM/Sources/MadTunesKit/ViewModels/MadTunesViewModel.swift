@@ -51,6 +51,12 @@ final class MadTunesViewModel {
   var searchFilterMode: SearchFilterMode = .either
   var isSearching: Bool = false
 
+  /// Phase 121: Shared predicate editor state —
+  /// lives here so iPad WPUI↔desktop switch preserves editing state.
+  var predicateEditorVM: PredicateEditorViewModel?
+  /// Phase 121: Playlist being edited; drives .sheet presentation at stable Scene level.
+  var predicateEditorPlaylist: Playlist?
+
   // This property should stay in this mainVM since it is required by both view layouts.
   var displayedTracksCache: [Track] = []
 
@@ -169,6 +175,11 @@ final class MadTunesViewModel {
     if tokens.isEmpty, !isColumnBrowserFiltering { return base }
 
     return base.filter { trackPassesAllFilters($0, tokens: tokens, mode: searchFilterMode) }
+  }
+
+  func openPredicateEditor(for playlist: Playlist) {
+    predicateEditorVM = PredicateEditorViewModel(playlist: playlist, library: library)
+    predicateEditorPlaylist = playlist
   }
 
   // MARK: - Phase 58: Shared Per-Track Search Filter
@@ -516,6 +527,7 @@ final class MadTunesViewModel {
     observeSelectedPlaylistIDChange()
     observeCurrentTrackChange()
     observeUIModeSwitching()
+    observePredicateEditorDismissal()
   }
 
   /// Phase 96: When `useTableView` changes, persist and clean up cross-view state.
@@ -632,6 +644,21 @@ final class MadTunesViewModel {
           self.phoneVM.wpSelectedAlbumIDs.removeAll()
         }
         self.observeUIModeSwitching()
+      }
+    }
+  }
+
+  /// Phase 121: Clear predicateEditorVM when the sheet is dismissed.
+  private func observePredicateEditorDismissal() {
+    withObservationTracking {
+      _ = self.predicateEditorPlaylist
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        if self.predicateEditorPlaylist == nil {
+          self.predicateEditorVM = nil
+        }
+        self.observePredicateEditorDismissal()
       }
     }
   }

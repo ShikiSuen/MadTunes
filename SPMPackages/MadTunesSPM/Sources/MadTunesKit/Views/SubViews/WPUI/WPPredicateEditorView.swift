@@ -11,8 +11,9 @@ import SwiftUI
 struct WPPredicateEditorView: View {
   // MARK: Lifecycle
 
-  init(playlist: Playlist, library: MusicLibraryProviding) {
-    _vm = State(initialValue: PredicateEditorViewModel(playlist: playlist, library: library))
+  /// Phase 121: Accept an externally-owned VM so editing state survives iPad WPUI↔desktop switch.
+  init(vm: PredicateEditorViewModel) {
+    self.vm = vm
   }
 
   // MARK: Internal
@@ -64,7 +65,7 @@ struct WPPredicateEditorView: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(WPPhoneViewModel.self) private var phoneVM
 
-  @State private var vm: PredicateEditorViewModel
+  private var vm: PredicateEditorViewModel
 
   private var accentColor: Color {
     phoneVM.wpAccentColor.color

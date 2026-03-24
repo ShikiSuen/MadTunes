@@ -115,22 +115,42 @@ public struct MadTunesScene: Scene {
   }
 
   @ViewBuilder var coreSceneView: some View {
+    @Bindable var bindableVM = vm
+    let isWPUI = WPPhoneViewModel.shouldUseWPUI(screenVM: vm.screenVM)
+    let windowMinSize = getWindowMinSize(isWPUI: isWPUI)
     Group {
       // Phase 75: Use WP Metro-style UI for iPhone / compact layout.
-      if WPPhoneViewModel.shouldUseWPUI(screenVM: vm.screenVM) {
+      if isWPUI {
         WPMainView()
-          .frame(
-            minWidth: 320,
-            minHeight: 568
-          )
+          // Phase 121: Predicate editor sheet at stable Scene level —
+          // survives iPad WPUI↔desktop switch, preserving editing state.
+          .sheet(item: $bindableVM.predicateEditorPlaylist) { _ in
+            if let editorVM = vm.predicateEditorVM {
+              WPPredicateEditorView(vm: editorVM)
+                .id(colorScheme)
+                .interactiveDismissDisabled(true)
+                .environment(vm.phoneVM)
+            }
+          }
+          .fontWidth(.condensed)
       } else {
         MadTunesMainView()
-          .frame(
-            minWidth: OS.type == .macOS ? 852 * vm.uiFactor : 320,
-            minHeight: OS.type == .macOS ? 574 * vm.uiFactor : 568
-          )
+          // Phase 121: Predicate editor sheet at stable Scene level —
+          // survives iPad WPUI↔desktop switch, preserving editing state.
+          .sheet(item: $bindableVM.predicateEditorPlaylist) { _ in
+            if let editorVM = vm.predicateEditorVM {
+              PredicateEditorView(vm: editorVM)
+                .id(colorScheme)
+                .interactiveDismissDisabled(true)
+            }
+          }
+          .fontWidth(.condensed)
       }
     }
+    .frame(
+      minWidth: windowMinSize.width,
+      minHeight: windowMinSize.height
+    )
     // Phase 69: Handle files opened via "Open In" / Share sheet / Finder.
     // Phase 100: On native macOS, MadTunesNSAppDelegate.application(_:open:)
     // handles file-open events as a single batch. Skip .onOpenURL on macOS to
@@ -145,4 +165,13 @@ public struct MadTunesScene: Scene {
   // MARK: Private
 
   @State private var vm = MadTunesViewModel.shared
+  @Environment(\.colorScheme) private var colorScheme
+
+  private func getWindowMinSize(isWPUI: Bool) -> CGSize {
+    guard !isWPUI else { return CGSize(width: 320, height: 568) }
+    return CGSize(
+      width: OS.type == .macOS ? 852 * vm.uiFactor : 320,
+      height: OS.type == .macOS ? 574 * vm.uiFactor : 568
+    )
+  }
 }

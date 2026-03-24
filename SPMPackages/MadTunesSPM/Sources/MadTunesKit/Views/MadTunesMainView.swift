@@ -271,7 +271,6 @@ struct MadTunesMainView: View {
       vm.handleDrop(providers)
     }
     #endif
-    .fontWidth(.condensed)
     .tint(.madTunesAccent)
     .trackScreenVMParameters()
     .environment(vm)

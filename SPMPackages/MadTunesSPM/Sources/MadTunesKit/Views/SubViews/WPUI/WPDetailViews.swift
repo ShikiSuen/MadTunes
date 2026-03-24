@@ -302,7 +302,7 @@ struct WPPlaylistDetailView: View {
 
             if currentPlaylist.kind == .dynamicList {
               Button {
-                phoneVM.predicateEditorPlaylist = currentPlaylist
+                vm.openPredicateEditor(for: currentPlaylist)
               } label: {
                 Image(systemName: "gearshape.2")
                   .font(.system(size: 15, weight: .semibold))

@@ -186,9 +186,6 @@ final class WPPhoneViewModel {
   /// Whether the standalone create alert should create a dynamic playlist.
   var createPlaylistIsDynamic = false
 
-  /// Predicate editor sheet for dynamic playlists.
-  var predicateEditorPlaylist: Playlist?
-
   var currentSection: PanoramaSection {
     get { access(keyPath: \.currentSection); return _currentSection }
     set { withMutation(keyPath: \.currentSection) { _currentSection = newValue } }

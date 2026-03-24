@@ -11,8 +11,9 @@ import SwiftUI
 struct PredicateEditorView: View {
   // MARK: Lifecycle
 
-  init(playlist: Playlist, library: MusicLibraryProviding) {
-    _vm = State(initialValue: PredicateEditorViewModel(playlist: playlist, library: library))
+  /// Phase 121: Accept an externally-owned VM so editing state survives iPad WPUI↔desktop switch.
+  init(vm: PredicateEditorViewModel) {
+    self.vm = vm
   }
 
   // MARK: Internal
@@ -28,6 +29,7 @@ struct PredicateEditorView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
           footerBar
+            .background(.ultraThinMaterial)
         }
     }
     .frame(minWidth: horizontalSizeClass == .compact ? nil : 720, minHeight: 300)
@@ -35,10 +37,11 @@ struct PredicateEditorView: View {
 
   // MARK: Private
 
+  @Environment(\.colorScheme) private var colorScheme
   @Environment(\.dismiss) private var dismiss
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-  @State private var vm: PredicateEditorViewModel
+  private var vm: PredicateEditorViewModel
 
   private var matchingCountText: String {
     if let count = vm.matchingTrackCount() {
@@ -55,10 +58,12 @@ struct PredicateEditorView: View {
       Text(matchingCountText)
         .foregroundStyle(.secondary)
         .font(.callout)
-      Spacer()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {
         dismiss()
       }
+      .buttonStyle(.bordered)
       Button(String(localized: "i18n:PredicateEditor.Apply", bundle: #bundle)) {
         vm.applyChanges()
         dismiss()
@@ -74,7 +79,7 @@ struct PredicateEditorView: View {
     HStack {
       Text(vm.playlistName)
         .font(.headline)
-      Spacer()
+        .frame(maxWidth: .infinity, alignment: .leading)
       Picker(
         String(localized: "i18n:PredicateEditor.MatchMode", bundle: #bundle),
         selection: matchMode
@@ -93,18 +98,17 @@ struct PredicateEditorView: View {
   // MARK: - Predicates List
 
   private func predicatesList(rootNodes: Binding<[PredicateEditorViewModel.PredicateNode]>) -> some View {
-    List {
+    Form {
       PredicateGroupView(nodes: rootNodes, depth: 0)
     }
-    .listStyle(.plain)
-    .padding(.horizontal, 1) // A little patch to avoid sheet border style interference.
+    .formStyle(.grouped)
   }
 }
 
 // MARK: - PredicateGroupView
 
-/// Recursive view rendering a list of predicate nodes with add buttons.
-/// Uses AnyView at the recursion point to break circular type dependencies.
+/// Phase 121: Card-based recursive group rendering, matching WPUI's visual style.
+/// Uses rounded-rect nesting instead of depth-prefix arrows.
 private struct PredicateGroupView: View {
   // MARK: Internal
 
@@ -115,22 +119,16 @@ private struct PredicateGroupView: View {
   var body: some View {
     ForEach($nodes) { $node in
       if node.isGroup {
-        groupRow(node: $node)
+        groupCard(node: $node)
       } else {
-        HStack(spacing: 0) {
-          depthPrefix()
-          PredicateLeafRowView(predicate: node.leafPredicate) { updated in
-            node.leafPredicate = updated
-          } onDelete: {
-            nodes.removeAll { $0.id == node.id }
-          }
+        PredicateLeafRowView(predicate: node.leafPredicate) { updated in
+          node.leafPredicate = updated
+        } onDelete: {
+          nodes.removeAll { $0.id == node.id }
         }
       }
     }
-    HStack(spacing: 0) {
-      depthPrefix()
-      addMenu
-    }
+    addMenu
   }
 
   // MARK: Private
@@ -182,45 +180,46 @@ private struct PredicateGroupView: View {
   }
 
   @ViewBuilder
-  private func depthPrefix(delta: Int = 1) -> some View {
-    let deltaActual = Swift.max(delta, 0) + depth
-    if deltaActual > 0 {
-      Text(String(repeating: "→", count: deltaActual))
-        .foregroundStyle(.secondary)
-        .padding(8)
-    }
-  }
-
-  @ViewBuilder
-  private func groupRow(node: Binding<PredicateEditorViewModel.PredicateNode>) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      HStack(spacing: 0) {
-        depthPrefix()
-        Picker(
-          String(localized: "i18n:PredicateEditor.MatchMode", bundle: #bundle),
-          selection: node.groupMode
-        ) {
-          Text(String(localized: "i18n:PredicateEditor.MatchAll", bundle: #bundle))
-            .tag(PredicateEditorViewModel.MatchMode.all)
-          Text(String(localized: "i18n:PredicateEditor.MatchAny", bundle: #bundle))
-            .tag(PredicateEditorViewModel.MatchMode.any)
+  private func groupCard(node: Binding<PredicateEditorViewModel.PredicateNode>) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      LabeledContent {
+        HStack {
+          Picker(
+            String(localized: "i18n:PredicateEditor.MatchMode", bundle: #bundle),
+            selection: node.groupMode
+          ) {
+            Text(String(localized: "i18n:PredicateEditor.MatchAll", bundle: #bundle))
+              .tag(PredicateEditorViewModel.MatchMode.all)
+            Text(String(localized: "i18n:PredicateEditor.MatchAny", bundle: #bundle))
+              .tag(PredicateEditorViewModel.MatchMode.any)
+          }
+          .pickerStyle(.segmented)
+          .labelsHidden()
+          Button(role: .destructive) {
+            nodes.removeAll { $0.id == node.wrappedValue.id }
+          } label: {
+            Image(systemName: "minus.circle.fill")
+              .foregroundStyle(.red)
+          }
+          .buttonStyle(.plain)
         }
-        .pickerStyle(.segmented)
         .fixedSize()
-        Spacer()
-        Button(role: .destructive) {
-          nodes.removeAll { $0.id == node.wrappedValue.id }
-        } label: {
-          Image(systemName: "minus.circle.fill")
-            .foregroundStyle(.red)
-        }
-        .buttonStyle(.plain)
+      } label: {
+        Text("i18n:PredicateEditor.MatchMode", bundle: #bundle)
+          .fontWeight(.medium)
       }
       AnyView(
         PredicateGroupView(nodes: node.children, depth: depth + 1)
       )
     }
-    .padding(.vertical, 4)
+    .padding(12)
+    .background(Color.primary.opacity(0.04))
+    .clipShape(RoundedRectangle(cornerRadius: 12))
+    .overlay {
+      RoundedRectangle(cornerRadius: 12)
+        .stroke(Color.accentColor.opacity(0.35), lineWidth: 1)
+    }
+    .padding(.vertical, 2)
   }
 }
 
@@ -254,41 +253,27 @@ private struct PredicateLeafRowView: View {
   // MARK: Internal
 
   var body: some View {
-    HStack {
-      Picker("".description, selection: $field) {
-        ForEach(ConditionField.allCases, id: \.self) { currentField in
-          Text(currentField.displayName).tag(currentField)
+    // Phase 121: HStack on AppKit (wide), VStack on non-AppKit (potentially compact iPad).
+    // 非 AppKit Target 的 Sheet 的寬度無法自訂、且過窄（尤其是對德語而言），故採 VStack。
+    if OS.isAppKit {
+      HStack {
+        fieldPicker
+        comparatorPicker
+        valueField
+          .frame(maxWidth: .infinity)
+        deleteButton
+      }
+      .padding(.vertical, 4)
+    } else {
+      VStack(alignment: .leading, spacing: 6) {
+        HStack {
+          fieldPicker
+          comparatorPicker
+          Spacer()
+          deleteButton
         }
+        valueField
       }
-      .labelsHidden()
-      .onChange(of: field) { _, newField in
-        let validComparators = Comparator.comparators(for: newField.valueKind)
-        if !validComparators.contains(comparator) {
-          comparator = validComparators.first ?? .contains
-        }
-        emitChange()
-      }
-      .fixedSize()
-
-      Picker("".description, selection: $comparator) {
-        ForEach(Comparator.comparators(for: field.valueKind), id: \.self) { currentComparator in
-          Text(currentComparator.displayName).tag(currentComparator)
-        }
-      }
-      .labelsHidden()
-      .onChange(of: comparator) { _, _ in emitChange() }
-      .fixedSize()
-
-      valueField
-        .frame(maxWidth: .infinity)
-
-      Button(role: .destructive) {
-        onDelete()
-      } label: {
-        Image(systemName: "minus.circle.fill")
-          .foregroundStyle(.red)
-      }
-      .buttonStyle(.plain)
     }
   }
 
@@ -305,6 +290,44 @@ private struct PredicateLeafRowView: View {
   private let onChange: (PlaylistCondition) -> Void
   private let onDelete: () -> Void
 
+  private var fieldPicker: some View {
+    Picker("".description, selection: $field) {
+      ForEach(ConditionField.allCases, id: \.self) { currentField in
+        Text(currentField.displayName).tag(currentField)
+      }
+    }
+    .labelsHidden()
+    .onChange(of: field) { _, newField in
+      let validComparators = Comparator.comparators(for: newField.valueKind)
+      if !validComparators.contains(comparator) {
+        comparator = validComparators.first ?? .contains
+      }
+      emitChange()
+    }
+    .fixedSize()
+  }
+
+  private var comparatorPicker: some View {
+    Picker("".description, selection: $comparator) {
+      ForEach(Comparator.comparators(for: field.valueKind), id: \.self) { currentComparator in
+        Text(currentComparator.displayName).tag(currentComparator)
+      }
+    }
+    .labelsHidden()
+    .onChange(of: comparator) { _, _ in emitChange() }
+    .fixedSize()
+  }
+
+  private var deleteButton: some View {
+    Button(role: .destructive) {
+      onDelete()
+    } label: {
+      Image(systemName: "minus.circle.fill")
+        .foregroundStyle(.red)
+    }
+    .buttonStyle(.plain)
+  }
+
   @ViewBuilder private var valueField: some View {
     switch field.valueKind {
     case .string:
@@ -313,6 +336,7 @@ private struct PredicateLeafRowView: View {
         text: $stringValue
       )
       .textFieldStyle(.roundedBorder)
+      .labelsHidden()
       .onChange(of: stringValue) { _, _ in emitChange() }
 
     case .integer:
