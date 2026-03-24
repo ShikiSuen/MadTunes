@@ -352,7 +352,10 @@ private struct BottomBarMask: View {
     LinearGradient(
       colors: [
         baseColor.opacity(0),
-        baseColor.opacity(1),
+        baseColor.opacity(0.6),
+        baseColor.opacity(0.7),
+        baseColor.opacity(0.8),
+        baseColor.opacity(0.9),
         baseColor,
       ],
       startPoint: .top,
@@ -369,7 +372,7 @@ private struct BottomBarBackground: View {
   @Environment(\.colorScheme) var colorScheme
 
   var body: some View {
-    let baseColor = Color.secondary
+    let baseColor = Color.primary
     LinearGradient(
       colors: [
         baseColor.opacity(0),
