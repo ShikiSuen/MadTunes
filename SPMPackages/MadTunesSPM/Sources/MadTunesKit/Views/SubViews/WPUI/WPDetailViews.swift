@@ -304,18 +304,15 @@ struct WPPlaylistDetailView: View {
               Button {
                 phoneVM.predicateEditorPlaylist = currentPlaylist
               } label: {
-                Label(
-                  String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
-                  systemImage: "gearshape.2"
-                )
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-                .background(Color.white.opacity(0.15))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                Image(systemName: "gearshape.2")
+                  .font(.system(size: 15, weight: .semibold))
+                  .foregroundStyle(.white)
+                  .padding(10)
+                  .background(Color.white.opacity(0.15))
+                  .clipShape(RoundedRectangle(cornerRadius: 6))
               }
               .buttonStyle(.plain)
+              .help(String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle))
             }
           }
           .padding(.top, 4)
