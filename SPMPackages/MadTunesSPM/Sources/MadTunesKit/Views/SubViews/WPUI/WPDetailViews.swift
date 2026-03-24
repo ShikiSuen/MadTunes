@@ -202,12 +202,10 @@ struct WPArtistDetailView: View {
 /// Phase 75: Playlist detail view showing tracks in a specific playlist.
 /// Phase 76: EditMode support for reorderable playlists (staticList / Favorites).
 /// Phase 86: Guards against deleted playlists to prevent stale-data rendering.
+/// Phase 124: Unified track select+reorder mode (replaces separate Edit button).
 struct WPPlaylistDetailView: View {
   @Environment(MadTunesViewModel.self) private var vm
   @Environment(WPPhoneViewModel.self) private var phoneVM
-  #if !(canImport(AppKit) && !canImport(UIKit))
-  @State private var editMode: EditMode = .inactive
-  #endif
 
   let playlist: Playlist
 
@@ -235,7 +233,7 @@ struct WPPlaylistDetailView: View {
             .font(.system(size: 14))
             .foregroundStyle(.white.opacity(0.5))
 
-          // Play / Shuffle / Edit buttons.
+          // Play / Shuffle / Select buttons.
           HStack(spacing: 16) {
             Button {
               let tracks = playlistTracks
@@ -248,6 +246,7 @@ struct WPPlaylistDetailView: View {
               )
               .font(.system(size: 15, weight: .semibold))
               .foregroundStyle(.white)
+              .labelStyle(.iconOnly)
               .padding(.horizontal, 20)
               .padding(.vertical, 10)
               .background(phoneVM.wpAccentColor.color)
@@ -266,6 +265,7 @@ struct WPPlaylistDetailView: View {
               )
               .font(.system(size: 15, weight: .semibold))
               .foregroundStyle(.white)
+              .labelStyle(.iconOnly)
               .padding(.horizontal, 20)
               .padding(.vertical, 10)
               .background(Color.white.opacity(0.15))
@@ -273,85 +273,63 @@ struct WPPlaylistDetailView: View {
             }
             .buttonStyle(.plain)
 
-            #if !(canImport(AppKit) && !canImport(UIKit))
-            if canReorder {
-              Button {
-                withAnimation {
-                  editMode = editMode == .active ? .inactive : .active
-                }
-              } label: {
-                Text(
-                  editMode == .active
-                    ? String(localized: "i18n:Common.Done", bundle: #bundle)
-                    : String(localized: "i18n:Common.Edit", bundle: #bundle)
-                )
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-                .background(
-                  editMode == .active
-                    ? phoneVM.wpAccentColor.color
-                    : Color.white.opacity(0.15)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-              }
-              .buttonStyle(.plain)
-            }
-            #endif
-
             if currentPlaylist.kind == .dynamicList {
               Button {
                 vm.openPredicateEditor(for: currentPlaylist)
               } label: {
-                Image(systemName: "gearshape.2")
-                  .font(.system(size: 15, weight: .semibold))
-                  .foregroundStyle(.white)
-                  .padding(10)
-                  .background(Color.white.opacity(0.15))
-                  .clipShape(RoundedRectangle(cornerRadius: 6))
+                Label(
+                  String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
+                  systemImage: "gearshape.2"
+                )
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .labelStyle(.iconOnly)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Color.white.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
               }
               .buttonStyle(.plain)
-              .help(String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle))
             }
 
             // Phase 123: Sort menu button.
             wpSortMenu
+
+            // Phase 124: Unified track select + reorder toggle button.
+            wpTrackSelectButton
           }
           .padding(.top, 4)
         }
         .padding(.vertical, 16)
 
+        // Phase 124: Track selection bar (shown when multi-select is active).
+        if phoneVM.isWPTrackSelectionModeActive {
+          wpTrackSelectionBar
+        }
+
         Divider().background(Color.white.opacity(0.1))
 
-        // Track list — use List with .onMove when in edit mode for reordering.
-        #if !(canImport(AppKit) && !canImport(UIKit))
-        if editMode == .active {
-          List {
-            ForEach(playlistTracks) { track in
-              WPEditableTrackRow(track: track, isPlaying: vm.player.currentTrack?.id == track.id && vm.player.isPlaying)
-            }
-            .onMove { source, destination in
-              let ids = source.map { playlistTracks[$0].id }
-              vm.library.moveTracks(ids, inPlaylist: playlist.id, toIndex: destination)
-            }
-            .listRowBackground(Color.black)
-          }
-          .listStyle(.plain)
-          .scrollContentBackground(.hidden)
-          .environment(\.editMode, .constant(.active))
+        // Track list — selection mode uses List with checkmarks + optional drag handles.
+        if phoneVM.isWPTrackSelectionModeActive {
+          // Phase 124: Unified selection + reorder mode.
+          wpSelectableTrackList
         } else {
-          WPTrackListView(tracks: playlistTracks, currentPlaylistID: playlist.id)
+          WPTrackListView(
+            tracks: playlistTracks,
+            currentPlaylistID: playlist.id,
+            currentStaticPlaylistID: currentStaticPlaylistID
+          )
         }
-        #else
-        WPTrackListView(tracks: playlistTracks, currentPlaylistID: playlist.id)
-        #endif
       }
       .background(Color.black.ignoresSafeArea())
       #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
       #endif
+        .onDisappear {
+          // Phase 124: Clear track selection when leaving playlist detail.
+          phoneVM.wpSelectedTrackIDs = []
+        }
     } // Phase 86: end of `if playlistExists` else branch.
   }
 
@@ -381,6 +359,13 @@ struct WPPlaylistDetailView: View {
     return pl.kind == .staticList || (pl.kind == .system && index == 1)
   }
 
+  /// Phase 124: Static playlist ID (if current playlist is static), for swipe-to-remove.
+  private var currentStaticPlaylistID: UUID? {
+    let pl = currentPlaylist
+    guard pl.kind == .staticList else { return nil }
+    return pl.id
+  }
+
   /// Phase 123: Sort fields available in the WPUI sort menu.
   private static let sortableColumns: [TableColumnType] = TableColumnType.allCases.filter(\.isHidable)
 
@@ -389,18 +374,239 @@ struct WPPlaylistDetailView: View {
     vm.tableVM.isCompoundSortAllowed
   }
 
+  // MARK: - Phase 124: Unified Track Select + Reorder Button
+
+  @ViewBuilder private var wpTrackSelectButton: some View {
+    Button {
+      if phoneVM.isWPTrackSelectionModeActive {
+        phoneVM.wpSelectedTrackIDs = []
+      } else if let firstID = playlistTracks.first?.id {
+        phoneVM.wpSelectedTrackIDs = [firstID]
+      }
+    } label: {
+      let labelText: String = phoneVM.isWPTrackSelectionModeActive
+        ? String(localized: "i18n:WP.Menu.ExitSelect", bundle: #bundle)
+        : String(localized: "i18n:WP.Menu.SelectTracks", bundle: #bundle)
+      Label(
+        labelText,
+        systemImage: phoneVM.isWPTrackSelectionModeActive
+          ? "xmark.circle"
+          : "checkmark.circle"
+      )
+      .font(.system(size: 15, weight: .semibold))
+      .foregroundStyle(.white)
+      .labelStyle(.iconOnly)
+      .padding(.horizontal, 20)
+      .padding(.vertical, 10)
+      .background(
+        phoneVM.isWPTrackSelectionModeActive
+          ? phoneVM.wpAccentColor.color
+          : Color.white.opacity(0.15)
+      )
+      .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+    .buttonStyle(.plain)
+  }
+
+  // MARK: - Phase 124: Track Selection Bar
+
+  @ViewBuilder private var wpTrackSelectionBar: some View {
+    let selectionCount = phoneVM.wpSelectedTrackIDs.count
+    let allVisibleSelected = selectionCount > 0
+      && selectionCount == playlistTracks.count
+
+    HStack(spacing: 16) {
+      // Selection count.
+      Text(verbatim: "\(selectionCount)")
+        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+        .foregroundStyle(.white)
+
+      Spacer(minLength: 0)
+
+      // Select All / Deselect All.
+      Button {
+        if allVisibleSelected {
+          phoneVM.wpSelectedTrackIDs = []
+        } else {
+          phoneVM.wpSelectedTrackIDs = Set(playlistTracks.map(\.id))
+        }
+      } label: {
+        Image(systemName: allVisibleSelected ? "xmark.circle" : "checkmark.circle")
+          .font(.system(size: 18))
+          .foregroundStyle(.white.opacity(0.8))
+      }
+      .buttonStyle(.plain)
+
+      // Add to Playlist.
+      Menu {
+        Button {
+          phoneVM.trackIDsForNewPlaylist = phoneVM.wpSelectedTrackIDs
+          phoneVM.newPlaylistName = ""
+          phoneVM.showNewPlaylistAlert = true
+        } label: {
+          Label(String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle), systemImage: "plus")
+        }
+        Divider()
+        ForEach(Array(vm.library.playlists.dropFirst(2).filter { $0.kind == .staticList })) { playlist in
+          Button {
+            vm.library.addTracks(phoneVM.wpSelectedTrackIDs, toPlaylist: playlist.id)
+          } label: {
+            Text(playlist.name)
+          }
+        }
+      } label: {
+        Image(systemName: "text.badge.plus")
+          .font(.system(size: 18))
+          .foregroundStyle(.white.opacity(0.8))
+      }
+      .buttonStyle(.plain)
+
+      // Remove from Playlist (static playlists only).
+      if let staticID = currentStaticPlaylistID {
+        Button(role: .destructive) {
+          vm.library.removeTracksFromPlaylist(phoneVM.wpSelectedTrackIDs, playlistID: staticID)
+          vm.invalidateSearchCacheForRemovedTracks(phoneVM.wpSelectedTrackIDs)
+          phoneVM.wpSelectedTrackIDs = []
+        } label: {
+          Image(systemName: "minus.circle")
+            .font(.system(size: 18))
+            .foregroundStyle(.white.opacity(0.8))
+        }
+        .buttonStyle(.plain)
+      }
+
+      // Done.
+      Button {
+        phoneVM.wpSelectedTrackIDs = []
+      } label: {
+        Image(systemName: "checkmark")
+          .font(.system(size: 18, weight: .semibold))
+          .foregroundStyle(.white)
+      }
+      .buttonStyle(.plain)
+    }
+    .padding(.horizontal, 20)
+    .padding(.vertical, 8)
+    .background(Color.white.opacity(0.1))
+  }
+
+  // MARK: - Phase 124: Selectable Track List (with optional drag-reorder)
+
+  /// Phase 124: When `canReorder`, uses List with .onMove for drag handles;
+  /// otherwise uses ScrollView + LazyVStack for non-reorderable playlists.
+  @ViewBuilder private var wpSelectableTrackList: some View {
+    #if !(canImport(AppKit) && !canImport(UIKit))
+    if canReorder {
+      List {
+        ForEach(playlistTracks) { track in
+          wpSelectableRow(track: track)
+            .listRowBackground(Color.black)
+            .padding(.horizontal)
+            .listRowInsets(.init())
+        }
+        .onMove { source, destination in
+          let ids = source.map { playlistTracks[$0].id }
+          vm.library.moveTracks(ids, inPlaylist: playlist.id, toIndex: destination)
+        }
+      }
+      .listStyle(.plain)
+      .scrollContentBackground(.hidden)
+      .environment(\.editMode, .constant(.active))
+    } else {
+      wpSelectableScrollList
+    }
+    #else
+    wpSelectableScrollList
+    #endif
+  }
+
+  /// Phase 124: ScrollView-based selectable track list (no drag handles).
+  @ViewBuilder private var wpSelectableScrollList: some View {
+    ScrollView(.vertical, showsIndicators: false) {
+      LazyVStack(spacing: 0) {
+        ForEach(playlistTracks) { track in
+          wpSelectableRow(track: track)
+
+          Divider()
+            .background(Color.white.opacity(0.1))
+        }
+      }
+    }
+  }
+
+  /// Phase 124: A single selectable track row with checkmark + context menu.
+  @ViewBuilder
+  private func wpSelectableRow(track: Track) -> some View {
+    let isSelected = phoneVM.wpSelectedTrackIDs.contains(track.id)
+    Button {
+      if isSelected {
+        phoneVM.wpSelectedTrackIDs.remove(track.id)
+      } else {
+        phoneVM.wpSelectedTrackIDs.insert(track.id)
+      }
+    } label: {
+      HStack(spacing: 12) {
+        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+          .font(.system(size: 20))
+          .foregroundStyle(isSelected ? phoneVM.wpAccentColor.color : .white.opacity(0.3))
+          .frame(width: 24)
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(verbatim: track.title)
+            .font(.system(size: 15))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+          Text(verbatim: track.artist)
+            .font(.system(size: 12))
+            .foregroundStyle(.white.opacity(0.5))
+            .lineLimit(1)
+        }
+
+        Spacer()
+      }
+      .padding(.vertical, 8)
+      .contentShape(.rect)
+    }
+    .buttonStyle(.plain)
+    .contextMenu {
+      TrackContextMenu(
+        tracks: phoneVM.wpSelectedTrackIDs.isEmpty
+          ? [track]
+          : playlistTracks.filter { phoneVM.wpSelectedTrackIDs.contains($0.id) },
+        library: vm.library,
+        audioPlayer: vm.player,
+        currentPlaylistID: playlist.id,
+        onShowTrackInfo: {
+          phoneVM.tracksForTrackInfo = phoneVM.wpSelectedTrackIDs.isEmpty
+            ? [track]
+            : playlistTracks.filter { phoneVM.wpSelectedTrackIDs.contains($0.id) }
+          phoneVM.isTrackInfoPresented = true
+        },
+        onShowDeleteConfirmation: {
+          phoneVM.tracksToDelete = phoneVM.wpSelectedTrackIDs.isEmpty
+            ? [track]
+            : playlistTracks.filter { phoneVM.wpSelectedTrackIDs.contains($0.id) }
+          phoneVM.showTrackDeleteConfirmation = true
+        },
+        onNewPlaylistWithTracks: { trackIDs in
+          phoneVM.trackIDsForNewPlaylist = trackIDs
+          phoneVM.newPlaylistName = ""
+          phoneVM.showNewPlaylistAlert = true
+        }
+      )
+    }
+  }
+
   /// Phase 123: Sort menu button styled for Metro UI.
   @ViewBuilder private var wpSortMenu: some View {
     Menu {
       ForEach(Self.sortableColumns) { column in
         let indicator = vm.tableVM.sortIndicator(for: column)
         Button {
-          #if !(canImport(AppKit) && !canImport(UIKit))
-          // Phase 123: Exit edit mode when sorting.
-          if editMode == .active {
-            editMode = .inactive
+          // Phase 124: Exit selection mode when sorting.
+          if phoneVM.isWPTrackSelectionModeActive {
+            phoneVM.wpSelectedTrackIDs = []
           }
-          #endif
           vm.tableVM.setTableSort(column: column)
         } label: {
           if let indicator {
@@ -424,53 +630,23 @@ struct WPPlaylistDetailView: View {
         }
       }
     } label: {
-      Image(systemName: "arrow.up.arrow.down")
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundStyle(.white)
-        .padding(10)
-        .background(
-          vm.tableVM.isSortActive
-            ? phoneVM.wpAccentColor.color
-            : Color.white.opacity(0.15)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+      Label(
+        String(localized: "i18n:WP.Sort", bundle: #bundle),
+        systemImage: "arrow.up.arrow.down"
+      )
+      .font(.system(size: 15, weight: .semibold))
+      .foregroundStyle(.white)
+      .labelStyle(.iconOnly)
+      .padding(.horizontal, 20)
+      .padding(.vertical, 10)
+      .background(
+        vm.tableVM.isSortActive
+          ? phoneVM.wpAccentColor.color
+          : Color.white.opacity(0.15)
+      )
+      .clipShape(RoundedRectangle(cornerRadius: 6))
     }
     .buttonStyle(.plain)
     .help(String(localized: "i18n:WP.Sort", bundle: #bundle))
-  }
-}
-
-// MARK: - WPEditableTrackRow
-
-/// Phase 76: A simplified track row for the edit-mode List, styled for dark Metro theme.
-private struct WPEditableTrackRow: View {
-  let track: Track
-  let isPlaying: Bool
-
-  var body: some View {
-    HStack(spacing: 12) {
-      if isPlaying {
-        Image(systemName: "speaker.wave.2.fill")
-          .font(.system(size: 12))
-          .foregroundStyle(.white.opacity(0.6))
-          .frame(width: 20)
-      } else {
-        Text(verbatim: track.trackNumber > 0 ? "\(track.trackNumber)" : "")
-          .font(.system(size: 13, design: .monospaced))
-          .foregroundStyle(.white.opacity(0.4))
-          .frame(width: 20, alignment: .trailing)
-      }
-      VStack(alignment: .leading, spacing: 2) {
-        Text(verbatim: track.title)
-          .font(.system(size: 15))
-          .foregroundStyle(.white)
-          .lineLimit(1)
-        Text(verbatim: track.artist)
-          .font(.system(size: 12))
-          .foregroundStyle(.white.opacity(0.5))
-          .lineLimit(1)
-      }
-      Spacer()
-    }
   }
 }

@@ -125,6 +125,11 @@ final class WPPhoneViewModel {
   /// Separate from `AlbumGridViewModel.highlightedAlbumIDs` to avoid cross-UI contamination.
   var wpSelectedAlbumIDs: Set<UUID> = []
 
+  // MARK: - Phase 124: WPUI Track Selection Mode
+
+  /// Track IDs selected in WPUI playlist track multi-select mode.
+  var wpSelectedTrackIDs: Set<UUID> = []
+
   var currentPivot: LibraryPivot = .albums
 
   // MARK: - Navigation State
@@ -197,6 +202,9 @@ final class WPPhoneViewModel {
   }
 
   var isWPSelectionModeActive: Bool { !wpSelectedAlbumIDs.isEmpty }
+
+  /// Phase 124: Whether WPUI track selection mode is active.
+  var isWPTrackSelectionModeActive: Bool { !wpSelectedTrackIDs.isEmpty }
 
   var wpAccentColor: WPAccentColor {
     get { access(keyPath: \.wpAccentColor); return _wpAccentColor }

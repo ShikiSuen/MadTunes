@@ -579,86 +579,94 @@ struct WPArtistListView: View {
 // MARK: - WPTrackListView
 
 /// Simple track list used by both "Tracks" and "Recently Added" pivots.
+/// Phase 124: Added swipe-to-remove support for static playlists.
 struct WPTrackListView: View {
   @Environment(MadTunesViewModel.self) private var vm
   @Environment(WPPhoneViewModel.self) private var phoneVM
   let tracks: [Track]
   var currentPlaylistID: UUID?
+  /// Phase 124: When non-nil, enables swipe-to-remove for this static playlist.
+  var currentStaticPlaylistID: UUID?
 
   var body: some View {
     ScrollView(.vertical, showsIndicators: false) {
       LazyVStack(spacing: 0) {
         ForEach(tracks) { track in
-          Button {
-            // Play tapped track and set queue to all visible tracks.
-            if let idx = tracks.firstIndex(of: track) {
-              Task { await vm.player.setQueue(tracks, startingAt: idx) }
-            }
-          } label: {
-            HStack(spacing: 12) {
-              // Playing indicator.
-              if vm.player.currentTrack?.id == track.id, vm.player.isPlaying {
-                Image(systemName: "speaker.wave.2.fill")
-                  .font(.system(size: 12))
-                  .foregroundStyle(.white.opacity(0.6))
-                  .frame(width: 20)
-              } else {
-                Text(verbatim: track.trackNumber > 0 ? "\(track.trackNumber)" : "")
-                  .font(.system(size: 13, design: .monospaced))
-                  .foregroundStyle(.white.opacity(0.4))
-                  .frame(width: 20, alignment: .trailing)
-              }
-
-              VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: track.title)
-                  .font(.system(size: 15))
-                  .foregroundStyle(.white)
-                  .lineLimit(1)
-                Text(verbatim: track.artist)
-                  .font(.system(size: 12))
-                  .foregroundStyle(.white.opacity(0.5))
-                  .lineLimit(1)
-              }
-
-              Spacer()
-
-              Text(verbatim: formatDuration(track.duration))
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.4))
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(.rect)
-          }
-          .buttonStyle(.plain)
-          .contextMenu {
-            TrackContextMenu(
-              tracks: [track],
-              library: vm.library,
-              audioPlayer: vm.player,
-              currentPlaylistID: currentPlaylistID,
-              isCurrentTrack: vm.player.currentTrack?.id == track.id,
-              onShowTrackInfo: {
-                phoneVM.tracksForTrackInfo = [track]
-                phoneVM.isTrackInfoPresented = true
-              },
-              onShowDeleteConfirmation: {
-                phoneVM.tracksToDelete = [track]
-                phoneVM.showTrackDeleteConfirmation = true
-              },
-              onNewPlaylistWithTracks: { trackIDs in
-                phoneVM.trackIDsForNewPlaylist = trackIDs
-                phoneVM.newPlaylistName = ""
-                phoneVM.showNewPlaylistAlert = true
-              }
-            )
-          }
+          wpTrackRow(track: track)
 
           Divider()
             .background(Color.white.opacity(0.1))
         }
       }
+    }
+  }
+
+  @ViewBuilder
+  private func wpTrackRow(track: Track) -> some View {
+    Button {
+      // Play tapped track and set queue to all visible tracks.
+      if let idx = tracks.firstIndex(of: track) {
+        Task { await vm.player.setQueue(tracks, startingAt: idx) }
+      }
+    } label: {
+      HStack(spacing: 12) {
+        // Playing indicator.
+        if vm.player.currentTrack?.id == track.id, vm.player.isPlaying {
+          Image(systemName: "speaker.wave.2.fill")
+            .font(.system(size: 12))
+            .foregroundStyle(.white.opacity(0.6))
+            .frame(width: 20)
+        } else {
+          Text(verbatim: track.trackNumber > 0 ? "\(track.trackNumber)" : "")
+            .font(.system(size: 13, design: .monospaced))
+            .foregroundStyle(.white.opacity(0.4))
+            .frame(width: 20, alignment: .trailing)
+        }
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(verbatim: track.title)
+            .font(.system(size: 15))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+          Text(verbatim: track.artist)
+            .font(.system(size: 12))
+            .foregroundStyle(.white.opacity(0.5))
+            .lineLimit(1)
+        }
+
+        Spacer()
+
+        Text(verbatim: formatDuration(track.duration))
+          .font(.system(size: 12, design: .monospaced))
+          .foregroundStyle(.white.opacity(0.4))
+      }
+      .padding(.horizontal, 20)
+      .padding(.vertical, 8)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .contentShape(.rect)
+    }
+    .buttonStyle(.plain)
+    .contextMenu {
+      TrackContextMenu(
+        tracks: [track],
+        library: vm.library,
+        audioPlayer: vm.player,
+        currentPlaylistID: currentPlaylistID,
+        isCurrentTrack: vm.player.currentTrack?.id == track.id,
+        onShowTrackInfo: {
+          phoneVM.tracksForTrackInfo = [track]
+          phoneVM.isTrackInfoPresented = true
+        },
+        onShowDeleteConfirmation: {
+          phoneVM.tracksToDelete = [track]
+          phoneVM.showTrackDeleteConfirmation = true
+        },
+        onNewPlaylistWithTracks: { trackIDs in
+          phoneVM.trackIDsForNewPlaylist = trackIDs
+          phoneVM.newPlaylistName = ""
+          phoneVM.showNewPlaylistAlert = true
+        }
+      )
     }
   }
 
