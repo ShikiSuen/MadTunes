@@ -263,16 +263,10 @@ final class WPPhoneViewModel {
     observeImportCompletion()
   }
 
-  /// Determines tile size based on album position and properties.
-  func tileSizeForAlbum(_ album: Album, index: Int) -> TileSize {
+  /// Determines tile size based on album position.
+  /// Phase 124: Removed favorites-based medium sizing — all albums except index 0 are now small.
+  func tileSizeForAlbum(_: Album, index: Int) -> TileSize {
     if index == 0 { return .large }
-    if let mainVM, mainVM.library.playlists.count > 1,
-       let favorites = mainVM.library.playlists.dropFirst().first,
-       favorites.trackIDs.contains(where: { trackID in
-         album.allTrackIDsSet.contains(trackID)
-       }), index < 5 {
-      return .medium
-    }
     return .small
   }
 
