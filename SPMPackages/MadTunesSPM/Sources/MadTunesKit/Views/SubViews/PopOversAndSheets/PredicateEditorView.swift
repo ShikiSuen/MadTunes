@@ -165,10 +165,19 @@ private struct PredicateGroupView: View {
         )
       }
     } label: {
-      Label(
-        String(localized: "i18n:PredicateEditor.AddPredicate", bundle: #bundle),
-        systemImage: "plus.circle"
-      )
+      if OS.isAppKit {
+        Label(
+          String(localized: "i18n:PredicateEditor.AddPredicate", bundle: #bundle),
+          systemImage: "plus.circle"
+        )
+      } else {
+        Label(
+          String(localized: "i18n:PredicateEditor.AddPredicate", bundle: #bundle),
+          systemImage: "plus.circle"
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(.rect)
+      }
     }
   }
 
