@@ -292,11 +292,13 @@ struct WPPlaylistDetailView: View {
               .buttonStyle(.plain)
             }
 
-            // Phase 123: Sort menu button.
-            wpSortMenu
+            if !playlistTracks.isEmpty {
+              // Phase 123: Sort menu button.
+              wpSortMenu
 
-            // Phase 124: Unified track select + reorder toggle button.
-            wpTrackSelectButton
+              // Phase 124: Unified track select + reorder toggle button.
+              wpTrackSelectButton
+            }
           }
           .padding(.top, 4)
         }
