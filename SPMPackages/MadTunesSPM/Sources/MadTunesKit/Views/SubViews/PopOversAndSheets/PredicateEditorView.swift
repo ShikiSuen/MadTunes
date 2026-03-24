@@ -4,9 +4,57 @@
 
 import SwiftUI
 
+// MARK: - PredicateNode
+
+/// Identifiable tree node for the predicate editor UI.
+/// Uses flat struct layout for SwiftUI binding compatibility.
+private struct PredicateNode: Identifiable {
+  let id: UUID
+  var isGroup: Bool
+  /// Condition (used only when `isGroup == false`).
+  var condition: PlaylistCondition
+  /// Group match mode (used only when `isGroup == true`).
+  var groupMode: PredicateEditorView.MatchMode
+  /// Group children (used only when `isGroup == true`).
+  var children: [PredicateNode]
+
+  static func leaf(_ condition: PlaylistCondition) -> Self {
+    PredicateNode(
+      id: UUID(), isGroup: false,
+      condition: condition,
+      groupMode: .all, children: []
+    )
+  }
+
+  static func group(mode: PredicateEditorView.MatchMode, children: [PredicateNode] = []) -> Self {
+    PredicateNode(
+      id: UUID(), isGroup: true,
+      condition: PlaylistCondition(field: .title, comparator: .contains, value: .string("")),
+      groupMode: mode, children: children
+    )
+  }
+
+  static func from(_ predicate: PlaylistPredicate) -> PredicateNode {
+    switch predicate {
+    case let .single(c): return .leaf(c)
+    case let .allOf(children): return .group(mode: .all, children: children.map(from))
+    case let .anyOf(children): return .group(mode: .any, children: children.map(from))
+    }
+  }
+
+  func toPredicate() -> PlaylistPredicate {
+    if isGroup {
+      let childPredicates = children.map { $0.toPredicate() }
+      return groupMode == .all ? .allOf(childPredicates) : .anyOf(childPredicates)
+    }
+    return .single(condition)
+  }
+}
+
 // MARK: - PredicateEditorView
 
 /// Phase 117: Sheet for editing a dynamic playlist's predicate conditions.
+/// Supports nested allOf/anyOf sub-groups for complex hierarchical predicates.
 struct PredicateEditorView: View {
   // MARK: Lifecycle
 
@@ -19,17 +67,17 @@ struct PredicateEditorView: View {
       switch decoded {
       case let .allOf(children):
         _matchMode = State(initialValue: .all)
-        _conditions = State(initialValue: children.compactMap(Self.extractCondition))
+        _rootChildren = State(initialValue: children.map(PredicateNode.from))
       case let .anyOf(children):
         _matchMode = State(initialValue: .any)
-        _conditions = State(initialValue: children.compactMap(Self.extractCondition))
+        _rootChildren = State(initialValue: children.map(PredicateNode.from))
       case let .single(condition):
         _matchMode = State(initialValue: .all)
-        _conditions = State(initialValue: [condition])
+        _rootChildren = State(initialValue: [.leaf(condition)])
       }
     } else {
       _matchMode = State(initialValue: .all)
-      _conditions = State(initialValue: [])
+      _rootChildren = State(initialValue: [])
     }
   }
 
@@ -56,7 +104,7 @@ struct PredicateEditorView: View {
   @Environment(\.dismiss) private var dismiss
 
   @State private var matchMode: MatchMode
-  @State private var conditions: [PlaylistCondition]
+  @State private var rootChildren: [PredicateNode]
 
   private var playlist: Playlist
   private var library: MusicLibraryProviding
@@ -97,23 +145,7 @@ struct PredicateEditorView: View {
 
   private var conditionsList: some View {
     List {
-      ForEach(conditions.indices, id: \.self) { index in
-        ConditionRowView(condition: conditions[index]) { updated in
-          conditions[index] = updated
-        } onDelete: {
-          conditions.remove(at: index)
-        }
-      }
-      Button {
-        conditions.append(
-          PlaylistCondition(field: .title, comparator: .contains, value: .string(""))
-        )
-      } label: {
-        Label(
-          String(localized: "i18n:PredicateEditor.AddCondition", bundle: #bundle),
-          systemImage: "plus.circle"
-        )
-      }
+      PredicateGroupView(children: $rootChildren, depth: 0)
     }
     .listStyle(.plain)
   }
@@ -137,16 +169,11 @@ struct PredicateEditorView: View {
     .padding()
   }
 
-  private static func extractCondition(_ predicate: PlaylistPredicate) -> PlaylistCondition? {
-    if case let .single(condition) = predicate { return condition }
-    return nil
-  }
-
   // MARK: - Build & Apply
 
   private func buildPredicate() -> PlaylistPredicate? {
-    guard !conditions.isEmpty else { return nil }
-    let children = conditions.map { PlaylistPredicate.single($0) }
+    guard !rootChildren.isEmpty else { return nil }
+    let children = rootChildren.map { $0.toPredicate() }
     switch matchMode {
     case .all: return .allOf(children)
     case .any: return .anyOf(children)
@@ -162,6 +189,104 @@ struct PredicateEditorView: View {
     }
     library.updatePredicateData(playlistID: playlist.id, data: data)
     dismiss()
+  }
+}
+
+// MARK: - PredicateGroupView
+
+/// Recursive view rendering a list of predicate nodes with add buttons.
+/// Uses AnyView at the recursion point to break circular type dependencies.
+private struct PredicateGroupView: View {
+  // MARK: Internal
+
+  @Binding var children: [PredicateNode]
+
+  let depth: Int
+
+  var body: some View {
+    ForEach($children) { $child in
+      if child.isGroup {
+        groupRow(node: $child)
+      } else {
+        ConditionRowView(condition: child.condition) { updated in
+          child.condition = updated
+        } onDelete: {
+          children.removeAll { $0.id == child.id }
+        }
+      }
+    }
+    addMenu
+  }
+
+  // MARK: Private
+
+  private var addMenu: some View {
+    Menu {
+      Button {
+        children.append(
+          .leaf(PlaylistCondition(field: .title, comparator: .contains, value: .string("")))
+        )
+      } label: {
+        Label(
+          String(localized: "i18n:PredicateEditor.AddCondition", bundle: #bundle),
+          systemImage: "plus.circle"
+        )
+      }
+      Divider()
+      Button {
+        children.append(.group(mode: .all))
+      } label: {
+        Label(
+          String(localized: "i18n:PredicateEditor.AddSubGroup.AllOf", bundle: #bundle),
+          systemImage: "folder.badge.plus"
+        )
+      }
+      Button {
+        children.append(.group(mode: .any))
+      } label: {
+        Label(
+          String(localized: "i18n:PredicateEditor.AddSubGroup.AnyOf", bundle: #bundle),
+          systemImage: "folder.badge.plus"
+        )
+      }
+    } label: {
+      Label(
+        String(localized: "i18n:PredicateEditor.AddCondition", bundle: #bundle),
+        systemImage: "plus.circle"
+      )
+    }
+  }
+
+  @ViewBuilder
+  private func groupRow(node: Binding<PredicateNode>) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      HStack {
+        Picker(
+          String(localized: "i18n:PredicateEditor.MatchMode", bundle: #bundle),
+          selection: node.groupMode
+        ) {
+          Text(String(localized: "i18n:PredicateEditor.MatchAll", bundle: #bundle))
+            .tag(PredicateEditorView.MatchMode.all)
+          Text(String(localized: "i18n:PredicateEditor.MatchAny", bundle: #bundle))
+            .tag(PredicateEditorView.MatchMode.any)
+        }
+        .pickerStyle(.segmented)
+        .fixedSize()
+        Spacer()
+        Button(role: .destructive) {
+          children.removeAll { $0.id == node.wrappedValue.id }
+        } label: {
+          Image(systemName: "minus.circle.fill")
+            .foregroundStyle(.red)
+        }
+        .buttonStyle(.plain)
+      }
+      AnyView(
+        PredicateGroupView(children: node.children, depth: depth + 1)
+      )
+      .padding(.leading, 16)
+    }
+    .padding(.vertical, 4)
   }
 }
 
