@@ -58,15 +58,7 @@ public struct MadTunesScene: Scene {
           Divider()
           Menu {
             if !vm.library.isImporting {
-              Button(role: .destructive) {
-                Task { await vm.player.stop() }
-                vm.library.clearDatabase()
-              } label: {
-                Label(
-                  String(localized: "i18n:Debug.ClearDatabase", bundle: #bundle),
-                  systemImage: "trash"
-                )
-              }
+              debugButtonDeletingEntireDB
             }
           } label: {
             Label("# DEBUG".description, systemImage: "pc")
@@ -166,6 +158,18 @@ public struct MadTunesScene: Scene {
 
   @State private var vm = MadTunesViewModel.shared
   @Environment(\.colorScheme) private var colorScheme
+
+  @ViewBuilder private var debugButtonDeletingEntireDB: some View {
+    Button(role: .destructive) {
+      Task { await vm.player.stop() }
+      vm.library.clearDatabase()
+    } label: {
+      Label(
+        String(localized: "i18n:Debug.ClearDatabase", bundle: #bundle),
+        systemImage: "trash"
+      )
+    }
+  }
 
   private func getWindowMinSize(isWPUI: Bool) -> CGSize {
     guard !isWPUI else { return CGSize(width: 320, height: 568) }
