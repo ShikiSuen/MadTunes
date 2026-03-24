@@ -250,7 +250,9 @@ struct WPMainView: View {
     }
     // Predicate editor sheet for dynamic playlists.
     .sheet(item: $phoneVM.predicateEditorPlaylist) { playlist in
-      PredicateEditorView(playlist: playlist, library: vm.library)
+      WPPredicateEditorView(playlist: playlist, library: vm.library)
+        .interactiveDismissDisabled(true)
+        .environment(phoneVM)
     }
     .tint(phoneVM.wpAccentColor.color)
     .environment(\.colorScheme, .dark)
