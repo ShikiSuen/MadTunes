@@ -205,6 +205,7 @@ public final class MusicLibrary {
     organizeAlbums()
     persistAllTracks()
     persistAllPlaylists()
+    evaluateAllDynamicPlaylists()
 
     // Phase 103: Return the IDs of all processed tracks (new + existing).
     return allProcessedTrackIDs
@@ -265,6 +266,7 @@ public final class MusicLibrary {
       // Persist the cleaned-up data back to database.
       persistAllTracks()
       persistAllPlaylists()
+      evaluateAllDynamicPlaylists()
 
       // Exit loading state.
       isImporting = false
@@ -430,6 +432,15 @@ public final class MusicLibrary {
     persistAllPlaylists()
   }
 
+  /// Phase 117: Move user playlists (index 2+) via drag-reorder.
+  /// `fromOffsets` and `toOffset` are relative to the user-playlist sub-array (index 2+).
+  public func moveUserPlaylists(fromOffsets source: IndexSet, toOffset destination: Int) {
+    var userPlaylists = Array(playlists.dropFirst(2))
+    userPlaylists.move(fromOffsets: source, toOffset: destination)
+    playlists.replaceSubrange(2..., with: userPlaylists)
+    persistAllPlaylists()
+  }
+
   /// 從指定播放清單中移除曲目（不影響資料庫）。
   public func removeTracksFromPlaylist(_ trackIDs: Set<UUID>, playlistID: UUID) {
     guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
@@ -526,6 +537,28 @@ public final class MusicLibrary {
     persistAllPlaylistsDebounced()
   }
 
+  /// Phase 117: Update a dynamic playlist's predicate data and re-evaluate.
+  public func updatePredicateData(playlistID: UUID, data: Data) {
+    guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+    guard playlists[idx].kind == .dynamicList else { return }
+    playlists[idx].predicateData = data
+    evaluateDynamicPlaylist(at: idx)
+    persistAllPlaylists()
+  }
+
+  /// Phase 117: Re-evaluate a dynamic playlist's predicate and update its trackIDs cache.
+  public func evaluateDynamicPlaylist(id: UUID) {
+    guard let idx = playlists.firstIndex(where: { $0.id == id }) else { return }
+    evaluateDynamicPlaylist(at: idx)
+  }
+
+  /// Phase 117: Re-evaluate all dynamic playlists (e.g. after track import/deletion).
+  public func evaluateAllDynamicPlaylists() {
+    for i in playlists.indices where playlists[i].kind == .dynamicList {
+      evaluateDynamicPlaylist(at: i)
+    }
+  }
+
   /// 從資料庫中移除指定曲目（包含 SwiftData 持久層），並從所有播放清單中清理其引用
   public func removeTracks(ids: Set<UUID>) {
     // bump observable token so anyone watching knows something changed
@@ -540,6 +573,7 @@ public final class MusicLibrary {
     organizeAlbums()
     persistAllTracks()
     persistAllPlaylists()
+    evaluateAllDynamicPlaylists()
   }
 
   public func tracks(for playlist: Playlist) -> [Track] {
@@ -795,6 +829,20 @@ public final class MusicLibrary {
     }
   }
 
+  /// Phase 117: Evaluate a dynamic playlist's predicate and update its trackIDs cache.
+  private func evaluateDynamicPlaylist(at index: Int) {
+    guard playlists[index].kind == .dynamicList else { return }
+    let data = playlists[index].predicateData
+    guard !data.isEmpty,
+          let predicate = try? JSONDecoder().decode(PlaylistPredicate.self, from: data)
+    else {
+      // No predicate configured → empty playlist.
+      playlists[index].trackIDs = []
+      return
+    }
+    playlists[index].trackIDs = predicate.filter(tracks: tracks).map(\.id)
+  }
+
   /// Persist all playlists to SwiftData (incremental update).
   /// Phase 99: Replaced `context.enumerate` with `context.fetch` to avoid
   /// modifying the collection mid-enumeration and causing data inconsistencies.
@@ -816,6 +864,7 @@ public final class MusicLibrary {
           existing.sortIndex = entry.index
           existing.kindRawValue = entry.playlist.kind.rawValue
           existing.compoundSortData = entry.playlist.compoundSortData
+          existing.predicateData = entry.playlist.predicateData
           newPlaylistIDs.remove(existing.id)
         } else {
           context.delete(existing)
@@ -830,7 +879,8 @@ public final class MusicLibrary {
           isSystemPlaylist: entry.playlist.isSystemPlaylist,
           sortIndex: entry.index,
           kindRawValue: entry.playlist.kind.rawValue,
-          compoundSortData: entry.playlist.compoundSortData
+          compoundSortData: entry.playlist.compoundSortData,
+          predicateData: entry.playlist.predicateData
         ))
       }
       try context.save()
@@ -883,6 +933,24 @@ public final class MusicLibrary {
     // 確保 All Music 包含所有曲目
     if !playlists.isEmpty {
       playlists[0].trackIDs = tracks.map(\.id)
+    }
+
+    // Phase 117: Re-evaluate dynamic playlist caches on launch.
+    // This guarantees playlists with empty/invalid predicateData are shown as empty,
+    // and stale cached trackIDs from older versions are corrected.
+    let previousDynamicTrackIDs = Dictionary(
+      uniqueKeysWithValues: playlists
+        .filter { $0.kind == .dynamicList }
+        .map { ($0.id, $0.trackIDs) }
+    )
+    evaluateAllDynamicPlaylists()
+    let currentDynamicTrackIDs = Dictionary(
+      uniqueKeysWithValues: playlists
+        .filter { $0.kind == .dynamicList }
+        .map { ($0.id, $0.trackIDs) }
+    )
+    if previousDynamicTrackIDs != currentDynamicTrackIDs {
+      persistAllPlaylists()
     }
   }
 

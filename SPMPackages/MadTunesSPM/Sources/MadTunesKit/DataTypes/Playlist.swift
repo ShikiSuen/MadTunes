@@ -12,13 +12,15 @@ public struct Playlist: Identifiable, Hashable, Sendable {
     name: String,
     trackIDs: [UUID] = [],
     kind: PlaylistKind = .staticList,
-    compoundSortData: Data = Data()
+    compoundSortData: Data = Data(),
+    predicateData: Data = Data()
   ) {
     self.id = id
     self.name = name
     self.trackIDs = trackIDs
     self.kind = kind
     self.compoundSortData = compoundSortData
+    self.predicateData = predicateData
   }
 
   // MARK: Public
@@ -30,6 +32,9 @@ public struct Playlist: Identifiable, Hashable, Sendable {
   /// Phase 116: Persisted compound sort settings for dynamic playlists (JSON-encoded).
   /// Empty data means no saved sort. For All Music (system index 0), always empty — uses UserDefaults.
   public var compoundSortData: Data
+  /// Phase 117: JSON-encoded PlaylistPredicate for dynamic playlists.
+  /// Empty data means no predicate configured (dynamic playlist shows empty).
+  public var predicateData: Data
 
   /// 是否為系統播放清單（不可刪除）
   public var isSystemPlaylist: Bool {

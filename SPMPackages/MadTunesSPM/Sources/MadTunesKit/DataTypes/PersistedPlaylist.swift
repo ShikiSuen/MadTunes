@@ -19,7 +19,8 @@ final class PersistedPlaylist {
     isSystemPlaylist: Bool = false,
     sortIndex: Int = 0,
     kindRawValue: String = PlaylistKind.staticList.rawValue,
-    compoundSortData: Data = Data()
+    compoundSortData: Data = Data(),
+    predicateData: Data = Data()
   ) {
     self.id = id
     self.name = name
@@ -28,6 +29,7 @@ final class PersistedPlaylist {
     self.sortIndex = sortIndex
     self.kindRawValue = kindRawValue
     self.compoundSortData = compoundSortData
+    self.predicateData = predicateData
   }
 
   // MARK: Internal
@@ -40,6 +42,8 @@ final class PersistedPlaylist {
   var kindRawValue: String
   /// Phase 116: Persisted compound sort settings for dynamic playlists (JSON-encoded).
   var compoundSortData: Data = Data()
+  /// Phase 117: JSON-encoded PlaylistPredicate for dynamic playlists.
+  var predicateData: Data = Data()
 
   var kind: PlaylistKind {
     PlaylistKind(rawValue: kindRawValue) ?? .staticList
@@ -52,7 +56,8 @@ final class PersistedPlaylist {
       name: name,
       trackIDs: trackIDs,
       kind: kind,
-      compoundSortData: compoundSortData
+      compoundSortData: compoundSortData,
+      predicateData: predicateData
     )
   }
 }

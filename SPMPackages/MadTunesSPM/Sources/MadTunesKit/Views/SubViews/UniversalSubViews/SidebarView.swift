@@ -33,12 +33,22 @@ struct SidebarView: View {
         }
       }
 
-      // Phase 116: Dynamic playlists section.
-      Section(String(localized: "i18n:Sidebar.Sections.DynamicPlaylists", bundle: #bundle)) {
-        ForEach(dynamicPlaylists) { playlist in
-          Label(playlist.name, systemImage: "gearshape.2")
+      Section {
+        // Phase 117: All user playlists (dynamic + static) in one list with drag-reorder.
+        ForEach(userPlaylists) { playlist in
+          Label(playlist.name, systemImage: playlist.kind == .dynamicList ? "gearshape.2" : "music.note.list")
             .tag(playlist.id)
             .contextMenu {
+              if playlist.kind == .dynamicList {
+                Button {
+                  predicateEditorPlaylist = playlist
+                } label: {
+                  Label(
+                    String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
+                    systemImage: "slider.horizontal.3"
+                  )
+                }
+              }
               Button {
                 alertText = playlist.name
                 alertKind = .rename(playlist.id)
@@ -56,7 +66,7 @@ struct SidebarView: View {
             }
         }
         .onDelete { indexSet in
-          let playlists = dynamicPlaylists
+          let playlists = userPlaylists
           for index in indexSet {
             let playlist = playlists[index]
             if selectedPlaylistID == playlist.id {
@@ -65,65 +75,12 @@ struct SidebarView: View {
             library.removePlaylist(id: playlist.id)
           }
         }
-
-        Button {
-          alertText = ""
-          alertKind = .newDynamicPlaylist
-        } label: {
-          Label(
-            String(localized: "i18n:Sidebar.NewDynamicPlaylist", bundle: #bundle),
-            systemImage: "plus"
-          )
-          .frame(maxWidth: .infinity, alignment: .leading)
+        .onMove { source, destination in
+          library.moveUserPlaylists(fromOffsets: source, toOffset: destination)
         }
-        .buttonBorderShape(.capsule)
-        .buttonStyle(.borderedProminent)
-      }
-
-      Section(String(localized: "i18n:Sidebar.Sections.Playlists", bundle: #bundle)) {
-        ForEach(staticPlaylists) { playlist in
-          Label(playlist.name, systemImage: "music.note.list")
-            .tag(playlist.id)
-            .contextMenu {
-              Button {
-                alertText = playlist.name
-                alertKind = .rename(playlist.id)
-              } label: {
-                Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
-              }
-              Button(role: .destructive) {
-                if selectedPlaylistID == playlist.id {
-                  selectedPlaylistID = library.playlists.first?.id
-                }
-                library.removePlaylist(id: playlist.id)
-              } label: {
-                Label(String(localized: "i18n:Common.Delete", bundle: #bundle), systemImage: "trash")
-              }
-            }
-        }
-        .onDelete { indexSet in
-          let playlists = staticPlaylists
-          for index in indexSet {
-            let playlist = playlists[index]
-            if selectedPlaylistID == playlist.id {
-              selectedPlaylistID = library.playlists.first?.id
-            }
-            library.removePlaylist(id: playlist.id)
-          }
-        }
-
-        Button {
-          alertText = ""
-          alertKind = .newPlaylist
-        } label: {
-          Label(
-            String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle),
-            systemImage: "plus"
-          )
-          .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .buttonBorderShape(.capsule)
-        .buttonStyle(.borderedProminent)
+        newPlaylistMenu
+      } header: {
+        Text("i18n:Sidebar.Sections.Playlists", bundle: #bundle)
       }
     }
     .listStyle(.sidebar)
@@ -134,6 +91,9 @@ struct SidebarView: View {
         commitAlert()
       }
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
+    }
+    .sheet(item: $predicateEditorPlaylist) { playlist in
+      PredicateEditorView(playlist: playlist, library: library)
     }
   }
 
@@ -159,17 +119,14 @@ struct SidebarView: View {
   // Alert state — shared across both "New Playlist" and "Rename"
   @State private var alertKind: AlertKind?
   @State private var alertText = ""
+  /// Phase 117: Playlist to edit predicates for (sheet presentation).
+  @State private var predicateEditorPlaylist: Playlist?
 
   private var library: MusicLibrary
 
-  /// Phase 116: User-created dynamic playlists.
-  private var dynamicPlaylists: [Playlist] {
-    library.playlists.dropFirst(2).filter { $0.kind == .dynamicList }
-  }
-
-  /// Phase 116: User-created static playlists.
-  private var staticPlaylists: [Playlist] {
-    library.playlists.dropFirst(2).filter { $0.kind == .staticList }
+  /// Phase 117: All user-created playlists (dynamic + static), preserving library order.
+  private var userPlaylists: [Playlist] {
+    Array(library.playlists.dropFirst(2))
   }
 
   // MARK: - Alert helpers
@@ -206,6 +163,40 @@ struct SidebarView: View {
       get: { alertKind != nil },
       set: { if !$0 { alertKind = nil } }
     )
+  }
+
+  @ViewBuilder private var newPlaylistMenu: some View {
+    Menu {
+      Button {
+        alertText = ""
+        alertKind = .newDynamicPlaylist
+      } label: {
+        Label(
+          String(localized: "i18n:Sidebar.NewDynamicPlaylist", bundle: #bundle),
+          systemImage: "gearshape.2"
+        )
+      }
+
+      Button {
+        alertText = ""
+        alertKind = .newPlaylist
+      } label: {
+        Label(
+          String(localized: "i18n:Sidebar.NewStaticPlaylist", bundle: #bundle),
+          systemImage: "music.note.list"
+        )
+      }
+    } label: {
+      Label(
+        String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle),
+        systemImage: "plus"
+      )
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .buttonBorderShape(.capsule)
+    .menuIndicator(.hidden)
+    .buttonStyle(.bordered)
+    .tint(.primary)
   }
 
   private func commitAlert() {

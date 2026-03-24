@@ -72,6 +72,12 @@ final class MockMusicLibrary: MusicLibraryProviding {
     playlists[idx].name = newName
   }
 
+  func moveUserPlaylists(fromOffsets source: IndexSet, toOffset destination: Int) {
+    var userPlaylists = Array(playlists.dropFirst(2))
+    userPlaylists.move(fromOffsets: source, toOffset: destination)
+    playlists.replaceSubrange(2..., with: userPlaylists)
+  }
+
   func removeTracksFromPlaylist(_ trackIDs: Set<UUID>, playlistID: UUID) {
     guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
     playlists[idx].trackIDs.removeAll { trackIDs.contains($0) }
@@ -126,6 +132,32 @@ final class MockMusicLibrary: MusicLibraryProviding {
   func updateCompoundSortData(playlistID: UUID, data: Data) {
     guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
     playlists[idx].compoundSortData = data
+  }
+
+  func updatePredicateData(playlistID: UUID, data: Data) {
+    guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+    guard playlists[idx].kind == .dynamicList else { return }
+    playlists[idx].predicateData = data
+    evaluateDynamicPlaylist(id: playlistID)
+  }
+
+  func evaluateDynamicPlaylist(id: UUID) {
+    guard let idx = playlists.firstIndex(where: { $0.id == id }) else { return }
+    guard playlists[idx].kind == .dynamicList else { return }
+    let data = playlists[idx].predicateData
+    guard !data.isEmpty,
+          let predicate = try? JSONDecoder().decode(PlaylistPredicate.self, from: data)
+    else {
+      playlists[idx].trackIDs = []
+      return
+    }
+    playlists[idx].trackIDs = predicate.filter(tracks: tracks).map(\.id)
+  }
+
+  func evaluateAllDynamicPlaylists() {
+    for i in playlists.indices where playlists[i].kind == .dynamicList {
+      evaluateDynamicPlaylist(id: playlists[i].id)
+    }
   }
 
   func removeTracks(ids: Set<UUID>) {

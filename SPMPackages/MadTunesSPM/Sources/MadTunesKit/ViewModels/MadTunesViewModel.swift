@@ -450,9 +450,9 @@ final class MadTunesViewModel {
     if let playlistID = selectedPlaylistID,
        let playlist = library.playlists.first(where: { $0.id == playlistID }),
        playlist.id != library.playlists.first?.id {
-      // Phase 116: Dynamic playlists temporarily show all tracks (pending predicate).
+      // Phase 117: Dynamic playlists use predicate-evaluated trackIDs cache.
       if playlist.kind == .dynamicList {
-        return library.tracks
+        return library.tracks(for: playlist)
       }
       return library.tracks(for: playlist)
     }

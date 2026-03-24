@@ -478,3 +478,188 @@ struct Phase96ObservationTests {
     #expect(vm.gridVM.albumSelectionCursorID == nil)
   }
 }
+
+// MARK: - PlaylistPredicateTests
+
+@Suite("PlaylistPredicate")
+struct PlaylistPredicateTests {
+  // MARK: Internal
+
+  // MARK: - String comparators
+
+  @Test("contains: case-insensitive substring match")
+  func stringContains() {
+    let cond = PlaylistCondition(field: .title, comparator: .contains, value: .string("highway"))
+    #expect(cond.evaluate(track: rockTrack))
+    #expect(!cond.evaluate(track: jazzTrack))
+  }
+
+  @Test("notContains: rejects substring match")
+  func stringNotContains() {
+    let cond = PlaylistCondition(field: .title, comparator: .notContains, value: .string("highway"))
+    #expect(!cond.evaluate(track: rockTrack))
+    #expect(cond.evaluate(track: jazzTrack))
+  }
+
+  @Test("equals: full string match case-insensitive")
+  func stringEquals() {
+    let cond = PlaylistCondition(field: .artist, comparator: .equals, value: .string("deep purple"))
+    #expect(cond.evaluate(track: rockTrack))
+    #expect(!cond.evaluate(track: jazzTrack))
+  }
+
+  @Test("notEquals: rejects full string match")
+  func stringNotEquals() {
+    let cond = PlaylistCondition(field: .artist, comparator: .notEquals, value: .string("deep purple"))
+    #expect(!cond.evaluate(track: rockTrack))
+    #expect(cond.evaluate(track: jazzTrack))
+  }
+
+  @Test("startsWith: prefix match")
+  func stringStartsWith() {
+    let cond = PlaylistCondition(field: .title, comparator: .startsWith, value: .string("high"))
+    #expect(cond.evaluate(track: rockTrack))
+    #expect(!cond.evaluate(track: jazzTrack))
+  }
+
+  @Test("endsWith: suffix match")
+  func stringEndsWith() {
+    let cond = PlaylistCondition(field: .title, comparator: .endsWith, value: .string("star"))
+    #expect(cond.evaluate(track: rockTrack))
+    #expect(!cond.evaluate(track: jazzTrack))
+  }
+
+  // MARK: - Integer comparators
+
+  @Test("year equals")
+  func intEquals() {
+    let cond = PlaylistCondition(field: .year, comparator: .equals, value: .integer(1972))
+    #expect(cond.evaluate(track: rockTrack))
+    #expect(!cond.evaluate(track: jazzTrack))
+  }
+
+  @Test("year greaterThan")
+  func intGreaterThan() {
+    let cond = PlaylistCondition(field: .year, comparator: .greaterThan, value: .integer(1960))
+    #expect(cond.evaluate(track: rockTrack))
+    #expect(!cond.evaluate(track: jazzTrack))
+  }
+
+  @Test("year inRange")
+  func intInRange() {
+    let cond = PlaylistCondition(field: .year, comparator: .inRange, value: .range(min: 1950, max: 1970))
+    #expect(!cond.evaluate(track: rockTrack))
+    #expect(cond.evaluate(track: jazzTrack))
+  }
+
+  // MARK: - Optional Int (year == nil)
+
+  @Test("nil year: notEquals returns true, others return false")
+  func optionalIntNil() {
+    let eqCond = PlaylistCondition(field: .year, comparator: .equals, value: .integer(2024))
+    let neCond = PlaylistCondition(field: .year, comparator: .notEquals, value: .integer(2024))
+    let gtCond = PlaylistCondition(field: .year, comparator: .greaterThan, value: .integer(2000))
+
+    #expect(!eqCond.evaluate(track: noYearTrack))
+    #expect(neCond.evaluate(track: noYearTrack))
+    #expect(!gtCond.evaluate(track: noYearTrack))
+  }
+
+  // MARK: - Duration (Double)
+
+  @Test("duration greaterOrEqual")
+  func doubleGreaterOrEqual() {
+    let cond = PlaylistCondition(field: .duration, comparator: .greaterOrEqual, value: .double(180))
+    #expect(cond.evaluate(track: rockTrack))
+    let cond2 = PlaylistCondition(field: .duration, comparator: .greaterOrEqual, value: .double(181))
+    #expect(!cond2.evaluate(track: rockTrack))
+  }
+
+  @Test("duration with integer value coercion")
+  func durationIntegerCoercion() {
+    let cond = PlaylistCondition(field: .duration, comparator: .lessThan, value: .integer(200))
+    #expect(cond.evaluate(track: rockTrack))
+  }
+
+  // MARK: - Composite predicates
+
+  @Test("allOf: AND logic")
+  func allOf() {
+    let predicate = PlaylistPredicate.allOf([
+      .single(PlaylistCondition(field: .genre, comparator: .equals, value: .string("Rock"))),
+      .single(PlaylistCondition(field: .year, comparator: .greaterThan, value: .integer(1960))),
+    ])
+    #expect(predicate.evaluate(track: rockTrack))
+    #expect(!predicate.evaluate(track: jazzTrack))
+  }
+
+  @Test("anyOf: OR logic")
+  func anyOf() {
+    let predicate = PlaylistPredicate.anyOf([
+      .single(PlaylistCondition(field: .genre, comparator: .equals, value: .string("Rock"))),
+      .single(PlaylistCondition(field: .genre, comparator: .equals, value: .string("Jazz"))),
+    ])
+    #expect(predicate.evaluate(track: rockTrack))
+    #expect(predicate.evaluate(track: jazzTrack))
+    #expect(!predicate.evaluate(track: noYearTrack))
+  }
+
+  @Test("filter: returns matching tracks only")
+  func filterTracks() {
+    let predicate = PlaylistPredicate.single(
+      PlaylistCondition(field: .genre, comparator: .equals, value: .string("Jazz"))
+    )
+    let result = predicate.filter(tracks: [rockTrack, jazzTrack, noYearTrack])
+    #expect(result.count == 1)
+    #expect(result.first?.title == "Take Five")
+  }
+
+  // MARK: - Codable round-trip
+
+  @Test("PlaylistPredicate encodes and decodes correctly")
+  func codableRoundTrip() throws {
+    let predicate = PlaylistPredicate.allOf([
+      .single(PlaylistCondition(field: .artist, comparator: .contains, value: .string("Purple"))),
+      .anyOf([
+        .single(PlaylistCondition(field: .year, comparator: .greaterThan, value: .integer(1970))),
+        .single(PlaylistCondition(field: .duration, comparator: .inRange, value: .range(min: 60, max: 300))),
+      ]),
+    ])
+    let encoder = JSONEncoder()
+    let data = try encoder.encode(predicate)
+    let decoder = JSONDecoder()
+    let decoded = try decoder.decode(PlaylistPredicate.self, from: data)
+    #expect(decoded == predicate)
+  }
+
+  // MARK: - Comparators for value kind
+
+  @Test("Comparator.comparators(for:) returns correct sets")
+  func comparatorsForKind() {
+    let stringComps = Comparator.comparators(for: .string)
+    #expect(stringComps.count == 6)
+    #expect(stringComps.contains(.contains))
+    #expect(!stringComps.contains(.greaterThan))
+
+    let intComps = Comparator.comparators(for: .integer)
+    #expect(intComps.count == 7)
+    #expect(intComps.contains(.inRange))
+    #expect(!intComps.contains(.contains))
+  }
+
+  // MARK: Private
+
+  // MARK: - Test data
+
+  private let rockTrack = makeTrack(
+    title: "Highway Star", artist: "Deep Purple",
+    albumTitle: "Machine Head", genre: "Rock", year: 1972
+  )
+  private let jazzTrack = makeTrack(
+    title: "Take Five", artist: "Dave Brubeck",
+    albumTitle: "Time Out", genre: "Jazz", year: 1959
+  )
+  private let noYearTrack = makeTrack(
+    title: "Unknown Song", artist: "Unknown", albumTitle: "Mystery", genre: "Pop", year: nil
+  )
+}

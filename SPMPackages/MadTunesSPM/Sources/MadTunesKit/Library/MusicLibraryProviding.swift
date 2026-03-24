@@ -46,6 +46,8 @@ public protocol MusicLibraryProviding: AnyObject {
   func removePlaylist(at index: Int)
   func removePlaylist(id: UUID)
   func renamePlaylist(id: UUID, newName: String)
+  /// Phase 117: Move user playlists (index 2+) via drag-reorder.
+  func moveUserPlaylists(fromOffsets source: IndexSet, toOffset destination: Int)
   func removeTracksFromPlaylist(_ trackIDs: Set<UUID>, playlistID: UUID)
 
   // MARK: - Favorites
@@ -61,6 +63,12 @@ public protocol MusicLibraryProviding: AnyObject {
   func reorderPlaylistTracks(playlistID: UUID, newTrackIDs: [UUID])
   /// Phase 116: Update compound sort data for a dynamic playlist.
   func updateCompoundSortData(playlistID: UUID, data: Data)
+  /// Phase 117: Update predicate data for a dynamic playlist and re-evaluate.
+  func updatePredicateData(playlistID: UUID, data: Data)
+  /// Phase 117: Re-evaluate a single dynamic playlist's predicate.
+  func evaluateDynamicPlaylist(id: UUID)
+  /// Phase 117: Re-evaluate all dynamic playlists.
+  func evaluateAllDynamicPlaylists()
   func removeTracks(ids: Set<UUID>)
   func tracks(for playlist: Playlist) -> [Track]
   func albums(for playlist: Playlist) -> [Album]
