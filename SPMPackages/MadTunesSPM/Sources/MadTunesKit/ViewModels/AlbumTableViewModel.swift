@@ -235,6 +235,13 @@ final class AlbumTableViewModel {
     return isFavorites || playlist.kind == .staticList
   }
 
+  /// Phase 123: Whether any sort is currently active (compound for dynamic, or persistent for static).
+  var isSortActive: Bool {
+    if !tableSortCriteria.isEmpty { return true }
+    if lastPersistentSortColumn != nil, lastPersistentSortTrackIDsHash != nil { return true }
+    return false
+  }
+
   // MARK: - Phase 96: ViewModel-level Observations
 
   /// Called by MadTunesViewModel after mainVM is assigned.
@@ -273,6 +280,15 @@ final class AlbumTableViewModel {
   // Phase 44 / Phase 115 / Phase 116: Clear sorting (switch back to album/playlist order)
   func clearTableSorting() {
     tableSortCriteria = []
+    lastPersistentSortColumn = nil
+    lastPersistentSortAscending = true
+    lastPersistentSortTrackIDsHash = nil
+  }
+
+  /// Phase 123: Clear compound sort for the current dynamic playlist and persist the empty state.
+  func clearCompoundSortAndPersist() {
+    tableSortCriteria = []
+    persistCompoundSort()
     lastPersistentSortColumn = nil
     lastPersistentSortAscending = true
     lastPersistentSortTrackIDsHash = nil

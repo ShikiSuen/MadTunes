@@ -152,6 +152,8 @@ struct WPPlaylistsSection: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .contentShape(.rect)
     .onTapGesture {
+      // Phase 123: Set selectedPlaylistID so AlbumTableViewModel sort infrastructure works.
+      vm.selectedPlaylistID = playlist.id
       phoneVM.navigationPath.append(
         WPNavigationDestination.playlistDetail(playlist)
       )

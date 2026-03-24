@@ -314,6 +314,9 @@ struct WPPlaylistDetailView: View {
               .buttonStyle(.plain)
               .help(String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle))
             }
+
+            // Phase 123: Sort menu button.
+            wpSortMenu
           }
           .padding(.top, 4)
         }
@@ -357,8 +360,15 @@ struct WPPlaylistDetailView: View {
     vm.library.playlists.first { $0.id == playlist.id } ?? playlist
   }
 
+  /// Phase 123: Apply compound sort for dynamic playlists on top of base tracks.
+  /// Static playlists already have persistent sort baked into trackIDs.
   private var playlistTracks: [Track] {
-    vm.library.tracks(for: currentPlaylist)
+    let baseTracks = vm.library.tracks(for: currentPlaylist)
+    let criteria = vm.tableVM.tableSortCriteria
+    if !criteria.isEmpty {
+      return vm.tableVM.sortedTracks(baseTracks, by: criteria)
+    }
+    return baseTracks
   }
 
   /// Phase 76: Whether this playlist supports drag-reorder.
@@ -369,6 +379,64 @@ struct WPPlaylistDetailView: View {
     if index == 0 { return false } // All Music is never reorderable.
     let pl = vm.library.playlists[index]
     return pl.kind == .staticList || (pl.kind == .system && index == 1)
+  }
+
+  /// Phase 123: Sort fields available in the WPUI sort menu.
+  private static let sortableColumns: [TableColumnType] = TableColumnType.allCases.filter(\.isHidable)
+
+  /// Phase 123: Whether the current playlist uses compound sort (dynamic/All Music) vs persistent sort (static).
+  private var isCompoundSort: Bool {
+    vm.tableVM.isCompoundSortAllowed
+  }
+
+  /// Phase 123: Sort menu button styled for Metro UI.
+  @ViewBuilder private var wpSortMenu: some View {
+    Menu {
+      ForEach(Self.sortableColumns) { column in
+        let indicator = vm.tableVM.sortIndicator(for: column)
+        Button {
+          #if !(canImport(AppKit) && !canImport(UIKit))
+          // Phase 123: Exit edit mode when sorting.
+          if editMode == .active {
+            editMode = .inactive
+          }
+          #endif
+          vm.tableVM.setTableSort(column: column)
+        } label: {
+          if let indicator {
+            Text(verbatim: column.localizedName + indicator)
+          } else {
+            Text(verbatim: column.localizedName)
+          }
+        }
+      }
+
+      // Phase 123: Clear Sort for dynamic playlists only.
+      if isCompoundSort, !vm.tableVM.tableSortCriteria.isEmpty {
+        Divider()
+        Button(role: .destructive) {
+          vm.tableVM.clearCompoundSortAndPersist()
+        } label: {
+          Label(
+            String(localized: "i18n:WP.Sort.Clear", bundle: #bundle),
+            systemImage: "xmark.circle"
+          )
+        }
+      }
+    } label: {
+      Image(systemName: "arrow.up.arrow.down")
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundStyle(.white)
+        .padding(10)
+        .background(
+          vm.tableVM.isSortActive
+            ? phoneVM.wpAccentColor.color
+            : Color.white.opacity(0.15)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+    .buttonStyle(.plain)
+    .help(String(localized: "i18n:WP.Sort", bundle: #bundle))
   }
 }
 
