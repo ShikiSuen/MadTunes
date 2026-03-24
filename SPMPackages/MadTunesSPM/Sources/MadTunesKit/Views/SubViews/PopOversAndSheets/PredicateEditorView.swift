@@ -89,19 +89,23 @@ struct PredicateEditorView: View {
   }
 
   var body: some View {
-    VStack(spacing: 0) {
-      headerBar
-      Divider()
+    // 此處以 SafeAreaInset 取代 Toolbar 以完美控制在 AppKit 的 UI 的顯示位置。
+    NavigationStack {
       conditionsList
-      Divider()
-      footerBar
+        .safeAreaInset(edge: .top, spacing: 0) {
+          headerBar
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+          footerBar
+        }
     }
-    .frame(minWidth: 560, minHeight: 300)
+    .frame(minWidth: horizontalSizeClass == .compact ? nil : 720, minHeight: 300)
   }
 
   // MARK: Private
 
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
   @State private var matchMode: MatchMode
   @State private var rootChildren: [PredicateNode]
@@ -208,14 +212,20 @@ private struct PredicateGroupView: View {
       if child.isGroup {
         groupRow(node: $child)
       } else {
-        ConditionRowView(condition: child.condition) { updated in
-          child.condition = updated
-        } onDelete: {
-          children.removeAll { $0.id == child.id }
+        HStack(spacing: 0) {
+          depthPrefix()
+          ConditionRowView(condition: child.condition) { updated in
+            child.condition = updated
+          } onDelete: {
+            children.removeAll { $0.id == child.id }
+          }
         }
       }
     }
-    addMenu
+    HStack(spacing: 0) {
+      depthPrefix()
+      addMenu
+    }
   }
 
   // MARK: Private
@@ -258,9 +268,20 @@ private struct PredicateGroupView: View {
   }
 
   @ViewBuilder
+  private func depthPrefix(delta: Int = 1) -> some View {
+    let deltaActual = Swift.max(delta, 0) + depth
+    if deltaActual > 0 {
+      Text(String(repeating: "→", count: deltaActual))
+        .foregroundStyle(.secondary)
+        .padding(8)
+    }
+  }
+
+  @ViewBuilder
   private func groupRow(node: Binding<PredicateNode>) -> some View {
     VStack(alignment: .leading, spacing: 4) {
-      HStack {
+      HStack(spacing: 0) {
+        depthPrefix()
         Picker(
           String(localized: "i18n:PredicateEditor.MatchMode", bundle: #bundle),
           selection: node.groupMode
@@ -284,7 +305,6 @@ private struct PredicateGroupView: View {
       AnyView(
         PredicateGroupView(children: node.children, depth: depth + 1)
       )
-      .padding(.leading, 16)
     }
     .padding(.vertical, 4)
   }
@@ -325,7 +345,7 @@ private struct ConditionRowView: View {
           Text(f.displayName).tag(f)
         }
       }
-      .frame(width: 130)
+      .labelsHidden()
       .onChange(of: field) { _, newField in
         // Reset comparator to first valid one when field changes.
         let validComparators = Comparator.comparators(for: newField.valueKind)
@@ -334,17 +354,19 @@ private struct ConditionRowView: View {
         }
         emitChange()
       }
+      .fixedSize()
 
       Picker("".description, selection: $comparator) {
         ForEach(Comparator.comparators(for: field.valueKind), id: \.self) { c in
           Text(c.displayName).tag(c)
         }
       }
-      .frame(width: 130)
+      .labelsHidden()
       .onChange(of: comparator) { _, _ in emitChange() }
+      .fixedSize()
 
       valueField
-        .frame(minWidth: 120)
+        .frame(maxWidth: .infinity)
 
       Button(role: .destructive) {
         onDelete()
@@ -358,6 +380,7 @@ private struct ConditionRowView: View {
 
   // MARK: Private
 
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @State private var field: ConditionField
   @State private var comparator: Comparator
   @State private var stringValue: String = ""
