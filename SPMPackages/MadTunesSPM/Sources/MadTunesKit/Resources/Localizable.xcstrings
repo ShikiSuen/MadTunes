@@ -8934,78 +8934,78 @@
         }
       }
     },
-    "i18n:PredicateEditor.AddCondition" : {
+    "i18n:PredicateEditor.AddPredicate" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bedingung hinzufügen"
+            "value" : "Prädikat hinzufügen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add Condition"
+            "value" : "Add Predicate"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Añadir condición"
+            "value" : "Añadir predicado"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter une condition"
+            "value" : "Ajouter un prédicat"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aggiungi condizione"
+            "value" : "Aggiungi predicato"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "条件を追加"
+            "value" : "述語を追加"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "조건 추가"
+            "value" : "술어 추가"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicionar Condição"
+            "value" : "Adicionar Predicado"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Добавить условие"
+            "value" : "Добавить предикат"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Koşul Ekle"
+            "value" : "Yüklem Ekle"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "添加条件"
+            "value" : "添加谓词"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新增條件"
+            "value" : "新增述詞"
           }
         }
       }
@@ -11340,78 +11340,78 @@
         }
       }
     },
-    "i18n:PredicateEditor.NoConditions" : {
+    "i18n:PredicateEditor.NoPredicates" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keine Bedingungen definiert"
+            "value" : "Keine Prädikate definiert"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No conditions defined"
+            "value" : "No predicates defined"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sin condiciones definidas"
+            "value" : "Sin predicados definidos"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucune condition définie"
+            "value" : "Aucun prédicat défini"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nessuna condizione definita"
+            "value" : "Nessun predicato definito"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "条件が未定義"
+            "value" : "述語が未定義"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "정의된 조건 없음"
+            "value" : "정의된 술어 없음"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhuma condição definida"
+            "value" : "Nenhum predicado definido"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Условия не заданы"
+            "value" : "Предикаты не заданы"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tanımlı koşul yok"
+            "value" : "Tanımlı yüklem yok"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未定义条件"
+            "value" : "未定义谓词"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未定義條件"
+            "value" : "未定義述詞"
           }
         }
       }
@@ -12901,7 +12901,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "조건 편집"
+            "value" : "술어 편집"
           }
         },
         "pt-BR" : {
@@ -12919,19 +12919,19 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Koşulları Düzenle"
+            "value" : "Yüklemleri Düzenle"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "编辑条件"
+            "value" : "编辑谓词"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "編輯條件"
+            "value" : "編輯述詞"
           }
         }
       }

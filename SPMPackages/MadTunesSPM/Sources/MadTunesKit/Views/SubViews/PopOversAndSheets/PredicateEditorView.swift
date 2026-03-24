@@ -120,7 +120,7 @@ struct PredicateEditorView: View {
       let format = String(localized: "i18n:PredicateEditor.MatchCount.%lld", bundle: #bundle)
       return String.localizedStringWithFormat(format, Int64(count))
     }
-    return String(localized: "i18n:PredicateEditor.NoConditions", bundle: #bundle)
+    return String(localized: "i18n:PredicateEditor.NoPredicates", bundle: #bundle)
   }
 
   // MARK: - Header
@@ -238,7 +238,7 @@ private struct PredicateGroupView: View {
         )
       } label: {
         Label(
-          String(localized: "i18n:PredicateEditor.AddCondition", bundle: #bundle),
+          String(localized: "i18n:PredicateEditor.AddPredicate", bundle: #bundle),
           systemImage: "plus.circle"
         )
       }
@@ -261,7 +261,7 @@ private struct PredicateGroupView: View {
       }
     } label: {
       Label(
-        String(localized: "i18n:PredicateEditor.AddCondition", bundle: #bundle),
+        String(localized: "i18n:PredicateEditor.AddPredicate", bundle: #bundle),
         systemImage: "plus.circle"
       )
     }
