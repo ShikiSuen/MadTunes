@@ -183,6 +183,11 @@ final class WPPhoneViewModel {
   /// Standalone playlist creation (from Playlists section + button).
   var isCreatePlaylistAlertPresented = false
   var createPlaylistName = ""
+  /// Whether the standalone create alert should create a dynamic playlist.
+  var createPlaylistIsDynamic = false
+
+  /// Predicate editor sheet for dynamic playlists.
+  var predicateEditorPlaylist: Playlist?
 
   var currentSection: PanoramaSection {
     get { access(keyPath: \.currentSection); return _currentSection }
@@ -301,8 +306,13 @@ final class WPPhoneViewModel {
     guard !name.isEmpty else { return }
     let existingNames = Set(mainVM.library.playlists.dropFirst(2).map(\.name))
     guard !existingNames.contains(name) else { return }
-    mainVM.library.addPlaylist(name: name)
+    if createPlaylistIsDynamic {
+      mainVM.library.addDynamicPlaylist(name: name)
+    } else {
+      mainVM.library.addPlaylist(name: name)
+    }
     createPlaylistName = ""
+    createPlaylistIsDynamic = false
   }
 
   /// Phase 78: Rename an existing playlist.

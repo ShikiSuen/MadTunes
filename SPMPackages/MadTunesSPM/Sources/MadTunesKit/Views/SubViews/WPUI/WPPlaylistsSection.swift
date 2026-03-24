@@ -46,6 +46,16 @@ struct WPPlaylistsSection: View {
           // Phase 78: Context menu for user-created playlists (rename/delete).
           .contextMenu {
             if isUserPlaylist(playlist) {
+              if playlist.kind == .dynamicList {
+                Button {
+                  phoneVM.predicateEditorPlaylist = playlist
+                } label: {
+                  Label(
+                    String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
+                    systemImage: "gearshape.2"
+                  )
+                }
+              }
               Button {
                 phoneVM.renamePlaylistName = playlist.name
                 phoneVM.renamePlaylistID = playlist.id
@@ -72,9 +82,27 @@ struct WPPlaylistsSection: View {
         }
 
         // Phase 78: Create new playlist button.
-        Button {
-          phoneVM.createPlaylistName = ""
-          phoneVM.isCreatePlaylistAlertPresented = true
+        Menu {
+          Button {
+            phoneVM.createPlaylistName = ""
+            phoneVM.createPlaylistIsDynamic = false
+            phoneVM.isCreatePlaylistAlertPresented = true
+          } label: {
+            Label(
+              String(localized: "i18n:Sidebar.NewStaticPlaylist", bundle: #bundle),
+              systemImage: "music.note.list"
+            )
+          }
+          Button {
+            phoneVM.createPlaylistName = ""
+            phoneVM.createPlaylistIsDynamic = true
+            phoneVM.isCreatePlaylistAlertPresented = true
+          } label: {
+            Label(
+              String(localized: "i18n:Sidebar.NewDynamicPlaylist", bundle: #bundle),
+              systemImage: "gearshape.2"
+            )
+          }
         } label: {
           HStack(spacing: 14) {
             Image(systemName: "plus")
@@ -106,7 +134,7 @@ struct WPPlaylistsSection: View {
       if idx == 0 { return "music.note.list" }
       if idx == 1 { return "heart.fill" }
     }
-    return "music.note"
+    return playlist.kind == .dynamicList ? "gearshape.2" : "music.note"
   }
 
   /// Phase 78: Whether a playlist is user-created (not system playlists at index 0/1).
