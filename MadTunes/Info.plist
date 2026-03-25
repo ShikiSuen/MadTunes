@@ -46,6 +46,7 @@
 				<string>public.aac-audio</string>
 				<string>org.xiph.opus</string>
 				<string>org.xiph.flac</string>
+				<string>org.xiph.ogg-vorbis</string>
 			</array>
 		</dict>
 		<dict>
