@@ -27,6 +27,14 @@ public enum MetadataReader: Sendable {
 
   /// Read only artwork data from an audio file.
   public static func readArtwork(from url: URL) async -> Data? {
+    // Phase 125/126: Native artwork extraction for FLAC/OGG/OPUS
+    // (AVFoundation unreliable for Vorbis Comment containers).
+    let ext = url.pathExtension.lowercased()
+    if ext == "flac" || ext == "ogg" || ext == "opus" {
+      if let artworkData = VorbisCommentsReader.parsePicture(from: url) {
+        return artworkData
+      }
+    }
     let asset = AVURLAsset(url: url)
     guard let meta = try? await asset.load(.commonMetadata) else { return nil }
     return await loadData(from: meta, id: .commonIdentifierArtwork)
@@ -195,35 +203,35 @@ public enum MetadataReader: Sendable {
       let durationCM = try await asset.load(.duration)
       let duration = CMTimeGetSeconds(durationCM)
 
-      let title = await loadString(from: commonMeta, id: .commonIdentifierTitle)
-      let artist = await loadString(from: commonMeta, id: .commonIdentifierArtist)
-      let albumName = await loadString(from: commonMeta, id: .commonIdentifierAlbumName)
-      let artworkData = includeArtwork
+      var title = await loadString(from: commonMeta, id: .commonIdentifierTitle)
+      var artist = await loadString(from: commonMeta, id: .commonIdentifierArtist)
+      var albumName = await loadString(from: commonMeta, id: .commonIdentifierAlbumName)
+      var artworkData = includeArtwork
         ? await loadData(from: commonMeta, id: .commonIdentifierArtwork)
         : nil
 
       // Try to read album artist from iTunes metadata.
       let iTunesMeta = try await asset.load(.metadata)
-      let albumArtist = await loadString(
+      var albumArtist = await loadString(
         from: iTunesMeta,
         id: .iTunesMetadataAlbumArtist
       )
-      let composer = await loadString(
+      var composer = await loadString(
         from: iTunesMeta,
         id: .iTunesMetadataComposer
       )
 
-      let trackNumber = await loadTrackOrDiscNumber(
+      var trackNumber = await loadTrackOrDiscNumber(
         from: iTunesMeta,
         identifiers: [.iTunesMetadataTrackNumber, .id3MetadataTrackNumber]
       ) ?? 0
 
-      let discNumber = await loadTrackOrDiscNumber(
+      var discNumber = await loadTrackOrDiscNumber(
         from: iTunesMeta,
         identifiers: [.iTunesMetadataDiscNumber, .id3MetadataPartOfASet]
       ) ?? 0
 
-      let year: Int?
+      var year: Int?
       if let commonYear = await loadYear(from: commonMeta) {
         year = commonYear
       } else {
@@ -238,6 +246,36 @@ public enum MetadataReader: Sendable {
         genre = g
       } else if let g = await loadString(from: iTunesMeta, id: .quickTimeMetadataGenre) {
         genre = g
+      }
+
+      // Phase 125/126: FLAC/OGG/OPUS fallback — AVFoundation does not reliably extract
+      // Vorbis Comments or PICTURE blocks from these containers.
+      // If essential fields are empty, try native parser.
+      let ext = url.pathExtension.lowercased()
+      let nativeVC: VorbisCommentsReader.VorbisComments? = {
+        let avFieldsMissing = title == nil && artist == nil && albumName == nil
+        guard avFieldsMissing else { return nil }
+        switch ext {
+        case "flac", "ogg", "opus": return VorbisCommentsReader.parseVorbisComments(from: url)
+        default: return nil
+        }
+      }()
+      if let vc = nativeVC {
+        title = title ?? vc.title
+        artist = artist ?? vc.artist
+        albumName = albumName ?? vc.album
+        if albumArtist == nil { albumArtist = vc.albumArtist }
+        if composer == nil { composer = vc.composer }
+        if trackNumber == 0 { trackNumber = vc.trackNumber ?? 0 }
+        if discNumber == 0 { discNumber = vc.discNumber ?? 0 }
+        if genre.isEmpty { genre = vc.genre ?? "" }
+        if year == nil { year = vc.year }
+      }
+      if includeArtwork, artworkData == nil {
+        switch ext {
+        case "flac", "ogg", "opus": artworkData = VorbisCommentsReader.parsePicture(from: url)
+        default: break
+        }
       }
 
       // Fallback chains:
