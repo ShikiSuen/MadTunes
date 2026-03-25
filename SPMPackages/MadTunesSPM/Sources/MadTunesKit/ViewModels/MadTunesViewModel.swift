@@ -335,9 +335,11 @@ final class MadTunesViewModel {
       // the playlist).
       // Phase 103: Use the returned track IDs directly instead of path matching,
       // which failed when importing folders (folder path != file paths).
+      // Phase 126: Skip adding to dynamic playlists (their content is rule-driven).
       if let pid = targetPlaylistID,
          pid != library.playlists.first?.id,
-         !importedTrackIDs.isEmpty {
+         !importedTrackIDs.isEmpty,
+         library.playlists.first(where: { $0.id == pid })?.kind != .dynamicList {
         library.addTracks(Set(importedTrackIDs), toPlaylist: pid)
       }
 
