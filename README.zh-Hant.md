@@ -74,6 +74,7 @@ MadTunes 不蒐集任何使用者資料。所有音樂檔案均在本機處理�
 
 mac 寫 audiophile audio player 只能用 AVPlayer (源自系統內建的 AVFoundation Framework)。AVAudioEngine 無法達到同樣的播放傳真品質。這是筆者這邊在開發過程中經過超過百次的 trial and error 之後得出的結論。測試用樂曲或專輯包括：
 
+- Brian Tyler《Call of Duty: Modern Warfare 3 (2011) Soundtrack》
 - 加藤達也《食戟創真OST》
 - 梁靜如《勇氣》
 - FLOW《Go!!! & Sign》

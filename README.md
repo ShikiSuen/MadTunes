@@ -74,6 +74,7 @@ The UI design for iPhone and small-window iPad follows the UI design language us
 
 When writing an audiophile audio player for Mac, you must use AVPlayer (from macOS built-in AVFoundation Framework); AVAudioEngine has no way to achieve the same playback fidelity. This conclusion comes from over a hundred trials and errors during development. These albums / tracks are used during the tests.
 
+- Brian Tyler: Call of Duty: Modern Warfare 3 (2011) Soundtrack
 - KATOU Tatsuya: Shokugeki no Souma (TV Anime Soundtrack)
 - Fish Leong: Courage
 - FLOW: Go!!! & Sign
