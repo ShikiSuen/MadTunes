@@ -62,13 +62,15 @@ You can build the executables from the Xcode project, or buy one from Mac App St
 
 I used Foobar 2000 on macOS for a long time. However, after more than four years of use, I realized it had significant audio performance issues. As a music creator, I also tried mixing my own work. However, my mixes were often criticized as “terrible”, yet when listening in that player it was always hard to tell the difference between my work and commercially released soundtrack albums in terms of mix quality. Over time, this misleading listening reference prevented me from accurately understanding the sonic characteristics of professional mixes, making it difficult to attract clients. I had to keep creating while also learning programming part-time as a second source of income. Later, when I took over maintenance of R128x (an audio loudness analysis tool) and added a listening feature, I realized for the first time that an ordinary Mac can sound this good. It was at that moment that I understood I had been misled by that player for years, and I was furious. The name MadTunes is both “Mad + Tunes” and a pun on “媽的 Tunes” (damn Tunes), meant to express that sentiment.
 
+> Proprietary freeware creates a deeply uncomfortable power dynamic: because developers offer the software gratis, they bear no obligation to promptly rectify defects or usability issues. Even skilled programmers wishing to improve the tool find themselves reduced to submitting naive feature requests or bug reports like any lay user, leaving resolution entirely to the developer's whim with zero agency whatsoever. Express even slight urgency, and one risks being branded a freeloader, potentially facing public shaming or ganging-up by the community. This structural impasse is precisely why someone among the users had to rewrite a similar application as open-source. Ironically, this act of creating an alternative is frequently perceived as hostile, inviting reciprocal hostility.
+
 ## Concepts
 
 Although MadTunes’ UI operation experience on macOS and iPad (FullScreen) may resemble iTunes 11 (released in 2012) in some respects, its design goals are completely different from the consumer-market focus of Apple Music / iTunes. Apple’s player usually applies slight spatial processing during stereo playback, which can feel more “immersive” for general listening, but for learners who need to analyze album mixing characteristics it interferes with accurately judging imaging and mixing detail. Additionally, some audio material (for example, game or ambient music) is designed to loop seamlessly end-to-end. In many players, single-track repeat playback often introduces a brief gap at the transition point, interrupting the overall beat pace. MadTunes includes dedicated handling for these cases to ensure truly pace-uninterrupted loop playback.
 
 The UI design for iPhone and small-window iPad follows the UI design language used in Windows Phone 7 / 8 around 2012.
 
-### Technical Notes
+## Technical Notes
 
 When writing an audiophile audio player for Mac, you must use AVPlayer (from macOS built-in AVFoundation Framework); AVAudioEngine has no way to achieve the same playback fidelity. This conclusion comes from over a hundred trials and errors during development. These albums / tracks are used during the tests.
 
