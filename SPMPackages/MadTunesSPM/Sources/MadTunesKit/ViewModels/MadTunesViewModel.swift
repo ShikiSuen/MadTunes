@@ -43,6 +43,10 @@ final class MadTunesViewModel {
 
   var selectedPlaylistID: UUID?
   var selectedTrackIDs: Set<UUID> = []
+  /// Phase 127: Anchor for Shift+Arrow range selection in ExpandedAlbumView.
+  var trackSelectionAnchorID: UUID?
+  /// Phase 127: Cursor (moving end) for Shift+Arrow range selection in ExpandedAlbumView.
+  var trackSelectionCursorID: UUID?
   var isFileImporterPresented = false // Only for non-AppKit targets.
   var isFolderImporterPresented = false // Also used on macOS AppKit as File Importer.
   var isDropTargeted = false
@@ -417,6 +421,8 @@ final class MadTunesViewModel {
   /// Phase 96: Consolidated cleanup when switching playlists.
   func onPlaylistSwitched() {
     if !selectedTrackIDs.isEmpty { selectedTrackIDs.removeAll() }
+    trackSelectionAnchorID = nil
+    trackSelectionCursorID = nil
     gridVM.highlightedAlbumIDs.removeAll()
     gridVM.expandedAlbumID = nil
     gridVM.albumSelectionFixedAnchorID = nil
@@ -564,6 +570,9 @@ final class MadTunesViewModel {
       Task { @MainActor [weak self] in
         guard let self else { return }
         self.selectedTrackIDs.removeAll()
+        // Phase 127: Clear track selection anchor/cursor when expanded album changes.
+        self.trackSelectionAnchorID = nil
+        self.trackSelectionCursorID = nil
         self.observeExpandedAlbumIDChange()
       }
     }

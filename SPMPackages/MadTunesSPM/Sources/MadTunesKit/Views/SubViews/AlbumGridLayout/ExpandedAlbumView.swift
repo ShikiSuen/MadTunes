@@ -426,6 +426,10 @@ struct ExpandedAlbumView: View {
       selectedTrackIDs = [track.id]
       lastClickedTrackID = track.id
     }
+    // Phase 127: Sync VM-level anchor/cursor so that Shift+Arrow after a click
+    // starts from the clicked track rather than a stale keyboard cursor.
+    vm.trackSelectionAnchorID = lastClickedTrackID
+    vm.trackSelectionCursorID = track.id
   }
 
   private func handleDragSelection(

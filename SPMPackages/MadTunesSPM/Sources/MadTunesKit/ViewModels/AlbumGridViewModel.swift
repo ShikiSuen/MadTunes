@@ -781,8 +781,7 @@ final class AlbumGridViewModel {
         }
       }
 
-      guard let anchorID = mainVM.selectedTrackIDs.first(where: { _ in true }),
-            let anchorIdx = sorted.firstIndex(where: { $0.id == anchorID })
+      guard let anchorID = mainVM.selectedTrackIDs.first(where: { _ in true })
       else { return .handled }
 
       let maxRowsPerColumn = 7
@@ -795,32 +794,52 @@ final class AlbumGridViewModel {
       let columnCount = Swift.max(1, Swift.min(sorted.count, desiredColumns))
       let itemsPerColumn = sorted.isEmpty ? 0 : Int(ceil(Double(sorted.count) / Double(columnCount)))
 
+      // Phase 127: Support Shift+Arrow range selection in ExpandedAlbumView.
+      // List View layout: items fill column top-to-bottom, then next column.
+      // - Up/Down: move within same column (index ±1)
+      // - Left/Right: move to adjacent column at same row (index ±itemsPerColumn)
+      let isShift = press.modifiers.contains(.shift)
+
+      // Determine cursor position (the moving end of selection)
+      let cursorID = mainVM.trackSelectionCursorID ?? anchorID
+      guard let cursorIdx = sorted.firstIndex(where: { $0.id == cursorID })
+      else { return .handled }
+
+      // Calculate new cursor position based on arrow key
+      let newIdx: Int
       switch press.key {
       case .upArrow:
-        let firstIdx = sorted.firstIndex(where: { mainVM.selectedTrackIDs.contains($0.id) }) ?? anchorIdx
-        if firstIdx == 0 {
-          mainVM.selectedTrackIDs.removeAll()
-        } else {
-          mainVM.selectedTrackIDs = [sorted[firstIdx - 1].id]
-        }
+        newIdx = max(cursorIdx - 1, 0)
       case .downArrow:
-        let lastIdx = sorted.lastIndex(where: { mainVM.selectedTrackIDs.contains($0.id) }) ?? anchorIdx
-        if lastIdx >= sorted.count - 1 {
-          withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) {
-            expandedAlbumID = nil
-          }
-          mainVM.selectedTrackIDs.removeAll()
-        } else {
-          mainVM.selectedTrackIDs = [sorted[lastIdx + 1].id]
-        }
+        newIdx = min(cursorIdx + 1, sorted.count - 1)
       case .rightArrow:
-        let newIdx = min(anchorIdx + itemsPerColumn, sorted.count - 1)
-        mainVM.selectedTrackIDs = [sorted[newIdx].id]
+        newIdx = min(cursorIdx + itemsPerColumn, sorted.count - 1)
       case .leftArrow:
-        let newIdx = max(anchorIdx - itemsPerColumn, 0)
-        mainVM.selectedTrackIDs = [sorted[newIdx].id]
+        newIdx = max(cursorIdx - itemsPerColumn, 0)
       default:
-        break
+        return .handled
+      }
+
+      if isShift {
+        // Shift+Arrow: range selection
+        // Initialize anchor if not set (use cursor position as initial anchor)
+        if mainVM.trackSelectionAnchorID == nil {
+          mainVM.trackSelectionAnchorID = cursorID
+        }
+        guard let anchorIDForRange = mainVM.trackSelectionAnchorID,
+              let anchorIdxForRange = sorted.firstIndex(where: { $0.id == anchorIDForRange })
+        else { return .handled }
+
+        // Select range from anchor to new cursor position
+        let range = min(anchorIdxForRange, newIdx) ... max(anchorIdxForRange, newIdx)
+        mainVM.selectedTrackIDs = Set(sorted[range].map(\.id))
+        mainVM.trackSelectionCursorID = sorted[newIdx].id
+        // Anchor stays fixed during Shift+Arrow
+      } else {
+        // Plain Arrow: single selection, anchor and cursor both move
+        mainVM.selectedTrackIDs = [sorted[newIdx].id]
+        mainVM.trackSelectionAnchorID = sorted[newIdx].id
+        mainVM.trackSelectionCursorID = sorted[newIdx].id
       }
       return .handled
     }
