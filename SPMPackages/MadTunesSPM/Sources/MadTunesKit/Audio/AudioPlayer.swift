@@ -467,10 +467,23 @@ public final class AudioPlayer {
   private func playViaAVPlayer(url: URL) {
     enlargeHALBufferIfNeeded()
     let item = AVPlayerItem(url: url)
+    // Phase 127 investigation: no public API exists for controlling AVPlayer SRC quality.
+    // `AVMutableAudioMixInputParameters.audioProcessingSettings` +
+    // `AVSampleRateConverterAlgorithmKey` / `AVSampleRateConverterAlgorithm_Mastering`
+    // were removed from the macOS SDK (not present in macOS 26 SDK).
+    // SRC is handled transparently by coreaudiod; apps cannot influence its quality tier.
+    //
+    // DO NOT set `item.audioTimePitchAlgorithm = .spectral` here.
+    // `audioTimePitchAlgorithm` controls the time-stretch algorithm, which only engages
+    // when AVPlayer.rate ≠ 1.0 (scaled edits / varispeed). At rate == 1.0, AVFoundation
+    // bypasses the pitch/time-stretch pipeline entirely, but `.spectral` still inserts
+    // an extra DSP stage that causes audible quality degradation — instruments lose
+    // transient "breath" at higher volumes (verified by A/B listening test, Phase 127).
+    // The macOS 12+ default `.timeDomain` must be left in place.
 
-    // Replace directly — do NOT nil-out first, which causes a pipeline
-    // teardown race (FigFilePlayer err=-12864).
     if avPlayer == nil {
+      // Replace directly — do NOT nil-out first, which causes a pipeline
+      // teardown race (FigFilePlayer err=-12864).
       avPlayer = AVPlayer(playerItem: item)
       avPlayer?.volume = volume
       // Phase 127: Apply selected audio output device.
