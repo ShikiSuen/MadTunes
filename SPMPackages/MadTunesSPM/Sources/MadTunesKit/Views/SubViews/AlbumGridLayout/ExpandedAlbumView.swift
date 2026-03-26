@@ -407,18 +407,25 @@ struct ExpandedAlbumView: View {
       } else {
         selectedTrackIDs.insert(track.id)
       }
+      lastClickedTrackID = track.id
     } else if modifiers.contains(.shift),
               let lastID = lastClickedTrackID,
               let lastIdx = sortedTracks.firstIndex(where: { $0.id == lastID }),
               let curIdx = sortedTracks.firstIndex(where: { $0.id == track.id }) {
+      // Phase 127: Replace selection with anchor-to-current range instead of
+      // inserting, so that narrowing the range (e.g. A→E then Shift+C) correctly
+      // deselects items outside the new range. Anchor (lastClickedTrackID) is NOT
+      // updated on Shift-clicks to keep the pivot stable.
       let range = min(lastIdx, curIdx) ... max(lastIdx, curIdx)
+      var newSelection = Set<UUID>()
       for i in range {
-        selectedTrackIDs.insert(sortedTracks[i].id)
+        newSelection.insert(sortedTracks[i].id)
       }
+      selectedTrackIDs = newSelection
     } else {
       selectedTrackIDs = [track.id]
+      lastClickedTrackID = track.id
     }
-    lastClickedTrackID = track.id
   }
 
   private func handleDragSelection(
