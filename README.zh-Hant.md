@@ -81,4 +81,6 @@ mac 寫 audiophile audio player 只能用 AVPlayer (源自系統內建的 AVFoun
 - Zutomayo《勘ぐれい》
 - 方順吉（所有由張翊華負責混音的專輯）
 
+另：請避免在 1 倍速播放時將 `AVPlayerItem.audioTimePitchAlgorithm` 設為 `.spectral`。雖然文件指出該演算法僅在 `rate != 1.0` 時「啟用」，但實際上 DSP 處理環節仍會留在訊號鏈中。由於 `.spectral` 採用基於 STFT 的處理方式，其窗函數 (windowing) 與相位重建過程即便在 1.0 倍率下也會引入相位抖動 (phase jitter)，導致瞬態 (transient) 還原度不如直通 (bypass) 路徑。當 `rate == 1.0` 時，系統本應跳過時延補償，但強制指定 `.spectral` 會導致額外的 DSP 損耗，使樂器在高音量下失去瞬態的「呼吸感」。建議維持 macOS 12+ 預設的 `.timeDomain` 設定以確保音質。
+
 $ EOF.

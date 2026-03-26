@@ -81,4 +81,6 @@ When writing an audiophile audio player for Mac, you must use AVPlayer (from mac
 - Zutomayo: Hunch Grey
 - Gene Fang (all albums mixed by Michael Chang)
 
+Also, avoid setting `AVPlayerItem.audioTimePitchAlgorithm` to `.spectral` at 1x playback. Although documentation suggests the algorithm only "activates" when `rate != 1.0`, the DSP stage remains in the signal chain. Because `.spectral` utilizes STFT-based processing, the windowing and phase reconstruction steps introduce phase jitter and degrade transient reproduction even at a 1.0 pitch ratio. While `AVFoundation` typically bypasses time-stretching at `rate == 1.0`, forcing `.spectral` prevents a true bypass, resulting in audible loss of transient "breath" and clarity. For high-fidelity playback, preserve the default `.timeDomain` setting.
+
 $ EOF.
