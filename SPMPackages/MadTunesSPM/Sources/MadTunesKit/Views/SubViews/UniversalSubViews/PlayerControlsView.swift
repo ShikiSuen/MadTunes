@@ -415,14 +415,82 @@ struct PlayerControlsView: View {
 
   @ViewBuilder private var volumeControls: some View {
     HStack(spacing: 2) {
+      // Phase 127: Volume icon doubles as audio output device picker on macOS.
+      #if os(macOS)
+      Menu {
+        audioOutputDeviceMenuContent
+      } label: {
+        Image(systemName: volumeIcon)
+          .font(.caption)
+          .frame(width: 28 * vm.uiFactor, height: 28)
+      }
+      .menuStyle(.borderlessButton)
+      .menuIndicator(.hidden)
+      .controlSize(.small)
+      .tint(
+        player.outputDeviceManager.selectedDeviceUID == nil
+          ? .primary
+          : Color.madTunesAccent
+      )
+      .fixedSize()
+      .frame(width: 28 * vm.uiFactor, height: 28, alignment: .leading)
+      #else
       Image(systemName: volumeIcon)
         .font(.caption)
-        .frame(width: 28 * vm.uiFactor, height: 28)
+        .frame(width: 28 * vm.uiFactor, height: 28, alignment: .leading)
+      #endif
       Slider(value: Bindable(player).volume, in: 0 ... 1)
         .frame(width: 60 * vm.uiFactor)
         .controlSize(.mini)
     }
   }
+
+  // Phase 127: Audio output device picker menu content (macOS only).
+  #if os(macOS)
+  @ViewBuilder private var audioOutputDeviceMenuContent: some View {
+    let manager = player.outputDeviceManager
+    let currentUID = manager.selectedDeviceUID
+    let defaultUID = manager.systemDefaultDeviceUID
+
+    // System Default option.
+    Button {
+      player.setOutputDevice(uid: nil)
+    } label: {
+      HStack {
+        Text(
+          String(
+            localized: "i18n:AudioOutput.SystemDefault",
+            defaultValue: "System Default",
+            bundle: #bundle
+          )
+        )
+        if currentUID == nil {
+          Spacer()
+          Image(systemName: "checkmark")
+        }
+      }
+    }
+
+    Divider()
+
+    ForEach(manager.outputDevices) { device in
+      Button {
+        player.setOutputDevice(uid: device.uid)
+      } label: {
+        HStack {
+          Text(verbatim: device.name)
+          if device.uid == defaultUID {
+            Text(verbatim: "⌂").foregroundStyle(.secondary)
+          }
+          if device.uid == currentUID {
+            Spacer()
+            Image(systemName: "checkmark")
+          }
+        }
+      }
+    }
+  }
+  #endif
 
   private func commitNewPlaylistAlert() {
     let name = newPlaylistName.trimmingCharacters(in: .whitespaces)

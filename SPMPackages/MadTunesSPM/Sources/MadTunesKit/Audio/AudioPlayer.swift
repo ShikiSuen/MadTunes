@@ -89,6 +89,27 @@ public final class AudioPlayer {
   public private(set) var currentIndex: Int = 0
   public private(set) var loopBehavior: PlayLoopBehavior = .sequential
 
+  // Phase 127: Audio output device routing (macOS only).
+  #if os(macOS)
+  /// Audio output device manager (initialized on first access).
+  public var outputDeviceManager: AudioOutputDeviceManager {
+    if let existing = _outputDeviceManager {
+      return existing
+    }
+    let manager = AudioOutputDeviceManager()
+    _outputDeviceManager = manager
+    return manager
+  }
+
+  private var _outputDeviceManager: AudioOutputDeviceManager?
+
+  /// Set the audio output device by UID. Pass `nil` for system default.
+  public func setOutputDevice(uid: String?) {
+    outputDeviceManager.selectedDeviceUID = uid
+    avPlayer?.audioOutputDeviceUniqueID = uid
+  }
+  #endif
+
   /// 切換迴圈模式。若正在播放且 duration 已知，會立即安裝／拆除 boundary observer。
   public func setLoopBehavior(_ newValue: PlayLoopBehavior) async {
     loopBehavior = newValue
@@ -452,6 +473,10 @@ public final class AudioPlayer {
     if avPlayer == nil {
       avPlayer = AVPlayer(playerItem: item)
       avPlayer?.volume = volume
+      // Phase 127: Apply selected audio output device.
+      #if os(macOS)
+      avPlayer?.audioOutputDeviceUniqueID = outputDeviceManager.selectedDeviceUID
+      #endif
     } else {
       avPlayer?.replaceCurrentItem(with: item)
     }
