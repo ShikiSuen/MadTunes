@@ -101,7 +101,7 @@ struct AlbumGridItemView: View {
             endPoint: .bottom
           )
         )
-        .stroke(
+        .strokeBorder(
           LinearGradient(
             colors: [
               Color.madTunesAccent.opacity(0.8),

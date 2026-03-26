@@ -61,7 +61,7 @@ struct ArtworkView: View {
     .aspectRatio(1, contentMode: .fit)
     .overlay {
       Rectangle()
-        .stroke(
+        .strokeBorder(
           Color.black,
           lineWidth: 1
         )

@@ -217,7 +217,7 @@ private struct PredicateGroupView: View {
     .clipShape(RoundedRectangle(cornerRadius: 12))
     .overlay {
       RoundedRectangle(cornerRadius: 12)
-        .stroke(Color.accentColor.opacity(0.35), lineWidth: 1)
+        .strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 1)
     }
     .padding(.vertical, 2)
   }

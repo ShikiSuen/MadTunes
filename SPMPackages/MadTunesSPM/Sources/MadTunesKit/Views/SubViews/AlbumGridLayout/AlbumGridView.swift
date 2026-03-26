@@ -319,7 +319,7 @@ struct AlbumGridView: View {
         .fill(Color.accentColor.opacity(0.15))
         .overlay(
           Rectangle()
-            .stroke(Color.accentColor.opacity(0.6), lineWidth: 1)
+            .strokeBorder(Color.accentColor.opacity(0.6), lineWidth: 1)
         )
         .frame(width: rect.width, height: rect.height)
         .position(x: rect.midX, y: rect.midY)

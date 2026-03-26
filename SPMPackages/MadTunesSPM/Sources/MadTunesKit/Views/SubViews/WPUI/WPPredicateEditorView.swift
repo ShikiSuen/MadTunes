@@ -148,7 +148,7 @@ struct WPPredicateEditorView: View {
     .clipShape(RoundedRectangle(cornerRadius: 14))
     .overlay {
       RoundedRectangle(cornerRadius: 14)
-        .stroke(accentColor.opacity(0.5), lineWidth: 1)
+        .strokeBorder(accentColor.opacity(0.5), lineWidth: 1)
     }
     .padding(.horizontal, 16)
     .padding(.top, 12)
@@ -270,7 +270,7 @@ private struct WPPredicateGroupView: View {
     .clipShape(RoundedRectangle(cornerRadius: 12))
     .overlay {
       RoundedRectangle(cornerRadius: 12)
-        .stroke(accentColor.opacity(0.35), lineWidth: 1)
+        .strokeBorder(accentColor.opacity(0.35), lineWidth: 1)
     }
   }
 }
