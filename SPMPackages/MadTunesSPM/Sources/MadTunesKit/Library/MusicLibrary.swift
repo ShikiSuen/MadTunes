@@ -313,6 +313,10 @@ public final class MusicLibrary {
     // Clear in-memory state.
     tracks.removeAll()
     albums.removeAll()
+    folderPlaylistTracks.removeAll()
+    folderPlaylistInitialReloadCheckedIDs.removeAll()
+    folderPlaylistRescanInProgressIDs.removeAll()
+    folderPlaylistLatestDirectoryModificationDates.removeAll()
     artworkAttemptedKeys.removeAll()
     artworkLoadingContinuations.removeAll()
     albumIDMap.removeAll()
@@ -477,6 +481,9 @@ public final class MusicLibrary {
 
     let scannedTracks = await scanFolderForTracks(folderURL)
     folderPlaylistTracks[playlist.id] = scannedTracks
+    if let latestDate = Self.latestFolderTreeModificationDate(for: folderURL) {
+      folderPlaylistLatestDirectoryModificationDates[playlist.id] = latestDate
+    }
 
     persistFolderPlaylistMetadata(
       playlistID: playlist.id,
@@ -489,6 +496,9 @@ public final class MusicLibrary {
 
   /// Phase 129: Rescan a folder playlist and update its cached tracks.
   public func rescanFolderPlaylist(id: UUID) async {
+    guard folderPlaylistRescanInProgressIDs.insert(id).inserted else { return }
+    defer { folderPlaylistRescanInProgressIDs.remove(id) }
+
     guard let index = playlists.firstIndex(where: { $0.id == id }),
           playlists[index].kind == .folderList else { return }
 
@@ -507,6 +517,9 @@ public final class MusicLibrary {
 
     let scannedTracks = await scanFolderForTracks(folderURL)
     folderPlaylistTracks[id] = scannedTracks
+    if let latestDate = Self.latestFolderTreeModificationDate(for: folderURL) {
+      folderPlaylistLatestDirectoryModificationDates[id] = latestDate
+    }
 
     persistFolderPlaylistMetadata(
       playlistID: id,
@@ -520,6 +533,9 @@ public final class MusicLibrary {
   /// If cache is empty, triggers an async scan and returns empty array temporarily.
   public func tracksForFolderPlaylist(_ playlist: Playlist) -> [Track] {
     guard playlist.kind == .folderList else { return [] }
+
+    // Phase 132: On first access after launch, lazily decide whether reload is needed.
+    triggerLazyFolderPlaylistReloadCheckIfNeeded(playlistID: playlist.id)
 
     if let cached = folderPlaylistTracks[playlist.id], !cached.isEmpty {
       return cached
@@ -574,6 +590,9 @@ public final class MusicLibrary {
           playlists[index].kind == .folderList else { return }
 
     folderPlaylistTracks.removeValue(forKey: id)
+    folderPlaylistInitialReloadCheckedIDs.remove(id)
+    folderPlaylistRescanInProgressIDs.remove(id)
+    folderPlaylistLatestDirectoryModificationDates.removeValue(forKey: id)
     purgePlaylistScopedAlbumIDs(playlistID: id)
     playlists.remove(at: index)
     deleteFolderPlaylistMetadata(for: id)
@@ -804,6 +823,9 @@ public final class MusicLibrary {
   private var albumIDMap: [String: UUID] = [:]
   private var artworkAttemptedKeys: Set<String> = []
   private var activeSecurityScopedURLs: [URL] = []
+  @ObservationIgnored private var folderPlaylistInitialReloadCheckedIDs: Set<UUID> = []
+  @ObservationIgnored private var folderPlaylistRescanInProgressIDs: Set<UUID> = []
+  @ObservationIgnored private var folderPlaylistLatestDirectoryModificationDates: [UUID: Date] = [:]
   nonisolated private let importProgressDebouncer: Debouncer = .init(delay: 1)
   nonisolated private let persistPlaylistsDebouncer: Debouncer = .init(delay: 0.1)
   nonisolated private let _modelContainer: ModelContainer?
@@ -893,6 +915,37 @@ public final class MusicLibrary {
     url.standardizedFileURL.resolvingSymlinksInPath().path
   }
 
+  /// Phase 132: Returns the newest modification date among the folder
+  /// and all its subfolders.
+  private nonisolated static func latestFolderTreeModificationDate(for folderURL: URL) -> Date? {
+    let resourceKeys: Set<URLResourceKey> = [.isDirectoryKey, .contentModificationDateKey]
+    var latestDate = (try? folderURL.resourceValues(forKeys: resourceKeys))?.contentModificationDate
+
+    guard let enumerator = FileManager.default.enumerator(
+      at: folderURL,
+      includingPropertiesForKeys: Array(resourceKeys),
+      options: [.skipsHiddenFiles]
+    ) else { return latestDate }
+
+    for case let itemURL as URL in enumerator {
+      let fileName = itemURL.lastPathComponent
+      guard !fileName.hasPrefix(".") else { continue }
+      guard let values = try? itemURL.resourceValues(forKeys: resourceKeys) else { continue }
+      guard values.isDirectory == true,
+            let modifiedDate = values.contentModificationDate else { continue }
+
+      if let currentLatest = latestDate {
+        if modifiedDate > currentLatest {
+          latestDate = modifiedDate
+        }
+      } else {
+        latestDate = modifiedDate
+      }
+    }
+
+    return latestDate
+  }
+
   private func playlistScopedAlbumKey(albumKey: String, playlistID: UUID) -> String {
     "playlist:\(playlistID.uuidString):::\(albumKey)"
   }
@@ -922,6 +975,37 @@ public final class MusicLibrary {
     }
 
     return nil
+  }
+
+  private func triggerLazyFolderPlaylistReloadCheckIfNeeded(playlistID: UUID) {
+    guard folderPlaylistInitialReloadCheckedIDs.insert(playlistID).inserted else { return }
+
+    Task { @MainActor in
+      if await shouldRescanFolderPlaylistOnFirstAccess(playlistID: playlistID) {
+        await rescanFolderPlaylist(id: playlistID)
+      }
+    }
+  }
+
+  private func shouldRescanFolderPlaylistOnFirstAccess(playlistID: UUID) async -> Bool {
+    guard let metadata = loadFolderPlaylistMetadata(for: playlistID),
+          let folderURL = resolvedFolderURL(for: playlistID, metadata: metadata) else {
+      return folderPlaylistTracks[playlistID]?.isEmpty ?? true
+    }
+
+    let latestDate = await Task.detached(priority: .utility) {
+      Self.latestFolderTreeModificationDate(for: folderURL)
+    }.value
+
+    guard let latestDate else {
+      return folderPlaylistTracks[playlistID]?.isEmpty ?? true
+    }
+
+    let baselineDate = folderPlaylistLatestDirectoryModificationDates[playlistID] ?? metadata.lastScannedAt
+    folderPlaylistLatestDirectoryModificationDates[playlistID] = latestDate
+
+    guard let baselineDate else { return true }
+    return latestDate.timeIntervalSince(baselineDate) > 1
   }
 
   private func resolvedFolderURL(
