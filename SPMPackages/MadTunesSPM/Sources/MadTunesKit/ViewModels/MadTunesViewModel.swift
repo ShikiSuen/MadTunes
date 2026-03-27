@@ -181,6 +181,32 @@ final class MadTunesViewModel {
     return base.filter { trackPassesAllFilters($0, tokens: tokens, mode: searchFilterMode) }
   }
 
+  /// Phase 130: When macOS provides both a file URL and its parent directory
+  /// as separate drop items, remove the directory to prevent importing the
+  /// entire folder when the user only dragged individual files.
+  /// If no file-inside-directory overlap exists, all URLs pass through unchanged.
+  static func deduplicateDroppedURLs(_ urls: [URL]) -> [URL] {
+    guard urls.count > 1 else { return urls }
+    var fileURLs: [URL] = []
+    var dirURLs: [URL] = []
+    for url in urls {
+      var isDir: ObjCBool = false
+      if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
+        dirURLs.append(url)
+      } else {
+        fileURLs.append(url)
+      }
+    }
+    guard !dirURLs.isEmpty, !fileURLs.isEmpty else { return urls }
+    // Remove any directory whose path is a prefix of at least one file URL.
+    let filteredDirs = dirURLs.filter { dirURL in
+      let dirPath = dirURL.standardizedFileURL.path
+      let dirPrefix = dirPath.hasSuffix("/") ? dirPath : dirPath + "/"
+      return !fileURLs.contains { $0.standardizedFileURL.path.hasPrefix(dirPrefix) }
+    }
+    return fileURLs + filteredDirs
+  }
+
   func openPredicateEditor(for playlist: Playlist) {
     predicateEditorVM = PredicateEditorViewModel(playlist: playlist, library: library)
     predicateEditorPlaylist = playlist
@@ -340,11 +366,14 @@ final class MadTunesViewModel {
       // Phase 103: Use the returned track IDs directly instead of path matching,
       // which failed when importing folders (folder path != file paths).
       // Phase 126: Skip adding to dynamic playlists (their content is rule-driven).
+      // Phase 130: Also skip folder playlists (their content is folder-scan-driven).
       if let pid = targetPlaylistID,
          pid != library.playlists.first?.id,
-         !importedTrackIDs.isEmpty,
-         library.playlists.first(where: { $0.id == pid })?.kind != .dynamicList {
-        library.addTracks(Set(importedTrackIDs), toPlaylist: pid)
+         !importedTrackIDs.isEmpty {
+        let playlistKind = library.playlists.first(where: { $0.id == pid })?.kind
+        if playlistKind != .dynamicList, playlistKind != .folderList {
+          library.addTracks(Set(importedTrackIDs), toPlaylist: pid)
+        }
       }
 
       // Phase 99: Explicitly refresh display buffers after import completes.
@@ -373,7 +402,11 @@ final class MadTunesViewModel {
         }
       }
       guard !collectedURLs.isEmpty else { return }
-      self.importURLs(collectedURLs)
+      // Phase 130: macOS drag-and-drop may provide both a file URL and its
+      // parent directory URL as separate providers. Deduplicate to prevent
+      // importing the entire directory when the user only dragged a file.
+      let deduplicatedURLs = Self.deduplicateDroppedURLs(collectedURLs)
+      self.importURLs(deduplicatedURLs)
     }
     return true
   }
