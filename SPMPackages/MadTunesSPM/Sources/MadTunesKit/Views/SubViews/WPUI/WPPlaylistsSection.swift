@@ -43,6 +43,18 @@ struct WPPlaylistsSection: View {
                 )
               }
             }
+            if playlist.kind == .folderList {
+              Button {
+                Task {
+                  await vm.library.rescanFolderPlaylist(id: playlist.id)
+                }
+              } label: {
+                Label(
+                  String(localized: "i18n:Sidebar.RescanFolder", bundle: #bundle),
+                  systemImage: "arrow.clockwise"
+                )
+              }
+            }
             Button {
               phoneVM.renamePlaylistName = playlist.name
               phoneVM.renamePlaylistID = playlist.id
@@ -54,7 +66,11 @@ struct WPPlaylistsSection: View {
               if vm.selectedPlaylistID == playlist.id {
                 vm.selectedPlaylistID = vm.library.playlists.first?.id
               }
-              vm.library.removePlaylist(id: playlist.id)
+              if playlist.kind == .folderList {
+                vm.library.removeFolderPlaylist(id: playlist.id)
+              } else {
+                vm.library.removePlaylist(id: playlist.id)
+              }
               phoneVM.popNavigationIfDataInvalid(library: vm.library)
             } label: {
               Label(String(localized: "i18n:Common.Delete", bundle: #bundle), systemImage: "trash")
@@ -113,6 +129,15 @@ struct WPPlaylistsSection: View {
           systemImage: "gearshape.2"
         )
       }
+      Divider()
+      Button {
+        phoneVM.isFolderImporterPresented = true
+      } label: {
+        Label(
+          String(localized: "i18n:Sidebar.NewFolderPlaylist", bundle: #bundle),
+          systemImage: "folder.fill"
+        )
+      }
     } label: {
       HStack(spacing: 14) {
         Image(systemName: "plus")
@@ -132,7 +157,10 @@ struct WPPlaylistsSection: View {
   }
 
   private func playlistRow(_ playlist: Playlist) -> some View {
-    HStack(spacing: 14) {
+    let trackCount = playlist.kind == .folderList
+      ? (vm.library.folderPlaylistTracks[playlist.id]?.count ?? 0)
+      : playlist.trackIDs.count
+    return HStack(spacing: 14) {
       Image(systemName: iconForPlaylist(playlist))
         .font(.system(size: 20))
         .foregroundStyle(phoneVM.wpAccentColor.color)
@@ -142,7 +170,7 @@ struct WPPlaylistsSection: View {
         Text(verbatim: playlist.name)
           .font(.system(size: 17, weight: .semibold))
           .foregroundStyle(.white)
-        Text("i18n:Unit:Track:\(playlist.trackIDs.count)", bundle: #bundle)
+        Text("i18n:Unit:Track:\(trackCount)", bundle: #bundle)
           .font(.system(size: 13))
           .foregroundStyle(.white.opacity(0.5))
       }
@@ -165,6 +193,10 @@ struct WPPlaylistsSection: View {
       if idx == 0 { return "music.note.list" }
       if idx == 1 { return "heart.fill" }
     }
-    return playlist.kind == .dynamicList ? "gearshape.2" : "music.note"
+    switch playlist.kind {
+    case .dynamicList: return "gearshape.2"
+    case .folderList: return "folder.fill"
+    default: return "music.note"
+    }
   }
 }

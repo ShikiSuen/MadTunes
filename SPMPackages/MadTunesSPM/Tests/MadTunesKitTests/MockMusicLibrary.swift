@@ -58,6 +58,26 @@ final class MockMusicLibrary: MusicLibraryProviding {
     playlists.append(Playlist(name: name, kind: .dynamicList))
   }
 
+  // Phase 129: Folder playlist stubs (no filesystem access in tests).
+
+  func addFolderPlaylist(name: String, folderURL: URL) async {
+    playlists.append(Playlist(name: name, kind: .folderList, folderURL: folderURL))
+  }
+
+  func rescanFolderPlaylist(id: UUID) async {}
+
+  func tracksForFolderPlaylist(_ playlist: Playlist) -> [Track] { [] }
+
+  func importTracksFromFolderPlaylist(
+    trackIDs: Set<UUID>,
+    fromFolderPlaylist folderPlaylistID: UUID,
+    toStaticPlaylist targetPlaylistID: UUID
+  ) async {}
+
+  func removeFolderPlaylist(id: UUID) {
+    playlists.removeAll { $0.id == id }
+  }
+
   func removePlaylist(at index: Int) {
     guard playlists.indices.contains(index) else { return }
     playlists.remove(at: index)

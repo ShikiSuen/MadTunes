@@ -66,6 +66,10 @@ public final class MusicLibrary {
   public var isImporting: Bool = false
   public var artworkLoadingKeys: Set<String> = []
 
+  /// Phase 129: Tracks for folder playlists, keyed by playlist ID.
+  /// These tracks are NOT in the main `tracks` array.
+  public var folderPlaylistTracks: [UUID: [Track]] = [:]
+
   public private(set) var importProgress = ImportProgress()
   public private(set) var hasLoadedPersistence = false
 
@@ -281,6 +285,10 @@ public final class MusicLibrary {
 
     loadPersistedPlaylists()
 
+    // Phase 129: Await folder playlist rescans so their tracks are available
+    // for artwork cleanup (prevents incorrect purging of folder-exclusive artwork).
+    await loadFolderPlaylistMetadataAsync()
+
     // Phase 129: Clean up orphaned artwork caches.
     await cleanupOrphanedArtworkCaches()
   }
@@ -417,6 +425,135 @@ public final class MusicLibrary {
   /// Phase 116: Create a dynamic playlist.
   public func addDynamicPlaylist(name: String) {
     playlists.append(Playlist(name: name, kind: .dynamicList))
+    persistAllPlaylists()
+  }
+
+  // MARK: - Folder Playlists (Phase 129)
+
+  /// Phase 129: Create a folder playlist and scan its contents.
+  public func addFolderPlaylist(name: String, folderURL: URL) async {
+    let playlist = Playlist(name: name, kind: .folderList, folderURL: folderURL)
+
+    let accessGranted = folderURL.startAccessingSecurityScopedResource()
+    if accessGranted {
+      activeSecurityScopedURLs.append(folderURL)
+    }
+
+    let bookmarkData = Self.createBookmark(for: folderURL) ?? Data()
+
+    playlists.append(playlist)
+
+    let scannedTracks = await scanFolderForTracks(folderURL)
+    folderPlaylistTracks[playlist.id] = scannedTracks
+
+    persistFolderPlaylistMetadata(
+      playlistID: playlist.id,
+      folderURL: folderURL,
+      bookmarkData: bookmarkData,
+      trackIDs: scannedTracks.map(\.id)
+    )
+    persistAllPlaylists()
+  }
+
+  /// Phase 129: Rescan a folder playlist and update its cached tracks.
+  public func rescanFolderPlaylist(id: UUID) async {
+    guard let index = playlists.firstIndex(where: { $0.id == id }),
+          playlists[index].kind == .folderList else { return }
+
+    let metadata = loadFolderPlaylistMetadata(for: id)
+
+    // Try to resolve URL from bookmark first (for security-scoped access).
+    let folderURL: URL?
+    if let bookmarkData = metadata?.folderBookmarkData,
+       let resolvedURL = Self.resolveBookmark(bookmarkData) {
+      folderURL = resolvedURL
+    } else {
+      folderURL = metadata?.folderURL
+    }
+
+    guard let folderURL else { return }
+
+    // Check if we already have security-scoped access for this URL.
+    let alreadyAccessing = activeSecurityScopedURLs.contains(folderURL)
+    let accessGranted = alreadyAccessing || folderURL.startAccessingSecurityScopedResource()
+    defer {
+      // Only stop access if we started it in this call and it's not in the active list.
+      if accessGranted, !alreadyAccessing, !activeSecurityScopedURLs.contains(folderURL) {
+        folderURL.stopAccessingSecurityScopedResource()
+      }
+    }
+
+    let scannedTracks = await scanFolderForTracks(folderURL)
+    folderPlaylistTracks[id] = scannedTracks
+
+    persistFolderPlaylistMetadata(
+      playlistID: id,
+      folderURL: folderURL,
+      bookmarkData: metadata?.folderBookmarkData ?? Data(),
+      trackIDs: scannedTracks.map(\.id)
+    )
+  }
+
+  /// Phase 129: Get tracks for a folder playlist.
+  /// If cache is empty, triggers an async scan and returns empty array temporarily.
+  public func tracksForFolderPlaylist(_ playlist: Playlist) -> [Track] {
+    guard playlist.kind == .folderList else { return [] }
+
+    if let cached = folderPlaylistTracks[playlist.id], !cached.isEmpty {
+      return cached
+    }
+
+    // Cache is empty - trigger async scan for next time.
+    Task {
+      await rescanFolderPlaylist(id: playlist.id)
+    }
+
+    return []
+  }
+
+  /// Phase 129: Import tracks from a folder playlist to main library and add to target playlist.
+  public func importTracksFromFolderPlaylist(
+    trackIDs: Set<UUID>,
+    fromFolderPlaylist folderPlaylistID: UUID,
+    toStaticPlaylist targetPlaylistID: UUID
+  ) async {
+    guard let folderTracks = folderPlaylistTracks[folderPlaylistID] else { return }
+    let tracksToImport = folderTracks.filter { trackIDs.contains($0.id) }
+
+    var importedTrackIDs: [UUID] = []
+    let existingURLs = Set(tracks.map(\.fileURL))
+
+    for track in tracksToImport {
+      if existingURLs.contains(track.fileURL) {
+        if let existing = tracks.first(where: { $0.fileURL == track.fileURL }) {
+          importedTrackIDs.append(existing.id)
+        }
+      } else {
+        // Phase 129 fix: Create per-file bookmark so the track survives app restart
+        // even if the source folder playlist is later deleted.
+        var importedTrack = track
+        importedTrack.bookmarkData = Self.createBookmark(for: track.fileURL)
+        tracks.append(importedTrack)
+        importedTrackIDs.append(importedTrack.id)
+      }
+    }
+
+    if !playlists.isEmpty {
+      playlists[0].trackIDs = tracks.map(\.id)
+    }
+
+    addTracks(Set(importedTrackIDs), toPlaylist: targetPlaylistID)
+    persistAllTracks()
+  }
+
+  /// Phase 129: Remove a folder playlist and its cached data.
+  public func removeFolderPlaylist(id: UUID) {
+    guard let index = playlists.firstIndex(where: { $0.id == id }),
+          playlists[index].kind == .folderList else { return }
+
+    folderPlaylistTracks.removeValue(forKey: id)
+    playlists.remove(at: index)
+    deleteFolderPlaylistMetadata(for: id)
     persistAllPlaylists()
   }
 
@@ -584,6 +721,10 @@ public final class MusicLibrary {
   }
 
   public func tracks(for playlist: Playlist) -> [Track] {
+    // Phase 129: Folder playlists have their own track storage.
+    if playlist.kind == .folderList {
+      return tracksForFolderPlaylist(playlist)
+    }
     // Preserve the order defined by the playlist (trackIDs array).
     // This allows playlist-specific ordering (e.g. drag-reorder) to be reflected
     // in views that display a flat track list.
@@ -720,11 +861,91 @@ public final class MusicLibrary {
   }
 
   /// Phase 129: Remove artwork cache entries that no longer have matching albums.
+  /// Includes both main library and folder playlist tracks to avoid purging
+  /// artwork that belongs exclusively to folder-playlist albums.
   private func cleanupOrphanedArtworkCaches() async {
-    let activeAlbumKeys = Set(
-      tracks.map { albumKey(title: $0.albumTitle, artist: $0.albumArtist) }
-    )
+    var allAlbumKeys = tracks.map { albumKey(title: $0.albumTitle, artist: $0.albumArtist) }
+    for (_, folderTracks) in folderPlaylistTracks {
+      allAlbumKeys.append(contentsOf: folderTracks.map { albumKey(title: $0.albumTitle, artist: $0.albumArtist) })
+    }
+    let activeAlbumKeys = Set(allAlbumKeys)
     await _artworkCacheStore?.cleanupOrphanedCaches(activeAlbumKeys: activeAlbumKeys)
+  }
+
+  // MARK: - Folder Playlist Helpers
+
+  private func scanFolderForTracks(_ folderURL: URL) async -> [Track] {
+    let fileURLs = scanDirectory(url: folderURL).filter { SupportedFormats.isSupported($0) }
+    var result: [Track] = []
+
+    for fileURL in fileURLs {
+      let metadata = await MetadataReader.readTrack(from: fileURL)
+      result.append(metadata.track)
+    }
+
+    return await result.selfSortByDefault()
+  }
+
+  private func persistFolderPlaylistMetadata(
+    playlistID: UUID,
+    folderURL: URL,
+    bookmarkData: Data,
+    trackIDs: [UUID]
+  ) {
+    guard let container = _modelContainer else { return }
+    let context = ModelContext(container)
+
+    let trackIDsData = (try? JSONEncoder().encode(trackIDs)) ?? Data()
+
+    var descriptor = FetchDescriptor<PersistedFolderPlaylistMetadata>(
+      predicate: #Predicate { $0.playlistID == playlistID }
+    )
+    descriptor.fetchLimit = 1
+
+    if let existing = try? context.fetch(descriptor).first {
+      existing.folderURLString = folderURL.absoluteString
+      existing.folderBookmarkData = bookmarkData
+      existing.cachedTrackIDsData = trackIDsData
+      existing.lastScannedAt = Date()
+    } else {
+      let metadata = PersistedFolderPlaylistMetadata(
+        playlistID: playlistID,
+        folderURLString: folderURL.absoluteString,
+        folderBookmarkData: bookmarkData,
+        cachedTrackIDsData: trackIDsData,
+        lastScannedAt: Date()
+      )
+      context.insert(metadata)
+    }
+
+    try? context.save()
+  }
+
+  private func loadFolderPlaylistMetadata(for playlistID: UUID) -> PersistedFolderPlaylistMetadata? {
+    guard let container = _modelContainer else { return nil }
+    let context = ModelContext(container)
+
+    var descriptor = FetchDescriptor<PersistedFolderPlaylistMetadata>(
+      predicate: #Predicate { $0.playlistID == playlistID }
+    )
+    descriptor.fetchLimit = 1
+
+    return try? context.fetch(descriptor).first
+  }
+
+  private func deleteFolderPlaylistMetadata(for playlistID: UUID) {
+    guard let container = _modelContainer else { return }
+    let context = ModelContext(container)
+
+    var descriptor = FetchDescriptor<PersistedFolderPlaylistMetadata>(
+      predicate: #Predicate { $0.playlistID == playlistID }
+    )
+    descriptor.fetchLimit = 1
+
+    if let existing = try? context.fetch(descriptor).first {
+      context.delete(existing)
+      try? context.save()
+    }
   }
 
   /// Persist all current tracks to SwiftData (incremental update).
@@ -966,6 +1187,50 @@ public final class MusicLibrary {
     )
     if previousDynamicTrackIDs != currentDynamicTrackIDs {
       persistAllPlaylists()
+    }
+
+    // Phase 129: Folder playlist metadata is loaded asynchronously via
+    // loadFolderPlaylistMetadataAsync() in loadPersistedData() instead.
+  }
+
+  /// Phase 129: Load folder playlist metadata from SwiftData and await rescans.
+  /// Awaiting rescans ensures folderPlaylistTracks is populated before artwork cleanup.
+  private func loadFolderPlaylistMetadataAsync() async {
+    guard let container = _modelContainer else { return }
+    let context = ModelContext(container)
+    let descriptor = FetchDescriptor<PersistedFolderPlaylistMetadata>()
+    guard let allMetadata = try? context.fetch(descriptor) else { return }
+
+    for metadata in allMetadata {
+      guard let playlist = playlists.first(where: { $0.id == metadata.playlistID }),
+            playlist.kind == .folderList else { continue }
+
+      // Restore folder URL and bookmark to Playlist struct.
+      if let idx = playlists.firstIndex(where: { $0.id == metadata.playlistID }) {
+        playlists[idx].folderURL = metadata.folderURL
+        playlists[idx].folderBookmarkData = metadata.folderBookmarkData
+      }
+
+      // Restore security-scoped access.
+      let folderURL: URL?
+      if !metadata.folderBookmarkData.isEmpty,
+         let resolved = Self.resolveBookmark(metadata.folderBookmarkData) {
+        folderURL = resolved
+      } else if let url = metadata.folderURL {
+        folderURL = url
+      } else {
+        folderURL = nil
+      }
+
+      guard let folderURL else { continue }
+
+      // Start accessing security-scoped resource.
+      if folderURL.startAccessingSecurityScopedResource() {
+        activeSecurityScopedURLs.append(folderURL)
+      }
+
+      // Await rescan to ensure tracks are loaded before artwork cleanup.
+      await rescanFolderPlaylist(id: metadata.playlistID)
     }
   }
 

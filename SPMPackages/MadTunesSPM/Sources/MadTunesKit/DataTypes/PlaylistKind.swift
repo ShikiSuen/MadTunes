@@ -10,6 +10,8 @@ public enum PlaylistKind: String, Sendable, Codable, CaseIterable {
   case system
   /// 使用者手動管理的靜態播放清單
   case staticList
-  /// 未來：規則驅動的動態播放清單（暫不實作）
+  /// 規則驅動的動態播放清單
   case dynamicList
+  /// Phase 129: 路徑播放清單，曲目來自指定資料夾
+  case folderList
 }

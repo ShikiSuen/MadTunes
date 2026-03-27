@@ -229,7 +229,7 @@ struct WPPlaylistDetailView: View {
               .foregroundStyle(.white)
             Spacer()
           }
-          Text(verbatim: "\(currentPlaylist.trackIDs.count) tracks")
+          Text(verbatim: "\(playlistTracks.count) tracks")
             .font(.system(size: 14))
             .foregroundStyle(.white.opacity(0.5))
 
@@ -280,6 +280,27 @@ struct WPPlaylistDetailView: View {
                 Label(
                   String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
                   systemImage: "gearshape.2"
+                )
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .labelStyle(.iconOnly)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Color.white.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+              }
+              .buttonStyle(.plain)
+            }
+
+            if currentPlaylist.kind == .folderList {
+              Button {
+                Task {
+                  await vm.library.rescanFolderPlaylist(id: currentPlaylist.id)
+                }
+              } label: {
+                Label(
+                  String(localized: "i18n:Sidebar.RescanFolder", bundle: #bundle),
+                  systemImage: "arrow.clockwise"
                 )
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)

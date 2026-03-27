@@ -469,6 +469,10 @@ final class MadTunesViewModel {
     if let playlistID = selectedPlaylistID,
        let playlist = library.playlists.first(where: { $0.id == playlistID }),
        playlist.id != library.playlists.first?.id {
+      // Phase 129: Folder playlists use their own cached tracks.
+      if playlist.kind == .folderList {
+        return library.tracksForFolderPlaylist(playlist)
+      }
       // Phase 117: Dynamic playlists use predicate-evaluated trackIDs cache.
       if playlist.kind == .dynamicList {
         return library.tracks(for: playlist)

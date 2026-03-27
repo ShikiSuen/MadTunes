@@ -50,6 +50,7 @@ final class PersistedPlaylist {
   }
 
   /// 轉換為應用層的 Playlist 模型
+  /// Note: folderURL and folderBookmarkData are loaded separately from PersistedFolderPlaylistMetadata
   func toPlaylist() -> Playlist {
     Playlist(
       id: id,

@@ -34,9 +34,9 @@ struct SidebarView: View {
       }
 
       Section {
-        // Phase 117: All user playlists (dynamic + static) in one list with drag-reorder.
+        // Phase 117: All user playlists (dynamic + static + folder) in one list with drag-reorder.
         ForEach(userPlaylists) { playlist in
-          Label(playlist.name, systemImage: playlist.kind == .dynamicList ? "gearshape.2" : "music.note.list")
+          Label(playlist.name, systemImage: playlistIcon(for: playlist))
             .tag(playlist.id)
             .contextMenu {
               if playlist.kind == .dynamicList {
@@ -46,6 +46,18 @@ struct SidebarView: View {
                   Label(
                     String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
                     systemImage: "slider.horizontal.3"
+                  )
+                }
+              }
+              if playlist.kind == .folderList {
+                Button {
+                  Task {
+                    await library.rescanFolderPlaylist(id: playlist.id)
+                  }
+                } label: {
+                  Label(
+                    String(localized: "i18n:Sidebar.RescanFolder", bundle: #bundle),
+                    systemImage: "arrow.clockwise"
                   )
                 }
               }
@@ -59,7 +71,11 @@ struct SidebarView: View {
                 if selectedPlaylistID == playlist.id {
                   selectedPlaylistID = library.playlists.first?.id
                 }
-                library.removePlaylist(id: playlist.id)
+                if playlist.kind == .folderList {
+                  library.removeFolderPlaylist(id: playlist.id)
+                } else {
+                  library.removePlaylist(id: playlist.id)
+                }
               } label: {
                 Label(String(localized: "i18n:Common.Delete", bundle: #bundle), systemImage: "trash")
               }
@@ -72,7 +88,11 @@ struct SidebarView: View {
             if selectedPlaylistID == playlist.id {
               selectedPlaylistID = library.playlists.first?.id
             }
-            library.removePlaylist(id: playlist.id)
+            if playlist.kind == .folderList {
+              library.removeFolderPlaylist(id: playlist.id)
+            } else {
+              library.removePlaylist(id: playlist.id)
+            }
           }
         }
         .onMove { source, destination in
@@ -117,6 +137,8 @@ struct SidebarView: View {
   // Alert state — shared across both "New Playlist" and "Rename"
   @State private var alertKind: AlertKind?
   @State private var alertText = ""
+  /// Phase 129: State for folder picker sheet.
+  @State private var showFolderPicker = false
 
   private var library: MusicLibrary
 
@@ -182,6 +204,17 @@ struct SidebarView: View {
           systemImage: "music.note.list"
         )
       }
+
+      Divider()
+
+      Button {
+        showFolderPicker = true
+      } label: {
+        Label(
+          String(localized: "i18n:Sidebar.NewFolderPlaylist", bundle: #bundle),
+          systemImage: "folder.fill"
+        )
+      }
     } label: {
       Label(
         String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle),
@@ -193,6 +226,32 @@ struct SidebarView: View {
     .menuIndicator(.hidden)
     .buttonStyle(.bordered)
     .tint(.primary)
+    .fileImporter(
+      isPresented: $showFolderPicker,
+      allowedContentTypes: [.folder],
+      allowsMultipleSelection: false
+    ) { result in
+      switch result {
+      case let .success(urls):
+        guard let folderURL = urls.first else { return }
+        // addFolderPlaylist manages security-scoped access internally.
+        let playlistName = folderURL.deletingPathExtension().lastPathComponent
+        Task {
+          await library.addFolderPlaylist(name: playlistName, folderURL: folderURL)
+        }
+      case .failure:
+        break
+      }
+    }
+  }
+
+  private func playlistIcon(for playlist: Playlist) -> String {
+    switch playlist.kind {
+    case .system: return "music.note.list"
+    case .staticList: return "music.note.list"
+    case .dynamicList: return "gearshape.2"
+    case .folderList: return "folder.fill"
+    }
   }
 
   private func commitAlert() {

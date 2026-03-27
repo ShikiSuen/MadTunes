@@ -13,7 +13,12 @@ enum PersistedSchemaV2: VersionedSchema {
   static let versionIdentifier: Schema.Version = .init(2, 0, 0)
 
   static var models: [any PersistentModel.Type] {
-    [PersistedTrack.self, PersistedPlaylist.self, PersistedSourceBookmark.self]
+    [
+      PersistedTrack.self,
+      PersistedPlaylist.self,
+      PersistedSourceBookmark.self,
+      PersistedFolderPlaylistMetadata.self,
+    ]
   }
 }
 

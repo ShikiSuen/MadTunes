@@ -175,6 +175,12 @@ struct ContentAvailabilityOverlay: View {
     return playlist.id == vm.library.playlists[1].id
   }
 
+  /// Phase 129: 是否為 Folder Playlist 頁面。
+  private var isFolderPlaylistPage: Bool {
+    guard let playlist = selectedPlaylist else { return false }
+    return playlist.kind == .folderList
+  }
+
   /// Phase 51: 是否有活動的篩選條件（搜尋文字或 Column Browser 篩選）。
   private var hasActiveFilters: Bool {
     let hasSearchText = !searchTokens(from: vm.searchText).isEmpty
@@ -186,6 +192,9 @@ struct ContentAvailabilityOverlay: View {
     if isFavoritesPage {
       return String(localized: "i18n:EmptyState.NoFavorites", bundle: #bundle)
     }
+    if isFolderPlaylistPage {
+      return String(localized: "i18n:EmptyState.EmptyFolderPlaylist", bundle: #bundle)
+    }
     return String(localized: "i18n:EmptyState.EmptyPlaylist", bundle: #bundle)
   }
 
@@ -193,12 +202,18 @@ struct ContentAvailabilityOverlay: View {
     if isFavoritesPage {
       return "heart.slash"
     }
+    if isFolderPlaylistPage {
+      return "folder"
+    }
     return "music.note"
   }
 
   private var playlistEmptyDescription: String {
     if isFavoritesPage {
       return String(localized: "i18n:EmptyState.FavoritesDescription", bundle: #bundle)
+    }
+    if isFolderPlaylistPage {
+      return String(localized: "i18n:EmptyState.FolderPlaylistDescription", bundle: #bundle)
     }
     if let name = selectedPlaylist?.name {
       return String(

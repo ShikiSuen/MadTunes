@@ -146,6 +146,23 @@ struct WPMainView: View {
           vm.importURLs(urls)
         }
       }
+      .fileImporter(
+        isPresented: $phoneVM.isFolderImporterPresented,
+        allowedContentTypes: [.folder],
+        allowsMultipleSelection: false
+      ) { result in
+        switch result {
+        case let .success(urls):
+          guard let folderURL = urls.first else { return }
+          // addFolderPlaylist manages security-scoped access internally.
+          let playlistName = folderURL.deletingPathExtension().lastPathComponent
+          Task {
+            await vm.library.addFolderPlaylist(name: playlistName, folderURL: folderURL)
+          }
+        case .failure:
+          break
+        }
+      }
     }
     // Phase 77: Alerts and sheets moved outside NavigationStack so they present
     // immediately regardless of navigation depth (fixes delayed alert on pop-back).

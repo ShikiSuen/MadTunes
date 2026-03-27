@@ -43,6 +43,20 @@ public protocol MusicLibraryProviding: AnyObject {
   func addPlaylist(name: String)
   /// Phase 116: Create a dynamic playlist.
   func addDynamicPlaylist(name: String)
+  /// Phase 129: Create a folder playlist.
+  func addFolderPlaylist(name: String, folderURL: URL) async
+  /// Phase 129: Rescan a folder playlist.
+  func rescanFolderPlaylist(id: UUID) async
+  /// Phase 129: Get tracks for a folder playlist.
+  func tracksForFolderPlaylist(_ playlist: Playlist) -> [Track]
+  /// Phase 129: Import tracks from folder playlist to main library.
+  func importTracksFromFolderPlaylist(
+    trackIDs: Set<UUID>,
+    fromFolderPlaylist folderPlaylistID: UUID,
+    toStaticPlaylist targetPlaylistID: UUID
+  ) async
+  /// Phase 129: Remove a folder playlist.
+  func removeFolderPlaylist(id: UUID)
   func removePlaylist(at index: Int)
   func removePlaylist(id: UUID)
   func renamePlaylist(id: UUID, newName: String)

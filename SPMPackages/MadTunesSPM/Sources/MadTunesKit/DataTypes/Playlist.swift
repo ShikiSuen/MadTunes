@@ -13,7 +13,9 @@ public struct Playlist: Identifiable, Hashable, Sendable {
     trackIDs: [UUID] = [],
     kind: PlaylistKind = .staticList,
     compoundSortData: Data = Data(),
-    predicateData: Data = Data()
+    predicateData: Data = Data(),
+    folderURL: URL? = nil,
+    folderBookmarkData: Data? = nil
   ) {
     self.id = id
     self.name = name
@@ -21,6 +23,8 @@ public struct Playlist: Identifiable, Hashable, Sendable {
     self.kind = kind
     self.compoundSortData = compoundSortData
     self.predicateData = predicateData
+    self.folderURL = folderURL
+    self.folderBookmarkData = folderBookmarkData
   }
 
   // MARK: Public
@@ -35,6 +39,10 @@ public struct Playlist: Identifiable, Hashable, Sendable {
   /// Phase 117: JSON-encoded PlaylistPredicate for dynamic playlists.
   /// Empty data means no predicate configured (dynamic playlist shows empty).
   public var predicateData: Data
+  /// Phase 129: Folder URL for folderList playlists.
+  public var folderURL: URL?
+  /// Phase 129: Security-scoped bookmark data for the folder URL.
+  public var folderBookmarkData: Data?
 
   /// 是否為系統播放清單（不可刪除）
   public var isSystemPlaylist: Bool {
