@@ -577,6 +577,7 @@ public final class MusicLibrary {
           playlists[index].kind == .folderList else { return }
 
     folderPlaylistTracks.removeValue(forKey: id)
+    purgePlaylistScopedAlbumIDs(playlistID: id)
     playlists.remove(at: index)
     deleteFolderPlaylistMetadata(for: id)
     persistAllPlaylists()
@@ -585,7 +586,9 @@ public final class MusicLibrary {
   public func removePlaylist(at index: Int) {
     // 只允許刪除非系統播放清單（index > 1，保留 All Music 和 Favorites）
     guard index > 1, index < playlists.count else { return }
+    let removedID = playlists[index].id
     playlists.remove(at: index)
+    purgePlaylistScopedAlbumIDs(playlistID: removedID)
     persistAllPlaylists()
   }
 
@@ -772,7 +775,11 @@ public final class MusicLibrary {
     }
 
     return map.map { key, value in
-      let id = stableAlbumID(for: key)
+      // Phase 130 rev6: Playlist-scoped album IDs.
+      // The same album key in different playlists must not share one UUID,
+      // otherwise cross-playlist state/view identity can bleed.
+      let scopedKey = playlistScopedAlbumKey(albumKey: key, playlistID: playlist.id)
+      let id = stableAlbumID(for: scopedKey)
       return Album(
         id: id,
         title: value.title,
@@ -883,6 +890,10 @@ public final class MusicLibrary {
     #else
     return try? url.bookmarkData()
     #endif
+  }
+
+  private func playlistScopedAlbumKey(albumKey: String, playlistID: UUID) -> String {
+    "playlist:\(playlistID.uuidString):::\(albumKey)"
   }
 
   /// Phase 129: Remove artwork cache entries that no longer have matching albums.
@@ -1311,6 +1322,11 @@ public final class MusicLibrary {
     let id = UUID()
     albumIDMap[key] = id
     return id
+  }
+
+  private func purgePlaylistScopedAlbumIDs(playlistID: UUID) {
+    let prefix = "playlist:" + playlistID.uuidString + ":::"
+    albumIDMap = albumIDMap.filter { !$0.key.hasPrefix(prefix) }
   }
 
   private func scanDirectory(url: URL) -> [URL] {

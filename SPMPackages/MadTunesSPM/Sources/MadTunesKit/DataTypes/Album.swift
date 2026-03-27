@@ -78,8 +78,14 @@ public struct Album: Identifiable, Sendable {
 // MARK: Hashable
 
 extension Album: Hashable {
-  public func hash(into hasher: inout Hasher) { hasher.combine(id) }
-  public static func == (lhs: Album, rhs: Album) -> Bool { lhs.id == rhs.id }
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(id)
+    hasher.combine(allTrackIDsSet)
+  }
+
+  public static func == (lhs: Album, rhs: Album) -> Bool {
+    lhs.id == rhs.id && lhs.allTrackIDsSet == rhs.allTrackIDsSet
+  }
 }
 
 // MARK: - AlbumSortOrder
