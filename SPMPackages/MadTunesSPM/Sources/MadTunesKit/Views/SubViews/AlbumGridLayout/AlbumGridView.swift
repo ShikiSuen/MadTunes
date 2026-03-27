@@ -158,83 +158,92 @@ struct AlbumGridView: View {
 
   @ViewBuilder private var mainContent: some View {
     ScrollViewReader { proxy in
-      let rows = gridVM.displayedAlbums.chunked(into: columnCount)
-      ScrollView {
-        LazyVStack(alignment: .leading, spacing: spacing) {
-          ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-            albumRow(row, columnCount: columnCount)
-              .drawingGroup()
+      GeometryReader { viewport in
+        let rows = gridVM.displayedAlbums.chunked(into: columnCount)
+        ScrollView {
+          LazyVStack(alignment: .leading, spacing: spacing) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+              albumRow(row, columnCount: columnCount)
+                .drawingGroup()
 
-            // Expanded detail for the expanded album (if it belongs to this row).
-            if !gridVM.legacyHardwareMode, let expandedAlbum = row.first(where: { $0.id == gridVM.expandedAlbumID }) {
-              ExpandedAlbumView(
-                album: expandedAlbum,
-                showBackground: true,
-                currentTrackID: currentTrackID,
-                containerWidth: canvasWidth,
-                selectedTrackIDs: Bindable(vm).selectedTrackIDs,
-                onClose: { gridVM.expandedAlbumID = nil }
-              )
-              .drawingGroup()
-              .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
-              .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
-              .onAppear { gridVM.expandedAlbumWasInView = true }
-              .onDisappear { gridVM.expandedAlbumWasInView = false }
+              // Expanded detail for the expanded album (if it belongs to this row).
+              if !gridVM.legacyHardwareMode, let expandedAlbum = row.first(where: { $0.id == gridVM.expandedAlbumID }) {
+                ExpandedAlbumView(
+                  album: expandedAlbum,
+                  showBackground: true,
+                  currentTrackID: currentTrackID,
+                  containerWidth: canvasWidth,
+                  selectedTrackIDs: Bindable(vm).selectedTrackIDs,
+                  onClose: { gridVM.expandedAlbumID = nil }
+                )
+                .drawingGroup()
+                .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
+                .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
+                .onAppear { gridVM.expandedAlbumWasInView = true }
+                .onDisappear { gridVM.expandedAlbumWasInView = false }
+              }
+            }
+          }
+          // Phase 131: Ensure content fills viewport so bottom blank area
+          // remains inside albumGrid coordinate space for rubber-band selection.
+          .padding(spacing)
+          .frame(
+            maxWidth: .infinity,
+            minHeight: max(viewport.size.height, 0),
+            alignment: .topLeading
+          )
+          .coordinateSpace(name: "albumGrid")
+          .onPreferenceChange(AlbumFramePreferenceKey.self) { frames in
+            gridVM.albumFrames = frames
+          }
+          .background {
+            rubberBandDragLayer
+          }
+          .overlay {
+            rubberBandRectOverlay
+          }
+          // 對整個 AlbumGridView 的 drawingGroup 對 Intel Mac 負擔太大，所以拆除。
+          // 但對每個 Row 仍舊有必要施加，否則在 Apple Silicon Mac 上的 FPS 會從 full (60fps) 掉到 30fps 以下，非常噁心。
+          // 相關的實作已經套用到上文了，施加對象是 albumRow 與 ExpandedAlbumView 副本。
+        }
+        .scrollContentBackground(.hidden)
+        // Phase 96: expandedAlbumID scroll (data scheduling moved to ViewModel).
+        // Phase 98: In Intel Mac mode, skip auto-scroll to ExpandedAlbumView;
+        // scrolling to AlbumGridItemView is handled in the safeAreaInset onChange.
+        .onChange(of: gridVM.expandedAlbumID) { _, newValue in
+          guard let newValue else { return }
+          gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: newValue)
+          guard !gridVM.legacyHardwareMode else { return }
+          gridVM.proxyScrollDebouncer.debounceOnMain {
+            withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
+              proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
             }
           }
         }
-        .padding(spacing)
-        .coordinateSpace(name: "albumGrid")
-        .onPreferenceChange(AlbumFramePreferenceKey.self) { frames in
-          gridVM.albumFrames = frames
-        }
-        .background {
-          rubberBandDragLayer
-        }
-        .overlay {
-          rubberBandRectOverlay
-        }
-        // 對整個 AlbumGridView 的 drawingGroup 對 Intel Mac 負擔太大，所以拆除。
-        // 但對每個 Row 仍舊有必要施加，否則在 Apple Silicon Mac 上的 FPS 會從 full (60fps) 掉到 30fps 以下，非常噁心。
-        // 相關的實作已經套用到上文了，施加對象是 albumRow 與 ExpandedAlbumView 副本。
-      }
-      .scrollContentBackground(.hidden)
-      // Phase 96: expandedAlbumID scroll (data scheduling moved to ViewModel).
-      // Phase 98: In Intel Mac mode, skip auto-scroll to ExpandedAlbumView;
-      // scrolling to AlbumGridItemView is handled in the safeAreaInset onChange.
-      .onChange(of: gridVM.expandedAlbumID) { _, newValue in
-        guard let newValue else { return }
-        gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: newValue)
-        guard !gridVM.legacyHardwareMode else { return }
-        gridVM.proxyScrollDebouncer.debounceOnMain {
-          withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-            proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
+        .onChange(of: canvasWidth) { oldWidth, newWidth in
+          guard oldWidth != newWidth, let expandedID = gridVM.expandedAlbumID else { return }
+          let wasVisible = gridVM.expandedAlbumWasInView
+          guard wasVisible else { return }
+          gridVM.proxyScrollDebouncer.debounceOnMain {
+            withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
+              proxy.scrollTo("\(expandedID)_\(Int(newWidth))")
+            }
           }
         }
-      }
-      .onChange(of: canvasWidth) { oldWidth, newWidth in
-        guard oldWidth != newWidth, let expandedID = gridVM.expandedAlbumID else { return }
-        let wasVisible = gridVM.expandedAlbumWasInView
-        guard wasVisible else { return }
-        gridVM.proxyScrollDebouncer.debounceOnMain {
-          withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-            proxy.scrollTo("\(expandedID)_\(Int(newWidth))")
+        .onChange(of: gridVM.scrollToAlbumID) { _, newValue in
+          guard let albumID = newValue else { return }
+          gridVM.scrollToAlbumID = nil
+          if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
+            gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: albumID)
           }
-        }
-      }
-      .onChange(of: gridVM.scrollToAlbumID) { _, newValue in
-        guard let albumID = newValue else { return }
-        gridVM.scrollToAlbumID = nil
-        if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
-          gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: albumID)
-        }
-        let rows = albums.chunked(into: columnCount)
-        guard let rowIndex = rows.firstIndex(
-          where: { $0.contains { $0.id == albumID } }
-        ) else { return }
-        gridVM.proxyScrollDebouncer.debounceOnMain {
-          withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-            proxy.scrollTo(rowIndex, anchor: gridVM.legacyHardwareMode ? .bottom : .center)
+          let rows = albums.chunked(into: columnCount)
+          guard let rowIndex = rows.firstIndex(
+            where: { $0.contains { $0.id == albumID } }
+          ) else { return }
+          gridVM.proxyScrollDebouncer.debounceOnMain {
+            withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
+              proxy.scrollTo(rowIndex, anchor: gridVM.legacyHardwareMode ? .bottom : .center)
+            }
           }
         }
       }
