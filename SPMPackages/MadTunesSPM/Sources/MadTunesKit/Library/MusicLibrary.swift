@@ -457,6 +457,13 @@ public final class MusicLibrary {
 
   /// Phase 129: Create a folder playlist and scan its contents.
   public func addFolderPlaylist(name: String, folderURL: URL) async {
+    // Phase 132: If a folder playlist for the same path already exists,
+    // do not create duplicates. Refresh existing content immediately.
+    if let existingID = existingFolderPlaylistID(for: folderURL) {
+      await rescanFolderPlaylist(id: existingID)
+      return
+    }
+
     let playlist = Playlist(name: name, kind: .folderList, folderURL: folderURL)
 
     let accessGranted = folderURL.startAccessingSecurityScopedResource()
@@ -486,17 +493,7 @@ public final class MusicLibrary {
           playlists[index].kind == .folderList else { return }
 
     let metadata = loadFolderPlaylistMetadata(for: id)
-
-    // Try to resolve URL from bookmark first (for security-scoped access).
-    let folderURL: URL?
-    if let bookmarkData = metadata?.folderBookmarkData,
-       let resolvedURL = Self.resolveBookmark(bookmarkData) {
-      folderURL = resolvedURL
-    } else {
-      folderURL = metadata?.folderURL
-    }
-
-    guard let folderURL else { return }
+    guard let folderURL = resolvedFolderURL(for: id, metadata: metadata) else { return }
 
     // Check if we already have security-scoped access for this URL.
     let alreadyAccessing = activeSecurityScopedURLs.contains(folderURL)
@@ -892,6 +889,10 @@ public final class MusicLibrary {
     #endif
   }
 
+  private nonisolated static func normalizedFolderPath(_ url: URL) -> String {
+    url.standardizedFileURL.resolvingSymlinksInPath().path
+  }
+
   private func playlistScopedAlbumKey(albumKey: String, playlistID: UUID) -> String {
     "playlist:\(playlistID.uuidString):::\(albumKey)"
   }
@@ -909,6 +910,39 @@ public final class MusicLibrary {
   }
 
   // MARK: - Folder Playlist Helpers
+
+  private func existingFolderPlaylistID(for folderURL: URL) -> UUID? {
+    let candidatePath = Self.normalizedFolderPath(folderURL)
+
+    for playlist in playlists where playlist.kind == .folderList {
+      guard let existingURL = resolvedFolderURL(for: playlist.id) else { continue }
+      if Self.normalizedFolderPath(existingURL) == candidatePath {
+        return playlist.id
+      }
+    }
+
+    return nil
+  }
+
+  private func resolvedFolderURL(
+    for playlistID: UUID,
+    metadata: PersistedFolderPlaylistMetadata? = nil
+  )
+    -> URL? {
+    let metadata = metadata ?? loadFolderPlaylistMetadata(for: playlistID)
+
+    if let bookmarkData = metadata?.folderBookmarkData,
+       !bookmarkData.isEmpty,
+       let resolvedURL = Self.resolveBookmark(bookmarkData) {
+      return resolvedURL
+    }
+
+    if let folderURL = metadata?.folderURL {
+      return folderURL
+    }
+
+    return playlists.first(where: { $0.id == playlistID })?.folderURL
+  }
 
   private func scanFolderForTracks(_ folderURL: URL) async -> [Track] {
     let fileURLs = scanDirectory(url: folderURL).filter { SupportedFormats.isSupported($0) }
