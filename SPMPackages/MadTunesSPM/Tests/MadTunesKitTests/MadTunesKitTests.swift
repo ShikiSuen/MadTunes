@@ -384,6 +384,68 @@ struct AlbumGridViewModelTests {
   }
 }
 
+// MARK: - Phase130RegressionTests
+
+@Suite("Phase 130 Regressions")
+struct Phase130RegressionTests {
+  @Test("albums(for:) uses playlist-scoped album IDs")
+  func playlistScopedAlbumIDs() {
+    let library = MusicLibrary()
+    let t1 = makeTrack(title: "D", albumTitle: "C", albumArtist: "Band", trackNumber: 1)
+    let t2 = makeTrack(title: "E", albumTitle: "C", albumArtist: "Band", trackNumber: 2)
+
+    library.tracks = [t1, t2]
+    library.playlists[0].trackIDs = [t1.id, t2.id]
+
+    library.addPlaylist(name: "B")
+    guard let playlistB = library.playlists.last else {
+      Issue.record("Failed to create static playlist B")
+      return
+    }
+    library.addTracks([t1.id], toPlaylist: playlistB.id)
+
+    guard let updatedPlaylistB = library.playlists.first(where: { $0.id == playlistB.id }) else {
+      Issue.record("Failed to fetch updated playlist B")
+      return
+    }
+
+    let allMusicAlbum = library.albums(for: library.playlists[0]).first
+    let playlistBAlbum = library.albums(for: updatedPlaylistB).first
+
+    #expect(allMusicAlbum != nil)
+    #expect(playlistBAlbum != nil)
+    #expect(allMusicAlbum?.tracks.count == 2)
+    #expect(playlistBAlbum?.tracks.count == 1)
+    #expect(allMusicAlbum?.id != playlistBAlbum?.id)
+  }
+
+  @Test("onPlaylistSwitched clears display/search buffers")
+  func playlistSwitchClearsDisplayBuffers() {
+    let vm = MadTunesViewModel.shared
+
+    vm.searchText = "phase130"
+    vm.isSearching = true
+    vm.displayedTracksCache = [makeTrack(title: "CachedTrack")]
+
+    let cachedAlbum = Album(
+      title: "CachedAlbum",
+      artist: "CachedArtist",
+      tracks: [makeTrack(title: "CachedTrack")]
+    )
+    vm.gridVM.displayedAlbumsCache = [cachedAlbum]
+    vm.gridVM.displayedAlbums = [cachedAlbum]
+    vm.tableVM.displayedTracks = [makeTrack(title: "CachedTableTrack")]
+
+    vm.onPlaylistSwitched()
+
+    #expect(!vm.isSearching)
+    #expect(vm.displayedTracksCache.isEmpty)
+    #expect(vm.gridVM.displayedAlbumsCache.isEmpty)
+    #expect(vm.gridVM.displayedAlbums.isEmpty)
+    #expect(vm.tableVM.displayedTracks.isEmpty)
+  }
+}
+
 // MARK: - Phase96ObservationTests
 
 @Suite("Phase 96: ViewModel Observation Migration")
