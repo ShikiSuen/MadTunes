@@ -185,16 +185,17 @@ final class AlbumGridViewModel {
       let largeUpdateThreshold = 2_000
 
       func isSameIDSequence(_ a: [Album], _ b: [Album]) -> Bool {
-        guard a.count == b.count else { return false }
-        for (aAlbum, bAlbum) in zip(a, b) where aAlbum.id != bAlbum.id {
-          return false
-        }
-        return true
+        // Phase 130: Album.== now includes allTrackIDsSet, so Array.==
+        // correctly detects both ID and track-content changes.
+        a == b
       }
 
       func hasPrefixIDs(prefix: [Album], full: [Album]) -> Bool {
-        guard prefix.count <= full.count else { return false }
-        for (aAlbum, bAlbum) in zip(prefix, full) where aAlbum.id != bAlbum.id {
+        // Phase 130: Use strict less-than so equal-length arrays with
+        // different track contents always fall through to the replacement
+        // path (isSameIDSequence already handles the truly-identical case).
+        guard prefix.count < full.count else { return false }
+        for (aAlbum, bAlbum) in zip(prefix, full) where aAlbum != bAlbum {
           return false
         }
         return true
