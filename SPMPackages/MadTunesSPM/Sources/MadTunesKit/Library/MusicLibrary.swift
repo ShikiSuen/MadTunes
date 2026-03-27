@@ -344,7 +344,6 @@ public final class MusicLibrary {
     }
 
     // 4. Start loading.
-    artworkAttemptedKeys.insert(key)
     artworkLoadingKeys.insert(key)
 
     var trackURL = sampleTrackURL
@@ -389,7 +388,12 @@ public final class MusicLibrary {
       )
     }
 
-    // 5. Resume all suspended callers.
+    // 5. Mark as attempted only after loading completes (success or failure).
+    // This allows retry if the first attempt failed due to transient issues
+    // (sandbox access, file temporarily unreadable, etc.).
+    artworkAttemptedKeys.insert(key)
+
+    // 6. Resume all suspended callers.
     artworkLoadingKeys.remove(key)
     if let waiters = artworkLoadingContinuations.removeValue(forKey: key) {
       for waiter in waiters {
