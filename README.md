@@ -66,6 +66,8 @@ I used Foobar 2000 on macOS for a long time. However, after more than four years
 
 ## Concepts
 
+The audio playback function of MadTunes relies on the AVPlayer system component for implementation and does not have built-in DSP processing capabilities. This minimizes distortion throughout the entire pipeline. However, users can still use an audio routing driver to route the audio output signal to professional DSP Rack Apps like Apple MainStage.
+
 Although MadTunes’ UI operation experience on macOS and iPad (FullScreen) may resemble iTunes 11 (released in 2012) in some respects, its design goals are completely different from the consumer-market focus of Apple Music / iTunes. Apple’s player usually applies slight spatial processing during stereo playback, which can feel more “immersive” for general listening, but for learners who need to analyze album mixing characteristics it interferes with accurately judging imaging and mixing detail. Additionally, some audio material (for example, game or ambient music) is designed to loop seamlessly end-to-end. In many players, single-track repeat playback often introduces a brief gap at the transition point, interrupting the overall beat pace. MadTunes includes dedicated handling for these cases to ensure truly pace-uninterrupted loop playback.
 
 The UI design for iPhone and small-window iPad follows the UI design language used in Windows Phone 7 / 8 around 2012.
@@ -82,5 +84,7 @@ When writing an audiophile audio player for Mac, you must use AVPlayer (from mac
 - Gene Fang (all albums mixed by Michael Chang)
 
 Also, avoid setting `AVPlayerItem.audioTimePitchAlgorithm` to `.spectral` at 1x playback. Although documentation suggests the algorithm only "activates" when `rate != 1.0`, the DSP stage remains in the signal chain. Because `.spectral` utilizes STFT-based processing, the windowing and phase reconstruction steps introduce phase jitter and degrade transient reproduction even at a 1.0 pitch ratio. While `AVFoundation` typically bypasses time-stretching at `rate == 1.0`, forcing `.spectral` prevents a true bypass, resulting in audible loss of transient "breath" and clarity. For high-fidelity playback, preserve the default `.timeDomain` setting.
+
+> The above notes are **not related to** Foobar2000 for macOS.
 
 $ EOF.
