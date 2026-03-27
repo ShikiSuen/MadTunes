@@ -62,6 +62,7 @@ struct WPPlaylistsSection: View {
             } label: {
               Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
             }
+            Divider()
             Button(role: .destructive) {
               if vm.selectedPlaylistID == playlist.id {
                 vm.selectedPlaylistID = vm.library.playlists.first?.id

@@ -67,6 +67,7 @@ struct SidebarView: View {
               } label: {
                 Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
               }
+              Divider()
               Button(role: .destructive) {
                 if selectedPlaylistID == playlist.id {
                   selectedPlaylistID = library.playlists.first?.id
