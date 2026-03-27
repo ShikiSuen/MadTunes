@@ -60,6 +60,27 @@ public actor ArtworkCacheStore {
     try? modelContext.delete(model: CachedArtwork.self)
     try? modelContext.save()
   }
+
+  /// Phase 129: Remove orphaned artwork caches that no longer have matching albums.
+  /// Call this after `loadPersistedData()` to clean up stale entries.
+  func cleanupOrphanedCaches(activeAlbumKeys: Set<String>) {
+    guard !activeAlbumKeys.isEmpty else {
+      // If no active albums, clear all caches (app has no tracks).
+      removeAll()
+      return
+    }
+
+    // Fetch all cached artwork keys
+    let descriptor = FetchDescriptor<CachedArtwork>()
+    guard let allCached = try? modelContext.fetch(descriptor) else { return }
+
+    // Delete entries whose albumKey is not in activeAlbumKeys
+    for cached in allCached where !activeAlbumKeys.contains(cached.albumKey) {
+      modelContext.delete(cached)
+    }
+
+    try? modelContext.save()
+  }
 }
 
 // MARK: - ArtworkCacheResult

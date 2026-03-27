@@ -280,6 +280,9 @@ public final class MusicLibrary {
     }
 
     loadPersistedPlaylists()
+
+    // Phase 129: Clean up orphaned artwork caches.
+    await cleanupOrphanedArtworkCaches()
   }
 
   /// Clear all persisted data and in-memory state.
@@ -714,6 +717,14 @@ public final class MusicLibrary {
     #else
     return try? url.bookmarkData()
     #endif
+  }
+
+  /// Phase 129: Remove artwork cache entries that no longer have matching albums.
+  private func cleanupOrphanedArtworkCaches() async {
+    let activeAlbumKeys = Set(
+      tracks.map { albumKey(title: $0.albumTitle, artist: $0.albumArtist) }
+    )
+    await _artworkCacheStore?.cleanupOrphanedCaches(activeAlbumKeys: activeAlbumKeys)
   }
 
   /// Persist all current tracks to SwiftData (incremental update).
