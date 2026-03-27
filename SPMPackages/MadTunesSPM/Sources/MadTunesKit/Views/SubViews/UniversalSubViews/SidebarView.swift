@@ -4,6 +4,12 @@
 
 import SwiftUI
 
+#if os(macOS) && !targetEnvironment(macCatalyst)
+import AppKit
+#endif
+
+// MARK: - SidebarView
+
 /// Sidebar listing the Library (All Music) and user-created playlists.
 struct SidebarView: View {
   // MARK: Lifecycle
@@ -60,6 +66,19 @@ struct SidebarView: View {
                     systemImage: "arrow.clockwise"
                   )
                 }
+
+                #if os(macOS) && !targetEnvironment(macCatalyst)
+                Divider()
+                Button {
+                  openFolderInFinder(for: playlist.id)
+                } label: {
+                  Label(
+                    String(localized: "i18n:ContextMenu.ShowInFinder", bundle: #bundle),
+                    systemImage: "folder"
+                  )
+                }
+                .disabled(library.folderURL(forFolderPlaylistID: playlist.id) == nil)
+                #endif
               }
               Button {
                 alertText = playlist.name
@@ -254,6 +273,13 @@ struct SidebarView: View {
     case .folderList: return "folder.fill"
     }
   }
+
+  #if os(macOS) && !targetEnvironment(macCatalyst)
+  private func openFolderInFinder(for playlistID: UUID) {
+    guard let folderURL = library.folderURL(forFolderPlaylistID: playlistID) else { return }
+    NSWorkspace.shared.open(folderURL)
+  }
+  #endif
 
   private func commitAlert() {
     let name = alertText.trimmingCharacters(in: .whitespaces)
