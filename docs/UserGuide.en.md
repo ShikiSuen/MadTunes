@@ -65,22 +65,32 @@ The sidebar is located on the left and contains the following sections:
 - **Favorites**: Displays tracks marked as favorites (click the heart icon to add)
 
 **Dynamic Playlists**
-- Rule-driven playlists that automatically match tracks based on predicates
-- Right-click to rename or delete; use the "+" button to create
+- Hierarchical-Predicate-Driven playlists that automatically match tracks based on rules
+- Supports complex nested condition combinations
+- Configurable **Data Source**: Use "All Music" or one/multiple "Folder Playlists" as the filtering scope
+- Right-click to rename, duplicate, or delete; use the "+" button to create
 - On iPhone WPUI, tap the Gear-shaped button to open the dedicated Predicate editor
 
 **Playlists**
 - User-created static playlists
-- Right-click to create, rename, or delete playlists
+- Right-click to create, rename, duplicate, or delete playlists
+
+**Folder Playlists**
+- Folder-based playlists that scan a specified folder for audio files
+- Tracks from folder playlists are isolated from the main library (All Music)
+- Supports **Lazy Reload** — automatically detects folder changes when first switched to after app launch
+- Right-click to rescan the folder, open in Finder (macOS), or delete the playlist
+- Use the "+" button in the sidebar to create a folder playlist by selecting a folder
 
 ### 2. Album Grid Area
 
+A toolbar button in the upper-right allows toggling between the standard grid layout and a list-style table view.
 The album grid is the main browsing area:
 
 - **Grid Layout**: Adaptive column count, minimum 160px width per album
 - **Album Cards**: Display album artwork, album title, and artist name
 - **Expand/Collapse**: Click an album to expand the tracklist; click again or press Esc to collapse
-- **Close by clicking blank area**: when an album is expanded you can also collapse it by clicking any empty portion of the grid outside the album card and the detail pane
+- **Close by clicking blank area**: When an album is expanded, you can also collapse it by clicking any empty portion of the grid outside the album card and the detail pane
 - **Multi-selection**: Supports multi-selection with Shift and Command keys
 
 **Expanded Album View**
@@ -107,6 +117,10 @@ Located at the bottom of the window, includes:
 | Loop Mode | Sequential / Repeat One / Shuffle |
 | Playing Queue | Open playing queue panel |
 | Column Browser | Open Genre/Artist/Album filter panel |
+
+**Audio Output Device Selection (macOS only)**
+- Click the volume icon or use the Control menu to select audio output device
+- Supports selecting System Default or specific audio interfaces (e.g., external DAC, BlackHole, etc.)
 
 ---
 
@@ -178,8 +192,6 @@ In the playing queue panel:
 
 ### Album Grid
 
-A toolbar button in the upper-right allows toggling between the standard grid layout and a list-style table view.
-
 | Operation | Function |
 |-----------|----------|
 | Click Album | Expand/collapse album |
@@ -193,6 +205,10 @@ A toolbar button in the upper-right allows toggling between the standard grid la
 | Click Track | Select track |
 | Double-click Track | Play track |
 | Right-click Track | Show context menu |
+
+### Table View
+
+The table view displays all tracks as a flat list. Columns include Name, Length, Artist, Album Title, Album Artist, Genre, and Folder (the parent folder name – hover to see the full path).
 
 ### Player Controls
 
@@ -220,12 +236,19 @@ A toolbar button in the upper-right allows toggling between the standard grid la
 ### Track Right-Click Menu
 
 - **Add to Playlist**: Add track to specified playlist
+- **Play Next**: Insert track after current position and play immediately
+- **Get Info**: View detailed track metadata
+- **Add to Favorites**: Mark track as favorite
+- **Copy Metadata**: Copy TSV-formatted metadata to clipboard
+- **Show in Finder**: Open folder containing track in Finder
+- **Remove from Library**: Remove from library (does not delete original files)
+
+---
 
 ## Table View
 
 When the table view is active the library is displayed as a flat list of tracks.
-Columns include Name, Length, Artist, Album Title, Album Artist, Genre
-and Folder (the parent folder name – hover to see the full path).
+Columns include Name, Length, Artist, Album Title, Album Artist, Genre, and Folder (the parent folder name – hover to see the full path).
 
 ### Table View Keyboard Shortcuts
 
@@ -252,7 +275,7 @@ and Folder (the parent folder name – hover to see the full path).
 - **Column Resizing**: Drag the dividers between column headers to adjust column widths. Widths are persisted across sessions.
 - **Sorting**: Click column header to sort by that column (once for ascending ▲, again for descending ▼, third click to clear and restore album order)
 - **Compound Sort** (All Music only): Click additional column headers to add secondary/tertiary sort criteria. Each header shows a subscript number indicating its priority (e.g. ▲₁ ▼₂).
-- **Persistent Sort** (Favorites & static playlists): Clicking a column header permanently reorders the playlist’s tracks by that column. Click the same column again to toggle between ascending and descending. The reordered sequence is saved automatically.
+- **Persistent Sort** (Favorites & static playlists): Clicking a column header permanently reorders the playlist's tracks by that column. Click the same column again to toggle between ascending and descending. The reordered sequence is saved automatically.
 
 ### Playlist Track Reordering
 
@@ -261,15 +284,7 @@ In Favorites and user-created static playlists (when no table sort, search or co
 - **Drag & Drop**: Drag a track (or multi-selected tracks) to a different row to reorder.
 - **Keyboard**: Select tracks and press `⌥ + ↑` / `⌥ + ↓` to move them up/down.
 
-### Track Right-Click Menu
-
-- **Add to Playlist**: Add track to specified playlist
-- **Play Next**: Insert track after current position and play immediately
-- **Get Info**: View detailed track metadata
-- **Add to Favorites**: Mark track as favorite
-- **Copy Metadata**: Copy TSV-formatted metadata to clipboard
-- **Show in Finder**: Open folder containing track in Finder
-- **Remove from Library**: Remove from library (does not delete original files)
+> **Note**: When Column Browser filter rules are active or the search box has content, the sort adjustment feature for static playlists will be automatically disabled.
 
 ---
 
@@ -291,10 +306,56 @@ The search box in the upper right supports the following filter modes:
 Open via the filter button in the player controls:
 
 - **Four-column Filter**: Genre → Album Artist → Song Artist → Album
-- **Bidirectional**: choosing a song artist also restricts which album artists appear.
+- **Bidirectional**: Choosing a song artist also restricts which album artists appear.
 - **Cascading Filter**: Selecting Genre filters available Artist list
 - **Multi-select**: Each column supports selecting multiple items
 - **Double-click to Play**: Double-click in any column to play matching tracks
+
+---
+
+## Dynamic Playlists
+
+Dynamic Playlists are a powerful feature for automatically filtering tracks based on rules:
+
+### Predicate Editor
+
+- Supports creating complex **Hierarchical Predicate Networks** with nested condition groups
+- Card-style rounded rectangle hierarchical layout for visualizing logical relationships between conditions
+- Real-time preview of matching track count
+- Supported condition fields: Name, Artist, Album, Album Artist, Track Number, Genre, Year, Length, Extension, Folder
+
+### Data Source
+
+- Configure the scope for dynamic playlist filtering:
+  - **All Music** (default): Filter from the entire music library
+  - **Specified Folder Playlists**: Filter tracks from one or more folder playlists
+- Adjust Data Source in the playlist right-click menu or Predicate Editor
+- When a Data Source is bound, the dynamic playlist icon changes to `folder.fill.badge.gearshape`
+
+---
+
+## Folder Playlists
+
+Folder Playlists allow you to directly play audio files from a specified folder without importing them into the main library:
+
+### Features
+
+- **Isolated**: Tracks are completely isolated from the main library (All Music), keeping your main library clean
+- **Auto Scan**: Automatically scans all supported audio files in the folder when first created
+- **Lazy Reload**: Automatically detects folder changes and updates content when first switched to after app launch
+- **Manual Rescan**: Right-click the playlist to manually trigger a rescan
+
+### How to Use
+
+1. Click the "+" button at the bottom of the sidebar, select "Add Folder Playlist"
+2. Select the folder to monitor
+3. The playlist will be automatically created and scan all audio files in that folder and its subfolders
+
+### Notes
+
+- Folder Playlists **do not support** the duplicate feature
+- Tracks cannot be directly "deleted" from folder playlists (since files are managed by the external folder)
+- You can import tracks from folder playlists to the main library, or use them as data sources for dynamic playlists
 
 ---
 
@@ -335,6 +396,7 @@ In the playing queue panel you can:
 - **Metadata Reading**: Automatically read ID3 tags and album artwork
 - **Security-Scoped Bookmarks**: Use macOS security bookmarks to maintain file access permissions
 - **Playlist Sync**: If you import while viewing the **Favorites** page or any custom static playlist, the imported tracks are automatically added to that playlist (duplicates are safely ignored)
+- **Dynamic Playlist Protection**: Dragging files to a dynamic playlist will not automatically add tracks (dynamic playlist content is entirely rule-driven)
 
 ---
 
