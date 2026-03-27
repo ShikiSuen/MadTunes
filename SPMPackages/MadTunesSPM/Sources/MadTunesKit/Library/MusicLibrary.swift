@@ -521,12 +521,19 @@ public final class MusicLibrary {
       folderPlaylistLatestDirectoryModificationDates[id] = latestDate
     }
 
+    let refreshedBookmarkData = Self.createBookmark(for: folderURL)
+    let bookmarkDataToPersist = refreshedBookmarkData ?? metadata?.folderBookmarkData ?? Data()
+
     persistFolderPlaylistMetadata(
       playlistID: id,
       folderURL: folderURL,
-      bookmarkData: metadata?.folderBookmarkData ?? Data(),
+      bookmarkData: bookmarkDataToPersist,
       trackIDs: scannedTracks.map(\.id)
     )
+
+    // Keep in-memory metadata consistent with the refreshed bookmark.
+    playlists[index].folderURL = folderURL
+    playlists[index].folderBookmarkData = bookmarkDataToPersist
   }
 
   /// Phase 129: Get tracks for a folder playlist.
@@ -776,6 +783,15 @@ public final class MusicLibrary {
     return playlist.trackIDs.compactMap { trackMap[$0] }
   }
 
+  /// Phase 133: Resolve the underlying folder URL for a folder playlist.
+  /// Returns the bookmark-resolved URL when available, with metadata/playlist
+  /// URL fallbacks for older records.
+  public func folderURL(forFolderPlaylistID playlistID: UUID) -> URL? {
+    guard let playlist = playlists.first(where: { $0.id == playlistID }),
+          playlist.kind == .folderList else { return nil }
+    return resolvedFolderURL(for: playlistID)
+  }
+
   /// Build an album list filtered to only the tracks in a given playlist.
   public func albums(for playlist: Playlist) -> [Album] {
     let playlistTracks = tracks(for: playlist)
@@ -876,26 +892,30 @@ public final class MusicLibrary {
   }
 
   private nonisolated static func resolveBookmark(_ data: Data) -> URL? {
-    var stale = false
-    #if os(macOS) || targetEnvironment(macCatalyst)
-    return try? URL(
-      resolvingBookmarkData: data,
-      options: .withSecurityScope,
-      relativeTo: nil,
-      bookmarkDataIsStale: &stale
-    )
+    #if os(macOS) && !targetEnvironment(macCatalyst)
+    return resolveBookmark(data, options: .withSecurityScope)
+    #elseif targetEnvironment(macCatalyst)
+    // UIKit-based targets are less predictable with bookmark option handling,
+    // so we try security-scoped resolution first, then tolerant fallbacks.
+    let candidateOptions: [URL.BookmarkResolutionOptions] = [
+      [.withSecurityScope, .withoutUI],
+      .withSecurityScope,
+      .withoutUI,
+      [],
+    ]
+    for options in candidateOptions {
+      if let resolved = resolveBookmark(data, options: options) {
+        return resolved
+      }
+    }
+    return nil
     #else
-    return try? URL(
-      resolvingBookmarkData: data,
-      options: [],
-      relativeTo: nil,
-      bookmarkDataIsStale: &stale
-    )
+    return resolveBookmark(data, options: [])
     #endif
   }
 
   private nonisolated static func createBookmark(for url: URL) -> Data? {
-    #if os(macOS) || targetEnvironment(macCatalyst)
+    #if os(macOS) && !targetEnvironment(macCatalyst)
     do {
       return try url.bookmarkData(
         options: .withSecurityScope,
@@ -906,9 +926,43 @@ public final class MusicLibrary {
       print("[MusicLibrary] Bookmark creation error for \(url.lastPathComponent): \(error)")
       return nil
     }
+    #elseif targetEnvironment(macCatalyst)
+    // Prefer security-scoped bookmarks, but keep fallbacks for UIKit targets.
+    let candidateOptions: [URL.BookmarkCreationOptions] = [
+      .withSecurityScope,
+      .minimalBookmark,
+      [],
+    ]
+    for options in candidateOptions {
+      do {
+        return try url.bookmarkData(
+          options: options,
+          includingResourceValuesForKeys: nil,
+          relativeTo: nil
+        )
+      } catch {
+        continue
+      }
+    }
+    print("[MusicLibrary] Bookmark creation error for \(url.lastPathComponent): all option sets failed")
+    return nil
     #else
     return try? url.bookmarkData()
     #endif
+  }
+
+  private nonisolated static func resolveBookmark(
+    _ data: Data,
+    options: URL.BookmarkResolutionOptions
+  )
+    -> URL? {
+    var stale = false
+    return try? URL(
+      resolvingBookmarkData: data,
+      options: options,
+      relativeTo: nil,
+      bookmarkDataIsStale: &stale
+    )
   }
 
   private nonisolated static func normalizedFolderPath(_ url: URL) -> String {
