@@ -369,7 +369,32 @@ public final class MusicLibrary {
       }
     }
 
-    let rawData = await MetadataReader.readArtwork(from: trackURL)
+    var rawData = await MetadataReader.readArtwork(from: trackURL)
+
+    // Phase 130: If the sample track has no artwork, try other tracks in the
+    // same album before giving up. Some albums have artwork embedded in only
+    // certain tracks (e.g., different disc files, bonus tracks, etc.).
+    if rawData == nil {
+      let allCandidates = tracks + folderPlaylistTracks.values.flatMap { $0 }
+      for candidate in allCandidates {
+        let candidateKey = albumKey(title: candidate.albumTitle, artist: candidate.albumArtist)
+        guard candidateKey == key, candidate.fileURL != trackURL else { continue }
+        var candidateURL = candidate.fileURL
+        if !FileManager.default.isReadableFile(atPath: candidateURL.path),
+           let bm = candidate.bookmarkData,
+           let resolved = Self.resolveBookmark(bm) {
+          if resolved.startAccessingSecurityScopedResource() {
+            activeSecurityScopedURLs.append(resolved)
+            candidateURL = resolved
+          }
+        }
+        let candidateData = await MetadataReader.readArtwork(from: candidateURL)
+        if candidateData != nil {
+          rawData = candidateData
+          break
+        }
+      }
+    }
 
     // Phase 92: Use dedicated ArtworkProcessor actor.
     var data = rawData
