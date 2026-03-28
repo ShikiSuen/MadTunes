@@ -212,15 +212,22 @@ struct ContentAvailabilityOverlay: View {
     if isFavoritesPage {
       return String(localized: "i18n:EmptyState.FavoritesDescription", bundle: #bundle)
     }
-    if isFolderPlaylistPage {
-      return String(localized: "i18n:EmptyState.FolderPlaylistDescription", bundle: #bundle)
-    }
-    if let name = selectedPlaylist?.name {
-      return String(
-        localized: "i18n:EmptyState.PlaylistEmptyDescription",
-        defaultValue: "\"\(name)\" has no tracks. Add songs from the context menu.",
-        bundle: #bundle
-      )
+    if let playlist = selectedPlaylist {
+      switch playlist.kind {
+      case .folderList:
+        return String(localized: "i18n:EmptyState.PlaylistEmptyDescription.forFolderList", bundle: #bundle)
+      case .dynamicList:
+        return String(localized: "i18n:EmptyState.PlaylistEmptyDescription.forDynamicList", bundle: #bundle)
+      case .staticList:
+        return String(
+          localized: "i18n:EmptyState.PlaylistEmptyDescription.forStaticList",
+          defaultValue: "\"\(playlist.name)\" has no tracks. Add songs from the context menu.",
+          bundle: #bundle
+        )
+      case .system:
+        // This shouldn't happen for non-Favorites system playlists in empty state
+        return String(localized: "i18n:EmptyState.PlaylistNoTracksYet", bundle: #bundle)
+      }
     }
     return String(localized: "i18n:EmptyState.PlaylistNoTracksYet", bundle: #bundle)
   }

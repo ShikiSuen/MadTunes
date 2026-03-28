@@ -3412,82 +3412,6 @@
         }
       }
     },
-    "i18n:EmptyState.FolderPlaylistDescription" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Ordner enthält keine unterstützten Audiodateien."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The folder contains no supported audio files."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La carpeta no contiene archivos de audio compatibles."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le dossier ne contient aucun fichier audio pris en charge."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La cartella non contiene file audio supportati."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "フォルダにサポートされているオーディオファイルがありません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "폴더에 지원되는 오디오 파일이 없습니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A pasta não contém arquivos de áudio suportados."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Папка не содержит поддерживаемых аудиофайлов."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Klasör desteklenen ses dosyaları içermiyor."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "该文件夹不包含支持的音频文件。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "該資料夾不包含支援的音訊檔案。"
-          }
-        }
-      }
-    },
     "i18n:EmptyState.ImportPrompt" : {
       "localizations" : {
         "de" : {
@@ -3868,7 +3792,159 @@
         }
       }
     },
-    "i18n:EmptyState.PlaylistEmptyDescription" : {
+    "i18n:EmptyState.PlaylistEmptyDescription.forDynamicList" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das aktuelle Prädikat und die Datenquelle ergeben keine Ergebnisse."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No matching songs for the current predicate and data source."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninguna canción coincide con el predicado y la fuente de datos actuales."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune chanson ne correspond au prédicat et à la source de données actuels."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna canzone corrisponde al predicato e alla fonte di dati attuali."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在の述語とデータソースに一致する曲はありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "현재 술어 및 데이터 소스와 일치하는 곡이 없습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma música corresponde ao predicado e fonte de dados atual."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По текущему предикату и источнику данных нет подходящих песен."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geçerli yüklem ve veri kaynağı ile eşleşen şarkı yok."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前的述语与数据来源组合无法得出结果."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "當前的述語與資料來源組合得不出結果。"
+          }
+        }
+      }
+    },
+    "i18n:EmptyState.PlaylistEmptyDescription.forFolderList" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Ordner enthält keine unterstützten Audiodateien."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The folder contains no supported audio files."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La carpeta no contiene archivos de audio compatibles."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le dossier ne contient aucun fichier audio pris en charge."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La cartella non contiene file audio supportati."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フォルダにサポートされているオーディオファイルがありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "폴더에 지원되는 오디오 파일이 없습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A pasta não contém arquivos de áudio suportados."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка не содержит поддерживаемых аудиофайлов."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klasör desteklenen ses dosyaları içermiyor."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "该文件夹不包含支持的音频文件。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "該資料夾不包含支援的音訊檔案。"
+          }
+        }
+      }
+    },
+    "i18n:EmptyState.PlaylistEmptyDescription.forStaticList" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
