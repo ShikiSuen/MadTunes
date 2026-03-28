@@ -141,7 +141,7 @@ struct WPPlaylistsSection: View {
       }
       Divider()
       Button {
-        phoneVM.isFolderImporterPresented = true
+        vm.isImporterForFolderPlaylistPresented = true
       } label: {
         Label(
           String(localized: "i18n:Sidebar.NewFolderPlaylist", bundle: #bundle),

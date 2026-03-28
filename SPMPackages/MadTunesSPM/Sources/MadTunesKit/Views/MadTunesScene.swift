@@ -110,6 +110,7 @@ public struct MadTunesScene: Scene {
     @Bindable var bindableVM = vm
     let isWPUI = WPPhoneViewModel.shouldUseWPUI(screenVM: vm.screenVM)
     let windowMinSize = getWindowMinSize(isWPUI: isWPUI)
+    let importerColorScheme: ColorScheme = isWPUI ? .dark : colorScheme
     Group {
       // Phase 75: Use WP Metro-style UI for iPhone / compact layout.
       if isWPUI {
@@ -143,6 +144,67 @@ public struct MadTunesScene: Scene {
       minWidth: windowMinSize.width,
       minHeight: windowMinSize.height
     )
+    .background {
+      ZStack {
+        // Phase 137-1: FileImporter 不能鏈式掛在同一個 view，否則其中一個
+        // 可能無法呼叫；改用兩個 Color.clear 宿主分開掛載。
+        #if canImport(AppKit) && !targetEnvironment(macCatalyst)
+        // Phase 137-1: Keep global import presenter at Scene level so WPUI and
+        // desktop layouts share the same importer host.
+        Color.clear
+          .fileImporter(
+            isPresented: $bindableVM.isFolderImporterPresented,
+            allowedContentTypes: SupportedFormats.macImportTypes,
+            allowsMultipleSelection: true
+          ) { result in
+            if case let .success(urls) = result {
+              vm.importURLs(urls)
+            }
+          }
+        #else
+        Color.clear
+          .fileImporter(
+            isPresented: $bindableVM.isFileImporterPresented,
+            allowedContentTypes: SupportedFormats.fileImportTypes,
+            allowsMultipleSelection: true
+          ) { result in
+            if case let .success(urls) = result {
+              vm.importURLs(urls)
+            }
+          }
+        Color.clear
+          .fileImporter(
+            isPresented: $bindableVM.isFolderImporterPresented,
+            allowedContentTypes: SupportedFormats.folderImportTypes,
+            allowsMultipleSelection: true
+          ) { result in
+            if case let .success(urls) = result {
+              vm.importURLs(urls)
+            }
+          }
+        #endif
+        // Phase 137-2: Unify the hook of fileImporter for folder playlist path URL.
+        Color.clear
+          .fileImporter(
+            isPresented: $bindableVM.isImporterForFolderPlaylistPresented,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+          ) { result in
+            switch result {
+            case let .success(urls):
+              guard let folderURL = urls.first else { return }
+              // addFolderPlaylist manages security-scoped access internally.
+              let playlistName = folderURL.deletingPathExtension().lastPathComponent
+              Task {
+                await vm.library.addFolderPlaylist(name: playlistName, folderURL: folderURL)
+              }
+            case .failure:
+              break
+            }
+          }
+      }
+      .environment(\.colorScheme, importerColorScheme)
+    }
     // Phase 69: Handle files opened via "Open In" / Share sheet / Finder.
     // Phase 100: On native macOS, MadTunesNSAppDelegate.application(_:open:)
     // handles file-open events as a single batch. Skip .onOpenURL on macOS to

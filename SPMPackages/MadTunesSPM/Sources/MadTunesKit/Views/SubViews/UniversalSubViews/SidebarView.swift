@@ -166,8 +166,6 @@ struct SidebarView: View {
   // Alert state — shared across both "New Playlist" and "Rename"
   @State private var alertKind: AlertKind?
   @State private var alertText = ""
-  /// Phase 129: State for folder picker sheet.
-  @State private var showFolderPicker = false
 
   private var library: MusicLibrary
 
@@ -237,7 +235,7 @@ struct SidebarView: View {
       Divider()
 
       Button {
-        showFolderPicker = true
+        mainVM.isImporterForFolderPlaylistPresented = true
       } label: {
         Label(
           String(localized: "i18n:Sidebar.NewFolderPlaylist", bundle: #bundle),
@@ -255,23 +253,6 @@ struct SidebarView: View {
     .menuIndicator(.hidden)
     .buttonStyle(.bordered)
     .tint(.primary)
-    .fileImporter(
-      isPresented: $showFolderPicker,
-      allowedContentTypes: [.folder],
-      allowsMultipleSelection: false
-    ) { result in
-      switch result {
-      case let .success(urls):
-        guard let folderURL = urls.first else { return }
-        // addFolderPlaylist manages security-scoped access internally.
-        let playlistName = folderURL.deletingPathExtension().lastPathComponent
-        Task {
-          await library.addFolderPlaylist(name: playlistName, folderURL: folderURL)
-        }
-      case .failure:
-        break
-      }
-    }
   }
 
   /// Phase 135: Delegate to Playlist.icon4SFSymbols().

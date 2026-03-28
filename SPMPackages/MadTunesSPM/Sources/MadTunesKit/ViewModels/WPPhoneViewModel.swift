@@ -191,9 +191,6 @@ final class WPPhoneViewModel {
   /// Whether the standalone create alert should create a dynamic playlist.
   var createPlaylistIsDynamic = false
 
-  /// Phase 129: Folder playlist creation (from Playlists section).
-  var isFolderImporterPresented = false
-
   var currentSection: PanoramaSection {
     get { access(keyPath: \.currentSection); return _currentSection }
     set { withMutation(keyPath: \.currentSection) { _currentSection = newValue } }

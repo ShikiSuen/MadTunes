@@ -48,45 +48,8 @@ struct MadTunesMainView: View {
       contentArea(albums: albums)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
-          ZStack {
-            Color.primary.opacity(0.05)
-              .ignoresSafeArea(.all)
-            switch OS.isAppKit {
-            case true:
-              Color.clear
-                .fileImporter(
-                  isPresented: $vm.isFolderImporterPresented,
-                  allowedContentTypes: SupportedFormats.macImportTypes,
-                  allowsMultipleSelection: true
-                ) { result in
-                  if case let .success(urls) = result {
-                    vm.importURLs(urls)
-                  }
-                }
-            case false:
-              Color.clear
-                .fileImporter(
-                  isPresented: $vm.isFileImporterPresented,
-                  allowedContentTypes: SupportedFormats.fileImportTypes,
-                  allowsMultipleSelection: true
-                ) { result in
-                  if case let .success(urls) = result {
-                    vm.importURLs(urls)
-                  }
-                }
-              Color.clear
-                .fileImporter(
-                  isPresented: $vm.isFolderImporterPresented,
-                  allowedContentTypes: SupportedFormats.folderImportTypes,
-                  allowsMultipleSelection: true
-                ) { result in
-                  if case let .success(urls) = result {
-                    vm.importURLs(urls)
-                  }
-                }
-            }
-          }
-          .ignoresSafeArea(.all)
+          Color.primary.opacity(0.05)
+            .ignoresSafeArea(.all)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
           ZStack {

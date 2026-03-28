@@ -49,6 +49,7 @@ final class MadTunesViewModel {
   var trackSelectionCursorID: UUID?
   var isFileImporterPresented = false // Only for non-AppKit targets.
   var isFolderImporterPresented = false // Also used on macOS AppKit as File Importer.
+  var isImporterForFolderPlaylistPresented = false
   var isDropTargeted = false
   var screenVM = ScreenVM.shared
 
