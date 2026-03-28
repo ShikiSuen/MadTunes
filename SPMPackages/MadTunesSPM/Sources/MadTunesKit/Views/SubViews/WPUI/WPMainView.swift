@@ -56,6 +56,21 @@ struct WPMainView: View {
               .tag(WPPhoneViewModel.PanoramaSection.nowPlaying)
 
             WPLibrarySection()
+              .overlay {
+                Group {
+                  // Empty library overlay.
+                  if !vm.library.isImporting,
+                     vm.library.hasLoadedPersistence,
+                     vm.library.tracks.isEmpty {
+                    WPEmptyLibraryOverlay()
+                  } else if vm.library.isImporting {
+                    WPImportingOverlay()
+                  } else if !vm.library.hasLoadedPersistence {
+                    WPLoadingOverlay()
+                  }
+                }
+                .background(.ultraThinMaterial)
+              }
               .tag(WPPhoneViewModel.PanoramaSection.library)
 
             WPPlaylistsSection()
@@ -75,35 +90,6 @@ struct WPMainView: View {
               .transition(.move(edge: .bottom).combined(with: .opacity))
           }
         }
-      }
-      .overlay {
-        Group {
-          // Empty library overlay.
-          if !vm.library.isImporting,
-             vm.library.hasLoadedPersistence,
-             vm.library.tracks.isEmpty {
-            WPEmptyLibraryOverlay()
-          } else if vm.library.isImporting {
-            WPImportingOverlay()
-          } else if !vm.library.hasLoadedPersistence {
-            WPLoadingOverlay()
-          }
-        }
-        .background(
-          LinearGradient(
-            colors: [
-              .init(white: 0),
-              .init(white: 0, opacity: 0),
-              .init(white: 0, opacity: 0),
-              .init(white: 0, opacity: 0),
-              .init(white: 0),
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-          )
-          .background(.thinMaterial)
-          .ignoresSafeArea()
-        )
       }
       .animation(
         .interactiveSpring.nerf(vm.gridVM.legacyHardwareMode),
