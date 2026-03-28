@@ -114,8 +114,8 @@ struct WPMainView: View {
       .environment(phoneVM)
       .navigationDestination(for: WPNavigationDestination.self) { destination in
         switch destination {
-        case let .albumDetail(album):
-          WPAlbumDetailView(album: album)
+        case let .albumDetail(album, sourcePlaylistID):
+          WPAlbumDetailView(album: album, sourcePlaylistID: sourcePlaylistID)
             .environment(vm)
             .environment(phoneVM)
         case let .artistDetail(artist):
@@ -256,7 +256,7 @@ struct WPMainView: View {
 
 /// Navigation destinations for WP drill-down views.
 enum WPNavigationDestination: Hashable {
-  case albumDetail(Album)
+  case albumDetail(Album, sourcePlaylistID: UUID? = nil)
   case artistDetail(String)
   case playlistDetail(Playlist)
 }

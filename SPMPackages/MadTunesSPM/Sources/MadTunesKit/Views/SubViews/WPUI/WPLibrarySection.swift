@@ -291,7 +291,8 @@ struct WPAlbumTilesView: View {
           albums: phoneVM.albumsWithRecentFirst(vm.gridVM.currentAlbumsDisplayed),
           tileUnit: tileUnit,
           spacing: spacing,
-          phoneVM: phoneVM
+          phoneVM: phoneVM,
+          currentPlaylistID: vm.selectedPlaylistID
         )
         .padding(.horizontal, spacing)
         .padding(.vertical, spacing)
@@ -315,6 +316,7 @@ struct WPTileLayoutView: View {
   let tileUnit: CGFloat
   let spacing: CGFloat
   let phoneVM: WPPhoneViewModel
+  let currentPlaylistID: UUID?
 
   var body: some View {
     let tileSpecs = albums.enumerated().map { index, album in
@@ -331,7 +333,8 @@ struct WPTileLayoutView: View {
               album: item.album,
               tileSize: item.size,
               tileUnit: tileUnit,
-              spacing: spacing
+              spacing: spacing,
+              currentPlaylistID: currentPlaylistID
             )
           }
         }
@@ -385,6 +388,7 @@ struct WPTileItemView: View {
   let tileSize: WPPhoneViewModel.TileSize
   let tileUnit: CGFloat
   let spacing: CGFloat
+  let currentPlaylistID: UUID?
 
   var body: some View {
     let width: CGFloat = switch tileSize {
@@ -418,7 +422,7 @@ struct WPTileItemView: View {
         }
       } else {
         phoneVM.navigationPath.append(
-          WPNavigationDestination.albumDetail(album)
+          WPNavigationDestination.albumDetail(album, sourcePlaylistID: currentPlaylistID)
         )
       }
     } label: {
@@ -512,6 +516,7 @@ struct WPTileItemView: View {
         albums: [album],
         library: vm.library,
         audioPlayer: vm.player,
+        currentPlaylistID: currentPlaylistID,
         onShowTrackInfo: {
           phoneVM.tracksForTrackInfo = album.tracks
           phoneVM.isTrackInfoPresented = true

@@ -118,20 +118,26 @@ struct TrackContextMenu: View {
     } label: {
       Label(String(localized: "i18n:ContextMenu.ShowInFinder", bundle: #bundle), systemImage: "folder")
     }
-
-    Divider()
+    if canRemoveFromLibrary || currentStaticPlaylistID != nil {
+      Divider()
+    }
     #endif
 
-    // 從資料庫刪除登記
-    Button(role: .destructive) {
-      onShowDeleteConfirmation()
-    } label: {
-      Label(String(localized: "i18n:ContextMenu.RemoveFromLibrary", bundle: #bundle), systemImage: "trash")
+    if canRemoveFromLibrary {
+      // Phase 139: Folder-playlist tracks are external-source records,
+      // so "remove from library" is intentionally hidden for those cases.
+      Button(role: .destructive) {
+        onShowDeleteConfirmation()
+      } label: {
+        Label(String(localized: "i18n:ContextMenu.RemoveFromLibrary", bundle: #bundle), systemImage: "trash")
+      }
     }
 
     // 移出當前播放清單（僅靜態播放清單）
     if let playlistID = currentStaticPlaylistID {
-      Divider()
+      if canRemoveFromLibrary {
+        Divider()
+      }
       Button(role: .destructive) {
         library.removeTracksFromPlaylist(trackIDs, playlistID: playlistID)
         MadTunesViewModel.shared.invalidateSearchCacheForRemovedTracks(trackIDs)
@@ -151,6 +157,14 @@ struct TrackContextMenu: View {
     guard !tracks.isEmpty else { return false }
     let favorites = library.favoritesPlaylist.trackIDs
     return tracks.allSatisfy { favorites.contains($0.id) }
+  }
+
+  /// Phase 139: "Remove from Library" should only appear when all target
+  /// tracks belong to the main library storage.
+  private var canRemoveFromLibrary: Bool {
+    guard !trackIDs.isEmpty else { return false }
+    let mainTrackIDs = Set(library.tracks.map(\.id))
+    return trackIDs.isSubset(of: mainTrackIDs)
   }
 
   /// 當前正在檢視的靜態播放清單 ID（若有）。

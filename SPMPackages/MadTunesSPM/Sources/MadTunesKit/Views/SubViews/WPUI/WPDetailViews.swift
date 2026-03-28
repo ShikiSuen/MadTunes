@@ -14,11 +14,25 @@ struct WPAlbumDetailView: View {
   @Environment(WPPhoneViewModel.self) private var phoneVM
 
   let album: Album
+  let sourcePlaylistID: UUID?
 
   /// Phase 86: Live lookup — returns the current album from the library (reflecting deletions),
   /// falling back to the navigation-snapshot only if the album still exists.
   private var currentAlbum: Album {
-    vm.library.albums.first { $0.id == album.id } ?? album
+    if let mainLibraryAlbum = vm.library.albums.first(where: { $0.id == album.id }) {
+      return mainLibraryAlbum
+    }
+
+    // Phase 139: For playlist-scoped albums (e.g. folder playlists),
+    // look up from the source playlist passed at navigation time, not from
+    // vm.selectedPlaylistID which may have been reset by WPPlaylistDetailView.onDisappear.
+    if let playlistID = sourcePlaylistID,
+       let playlist = vm.library.playlists.first(where: { $0.id == playlistID }),
+       let scopedAlbum = vm.library.albums(for: playlist).first(where: { $0.id == album.id }) {
+      return scopedAlbum
+    }
+
+    return album
   }
 
   var body: some View {
@@ -204,10 +218,16 @@ struct WPArtistDetailView: View {
 /// Phase 86: Guards against deleted playlists to prevent stale-data rendering.
 /// Phase 124: Unified track select+reorder mode (replaces separate Edit button).
 struct WPPlaylistDetailView: View {
+  private enum PlaylistDetailContentMode {
+    case tracks
+    case albums
+  }
+
   @Environment(MadTunesViewModel.self) private var vm
   @Environment(WPPhoneViewModel.self) private var phoneVM
 
   let playlist: Playlist
+  @State private var contentMode: PlaylistDetailContentMode = .tracks
 
   /// Phase 86: Whether this playlist still exists in the library.
   private var playlistExists: Bool {
@@ -313,7 +333,7 @@ struct WPPlaylistDetailView: View {
               .buttonStyle(.plain)
             }
 
-            if !playlistTracks.isEmpty {
+            if contentMode == .tracks, !playlistTracks.isEmpty {
               // Phase 123: Sort menu button.
               wpSortMenu
 
@@ -325,23 +345,32 @@ struct WPPlaylistDetailView: View {
         }
         .padding(.vertical, 16)
 
+        if currentPlaylist.kind == .folderList {
+          wpPlaylistContentPivot
+        }
+
         // Phase 124: Track selection bar (shown when multi-select is active).
-        if phoneVM.isWPTrackSelectionModeActive {
+        if contentMode == .tracks, phoneVM.isWPTrackSelectionModeActive {
           wpTrackSelectionBar
         }
 
         Divider().background(Color.white.opacity(0.1))
 
-        // Track list — selection mode uses List with checkmarks + optional drag handles.
-        if phoneVM.isWPTrackSelectionModeActive {
-          // Phase 124: Unified selection + reorder mode.
-          wpSelectableTrackList
+        // Phase 139: Folder playlist detail can switch between track list and album tiles.
+        if contentMode == .albums, currentPlaylist.kind == .folderList {
+          wpPlaylistAlbumTiles
         } else {
-          WPTrackListView(
-            tracks: playlistTracks,
-            currentPlaylistID: playlist.id,
-            currentStaticPlaylistID: currentStaticPlaylistID
-          )
+          // Track list — selection mode uses List with checkmarks + optional drag handles.
+          if phoneVM.isWPTrackSelectionModeActive {
+            // Phase 124: Unified selection + reorder mode.
+            wpSelectableTrackList
+          } else {
+            WPTrackListView(
+              tracks: playlistTracks,
+              currentPlaylistID: playlist.id,
+              currentStaticPlaylistID: currentStaticPlaylistID
+            )
+          }
         }
       }
       .background(Color.black.ignoresSafeArea())
@@ -349,9 +378,17 @@ struct WPPlaylistDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
       #endif
+        .onAppear {
+          // Phase 139: Re-set playlist scope on appear so that returning from a
+          // pushed album-detail view restores the correct selectedPlaylistID.
+          vm.selectedPlaylistID = playlist.id
+        }
         .onDisappear {
           // Phase 124: Clear track selection when leaving playlist detail.
           phoneVM.wpSelectedTrackIDs = []
+          // Phase 139: Reset WPUI library scope back to All Music
+          // to avoid leaking playlist-specific selectedPlaylistID into Library pivots.
+          vm.selectedPlaylistID = vm.library.playlists.first?.id
         }
     } // Phase 86: end of `if playlistExists` else branch.
   }
@@ -370,6 +407,12 @@ struct WPPlaylistDetailView: View {
       return vm.tableVM.sortedTracks(baseTracks, by: criteria)
     }
     return baseTracks
+  }
+
+  /// Phase 139: Album-tiles data source for folder playlist detail.
+  private var playlistAlbums: [Album] {
+    let albums = vm.library.albums(for: currentPlaylist)
+    return phoneVM.albumsWithRecentFirst(albums)
   }
 
   /// Phase 76: Whether this playlist supports drag-reorder.
@@ -429,6 +472,69 @@ struct WPPlaylistDetailView: View {
       .clipShape(RoundedRectangle(cornerRadius: 6))
     }
     .buttonStyle(.plain)
+  }
+
+  // MARK: - Phase 139: Folder Playlist Albums/Tracks Pivot
+
+  @ViewBuilder private var wpPlaylistContentPivot: some View {
+    HStack(spacing: 20) {
+      Button {
+        contentMode = .tracks
+      } label: {
+        VStack(spacing: 2) {
+          Text(WPPhoneViewModel.LibraryPivot.tracks.localizedTitle.lowercased())
+            .font(.system(size: contentMode == .tracks ? 16 : 14, weight: contentMode == .tracks ? .bold : .regular))
+            .foregroundStyle(contentMode == .tracks ? .white : .white.opacity(0.5))
+
+          Rectangle()
+            .fill(contentMode == .tracks ? phoneVM.wpAccentColor.color : .clear)
+            .frame(height: 2)
+        }
+      }
+      .buttonStyle(.plain)
+
+      Button {
+        contentMode = .albums
+        phoneVM.wpSelectedTrackIDs = []
+      } label: {
+        VStack(spacing: 2) {
+          Text(WPPhoneViewModel.LibraryPivot.albums.localizedTitle.lowercased())
+            .font(.system(size: contentMode == .albums ? 16 : 14, weight: contentMode == .albums ? .bold : .regular))
+            .foregroundStyle(contentMode == .albums ? .white : .white.opacity(0.5))
+
+          Rectangle()
+            .fill(contentMode == .albums ? phoneVM.wpAccentColor.color : .clear)
+            .frame(height: 2)
+        }
+      }
+      .buttonStyle(.plain)
+
+      Spacer(minLength: 0)
+    }
+    .padding(.horizontal, 20)
+    .padding(.bottom, 8)
+  }
+
+  // MARK: - Phase 139: Folder Playlist Album Tiles
+
+  @ViewBuilder private var wpPlaylistAlbumTiles: some View {
+    GeometryReader { geo in
+      let spacing: CGFloat = 4
+      let columns = 2
+      let tileUnit = (geo.size.width - CGFloat(columns + 1) * spacing) / CGFloat(columns)
+
+      ScrollView(.vertical, showsIndicators: false) {
+        WPTileLayoutView(
+          albums: playlistAlbums,
+          tileUnit: tileUnit,
+          spacing: spacing,
+          phoneVM: phoneVM,
+          currentPlaylistID: playlist.id
+        )
+        .padding(.horizontal, spacing)
+        .padding(.vertical, spacing)
+      }
+    }
   }
 
   // MARK: - Phase 124: Track Selection Bar
