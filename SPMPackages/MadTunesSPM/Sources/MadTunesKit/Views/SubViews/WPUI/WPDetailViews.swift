@@ -66,7 +66,7 @@ struct WPAlbumDetailView: View {
                 .foregroundStyle(.white.opacity(0.5))
             }
           }
-          .padding(.horizontal, 20)
+          .padding(.horizontal, 15)
 
           // Play / Shuffle buttons.
           HStack(spacing: 16) {
@@ -79,7 +79,7 @@ struct WPAlbumDetailView: View {
               )
               .font(.system(size: 15, weight: .semibold))
               .foregroundStyle(.white)
-              .padding(.horizontal, 20)
+              .padding(.horizontal, 15)
               .padding(.vertical, 10)
               .background(phoneVM.wpAccentColor.color)
               .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -96,7 +96,7 @@ struct WPAlbumDetailView: View {
               )
               .font(.system(size: 15, weight: .semibold))
               .foregroundStyle(.white)
-              .padding(.horizontal, 20)
+              .padding(.horizontal, 15)
               .padding(.vertical, 10)
               .background(Color.white.opacity(0.15))
               .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -137,7 +137,7 @@ struct WPArtistDetailView: View {
         Text(verbatim: artistName)
           .font(.system(size: 28, weight: .bold))
           .foregroundStyle(.white)
-          .padding(.horizontal, 20)
+          .padding(.horizontal, 15)
           .padding(.top, 16)
 
         // Albums by this artist as tile rows.
@@ -170,7 +170,7 @@ struct WPArtistDetailView: View {
                 }
               }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 15)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(.rect)
@@ -267,7 +267,7 @@ struct WPPlaylistDetailView: View {
               .font(.system(size: 15, weight: .semibold))
               .foregroundStyle(.white)
               .labelStyle(.iconOnly)
-              .padding(.horizontal, 20)
+              .padding(.horizontal, 15)
               .padding(.vertical, 10)
               .background(phoneVM.wpAccentColor.color)
               .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -286,7 +286,7 @@ struct WPPlaylistDetailView: View {
               .font(.system(size: 15, weight: .semibold))
               .foregroundStyle(.white)
               .labelStyle(.iconOnly)
-              .padding(.horizontal, 20)
+              .padding(.horizontal, 15)
               .padding(.vertical, 10)
               .background(Color.white.opacity(0.15))
               .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -304,7 +304,7 @@ struct WPPlaylistDetailView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
                 .labelStyle(.iconOnly)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 15)
                 .padding(.vertical, 10)
                 .background(Color.white.opacity(0.15))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -325,7 +325,7 @@ struct WPPlaylistDetailView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
                 .labelStyle(.iconOnly)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 15)
                 .padding(.vertical, 10)
                 .background(Color.white.opacity(0.15))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -345,9 +345,8 @@ struct WPPlaylistDetailView: View {
         }
         .padding(.vertical, 16)
 
-        if currentPlaylist.kind == .folderList {
-          wpPlaylistContentPivot
-        }
+        // Phase 140: Show pivot for all playlists except All Music.
+        wpPlaylistContentPivot
 
         // Phase 124: Track selection bar (shown when multi-select is active).
         if contentMode == .tracks, phoneVM.isWPTrackSelectionModeActive {
@@ -356,8 +355,8 @@ struct WPPlaylistDetailView: View {
 
         Divider().background(Color.white.opacity(0.1))
 
-        // Phase 139: Folder playlist detail can switch between track list and album tiles.
-        if contentMode == .albums, currentPlaylist.kind == .folderList {
+        // Phase 140: Any non-All Music playlist can switch between track list and album tiles.
+        if contentMode == .albums {
           wpPlaylistAlbumTiles
         } else {
           // Track list — selection mode uses List with checkmarks + optional drag handles.
@@ -400,8 +399,9 @@ struct WPPlaylistDetailView: View {
 
   /// Phase 123: Apply compound sort for dynamic playlists on top of base tracks.
   /// Static playlists already have persistent sort baked into trackIDs.
+  /// Phase 140: Uses filteredTracksBase to honour Column Browser filters.
   private var playlistTracks: [Track] {
-    let baseTracks = vm.library.tracks(for: currentPlaylist)
+    let baseTracks = vm.filteredTracksBase
     let criteria = vm.tableVM.tableSortCriteria
     if !criteria.isEmpty {
       return vm.tableVM.sortedTracks(baseTracks, by: criteria)
@@ -409,9 +409,10 @@ struct WPPlaylistDetailView: View {
     return baseTracks
   }
 
-  /// Phase 139: Album-tiles data source for folder playlist detail.
+  /// Phase 140: Album-tiles data source for playlist detail.
+  /// Uses currentAlbumsDisplayed to honour Column Browser filters.
   private var playlistAlbums: [Album] {
-    let albums = vm.library.albums(for: currentPlaylist)
+    let albums = vm.gridVM.currentAlbumsDisplayed
     return phoneVM.albumsWithRecentFirst(albums)
   }
 
@@ -462,7 +463,7 @@ struct WPPlaylistDetailView: View {
       .font(.system(size: 15, weight: .semibold))
       .foregroundStyle(.white)
       .labelStyle(.iconOnly)
-      .padding(.horizontal, 20)
+      .padding(.horizontal, 15)
       .padding(.vertical, 10)
       .background(
         phoneVM.isWPTrackSelectionModeActive
@@ -510,12 +511,30 @@ struct WPPlaylistDetailView: View {
       .buttonStyle(.plain)
 
       Spacer(minLength: 0)
+
+      // Phase 140: Column Browser entry in the pivot bar.
+      Button {
+        phoneVM.isColumnBrowserPresented = true
+      } label: {
+        Image(
+          systemName: vm.isColumnBrowserFiltering
+            ? "line.3.horizontal.decrease.circle.fill"
+            : "line.3.horizontal.decrease.circle"
+        )
+        .font(.system(size: 18))
+        .foregroundStyle(
+          vm.isColumnBrowserFiltering
+            ? phoneVM.wpAccentColor.color
+            : .white.opacity(0.5)
+        )
+      }
+      .buttonStyle(.plain)
     }
-    .padding(.horizontal, 20)
+    .padding(.horizontal, 15)
     .padding(.bottom, 8)
   }
 
-  // MARK: - Phase 139: Folder Playlist Album Tiles
+  // MARK: - Phase 140: Playlist Album Tiles
 
   @ViewBuilder private var wpPlaylistAlbumTiles: some View {
     GeometryReader { geo in
@@ -614,7 +633,7 @@ struct WPPlaylistDetailView: View {
       }
       .buttonStyle(.plain)
     }
-    .padding(.horizontal, 20)
+    .padding(.horizontal, 15)
     .padding(.vertical, 8)
     .background(Color.white.opacity(0.1))
   }
@@ -766,7 +785,7 @@ struct WPPlaylistDetailView: View {
       .font(.system(size: 15, weight: .semibold))
       .foregroundStyle(.white)
       .labelStyle(.iconOnly)
-      .padding(.horizontal, 20)
+      .padding(.horizontal, 15)
       .padding(.vertical, 10)
       .background(
         vm.tableVM.isSortActive
