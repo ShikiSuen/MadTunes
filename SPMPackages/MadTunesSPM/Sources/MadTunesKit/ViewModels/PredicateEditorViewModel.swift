@@ -16,7 +16,7 @@ final class PredicateEditorViewModel {
   init(playlist: Playlist, library: MusicLibraryProviding) {
     self.playlistID = playlist.id
     self.playlistName = playlist.name
-    self.library = library
+    self.libraryProvider = library
 
     // Decode existing predicate or start with empty allOf.
     if !playlist.predicateData.isEmpty,
@@ -109,11 +109,17 @@ final class PredicateEditorViewModel {
 
   let playlistName: String
 
+  var playlist: Playlist? {
+    libraryProvider.playlists.first(where: { $0.id == playlistID })
+  }
+
+  var dataSourceLibrary: any MusicLibraryProviding { libraryProvider }
+
   var hasAnyPredicates: Bool { !rootNodes.isEmpty }
 
   func matchingTrackCount() -> Int? {
     guard let predicate = buildPredicate() else { return nil }
-    return predicate.filter(tracks: library.tracks).count
+    return predicate.filter(tracks: matchingTrackSource()).count
   }
 
   func buildPredicate() -> PlaylistPredicate? {
@@ -132,11 +138,28 @@ final class PredicateEditorViewModel {
     } else {
       data = Data()
     }
-    library.updatePredicateData(playlistID: playlistID, data: data)
+    libraryProvider.updatePredicateData(playlistID: playlistID, data: data)
   }
 
   // MARK: Private
 
   private let playlistID: UUID
-  private let library: MusicLibraryProviding
+  private let libraryProvider: any MusicLibraryProviding
+
+  private func matchingTrackSource() -> [Track] {
+    guard let playlist, playlist.kind == .dynamicList else {
+      return libraryProvider.tracks
+    }
+
+    let sourceIDs = playlist.sourceFolderPlaylistIDSet
+    guard !sourceIDs.isEmpty else { return libraryProvider.tracks }
+
+    var sourceTracks: [Track] = []
+    for sourceID in sourceIDs {
+      guard let sourcePlaylist = libraryProvider.playlists.first(where: { $0.id == sourceID && $0.kind == .folderList })
+      else { continue }
+      sourceTracks.append(contentsOf: libraryProvider.tracksForFolderPlaylist(sourcePlaylist))
+    }
+    return sourceTracks
+  }
 }

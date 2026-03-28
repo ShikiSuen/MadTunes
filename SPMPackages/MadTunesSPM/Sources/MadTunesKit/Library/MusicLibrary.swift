@@ -485,6 +485,10 @@ public final class MusicLibrary {
       folderPlaylistLatestDirectoryModificationDates[playlist.id] = latestDate
     }
 
+    // Phase 135 Post-Fix: Keep source-bound dynamic playlists in sync.
+    // 實際上是 no-op（尚不可能有 dynamic playlist 引用它），但作為防禦性程式碼無害。
+    reevaluateDynamicPlaylistsUsingSourceFolderPlaylist(playlist.id)
+
     persistFolderPlaylistMetadata(
       playlistID: playlist.id,
       folderURL: folderURL,
@@ -520,6 +524,10 @@ public final class MusicLibrary {
     if let latestDate = Self.latestFolderTreeModificationDate(for: folderURL) {
       folderPlaylistLatestDirectoryModificationDates[id] = latestDate
     }
+
+    // Phase 135 Post-Fix: Folder datasource updates must re-drive dependent
+    // dynamic playlists; otherwise they can remain stuck with empty trackIDs.
+    reevaluateDynamicPlaylistsUsingSourceFolderPlaylist(id)
 
     let refreshedBookmarkData = Self.createBookmark(for: folderURL)
     let bookmarkDataToPersist = refreshedBookmarkData ?? metadata?.folderBookmarkData ?? Data()
@@ -592,6 +600,7 @@ public final class MusicLibrary {
   }
 
   /// Phase 129: Remove a folder playlist and its cached data.
+  /// Phase 135: Also clear sourceFolderPlaylistIDSet references from dynamic playlists.
   public func removeFolderPlaylist(id: UUID) {
     guard let index = playlists.firstIndex(where: { $0.id == id }),
           playlists[index].kind == .folderList else { return }
@@ -601,6 +610,7 @@ public final class MusicLibrary {
     folderPlaylistRescanInProgressIDs.remove(id)
     folderPlaylistLatestDirectoryModificationDates.removeValue(forKey: id)
     purgePlaylistScopedAlbumIDs(playlistID: id)
+    clearSourceFolderPlaylistReferences(for: id)
     playlists.remove(at: index)
     deleteFolderPlaylistMetadata(for: id)
     persistAllPlaylists()
@@ -756,6 +766,35 @@ public final class MusicLibrary {
     return duplicate.id
   }
 
+  /// Phase 135: Toggle a folder playlist in/out of a dynamic playlist's data source set.
+  public func toggleSourceFolderPlaylist(playlistID: UUID, folderPlaylistID: UUID) {
+    guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+    guard playlists[idx].kind == .dynamicList else { return }
+    guard let sourcePlaylist = playlists.first(where: { $0.id == folderPlaylistID }),
+          sourcePlaylist.kind == .folderList else { return }
+    if playlists[idx].sourceFolderPlaylistIDSet.contains(folderPlaylistID) {
+      playlists[idx].sourceFolderPlaylistIDSet.remove(folderPlaylistID)
+    } else {
+      playlists[idx].sourceFolderPlaylistIDSet.insert(folderPlaylistID)
+    }
+    evaluateDynamicPlaylist(at: idx)
+    persistAllPlaylists()
+  }
+
+  /// Phase 135: Clear all source folder playlist bindings (revert to full library).
+  public func clearAllSourceFolderPlaylists(playlistID: UUID) {
+    guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+    guard playlists[idx].kind == .dynamicList else { return }
+    playlists[idx].sourceFolderPlaylistIDSet.removeAll()
+    evaluateDynamicPlaylist(at: idx)
+    persistAllPlaylists()
+  }
+
+  /// Phase 135: Get all folder playlists available as data sources.
+  public func folderPlaylistsAsDataSources() -> [Playlist] {
+    playlists.filter { $0.kind == .folderList }
+  }
+
   /// Phase 117: Re-evaluate a dynamic playlist's predicate and update its trackIDs cache.
   public func evaluateDynamicPlaylist(id: UUID) {
     guard let idx = playlists.firstIndex(where: { $0.id == id }) else { return }
@@ -791,6 +830,21 @@ public final class MusicLibrary {
     if playlist.kind == .folderList {
       return tracksForFolderPlaylist(playlist)
     }
+
+    // Phase 135: Dynamic playlists bound to folder datasources use
+    // folderPlaylistTracks IDs, which are independent from main library IDs.
+    if playlist.kind == .dynamicList, !playlist.sourceFolderPlaylistIDSet.isEmpty {
+      var sourceTrackMap: [UUID: Track] = [:]
+      for sourceID in playlist.sourceFolderPlaylistIDSet {
+        guard let sourcePlaylist = playlists.first(where: { $0.id == sourceID && $0.kind == .folderList })
+        else { continue }
+        for track in tracksForFolderPlaylist(sourcePlaylist) {
+          sourceTrackMap[track.id] = track
+        }
+      }
+      return playlist.trackIDs.compactMap { sourceTrackMap[$0] }
+    }
+
     // Preserve the order defined by the playlist (trackIDs array).
     // This allows playlist-specific ordering (e.g. drag-reorder) to be reflected
     // in views that display a flat track list.
@@ -1017,6 +1071,30 @@ public final class MusicLibrary {
 
   private func playlistScopedAlbumKey(albumKey: String, playlistID: UUID) -> String {
     "playlist:\(playlistID.uuidString):::\(albumKey)"
+  }
+
+  /// Phase 135: Clear sourceFolderPlaylistIDSet references when a folder playlist is deleted.
+  private func clearSourceFolderPlaylistReferences(for deletedID: UUID) {
+    for i in playlists.indices where playlists[i].sourceFolderPlaylistIDSet.contains(deletedID) {
+      playlists[i].sourceFolderPlaylistIDSet.remove(deletedID)
+      if playlists[i].kind == .dynamicList {
+        evaluateDynamicPlaylist(at: i)
+      }
+    }
+  }
+
+  /// Phase 135 Post-Fix: Re-evaluate dynamic playlists that depend on a folder
+  /// playlist datasource after that folder's tracks are refreshed.
+  private func reevaluateDynamicPlaylistsUsingSourceFolderPlaylist(_ sourcePlaylistID: UUID) {
+    var hasDynamicPlaylistChanges = false
+    for i in playlists.indices
+      where playlists[i].kind == .dynamicList && playlists[i].sourceFolderPlaylistIDSet.contains(sourcePlaylistID) {
+      evaluateDynamicPlaylist(at: i)
+      hasDynamicPlaylistChanges = true
+    }
+    if hasDynamicPlaylistChanges {
+      persistAllPlaylistsDebounced()
+    }
   }
 
   /// Phase 129: Remove artwork cache entries that no longer have matching albums.
@@ -1289,17 +1367,32 @@ public final class MusicLibrary {
   }
 
   /// Phase 117: Evaluate a dynamic playlist's predicate and update its trackIDs cache.
+  /// Phase 135: Support sourceFolderPlaylistIDSet to limit evaluation to specific folder playlists.
   private func evaluateDynamicPlaylist(at index: Int) {
     guard playlists[index].kind == .dynamicList else { return }
     let data = playlists[index].predicateData
     guard !data.isEmpty,
           let predicate = try? JSONDecoder().decode(PlaylistPredicate.self, from: data)
     else {
-      // No predicate configured → empty playlist.
       playlists[index].trackIDs = []
       return
     }
-    playlists[index].trackIDs = predicate.filter(tracks: tracks).map(\.id)
+
+    let sourceTracks: [Track]
+    let sourceIDs = playlists[index].sourceFolderPlaylistIDSet
+    if !sourceIDs.isEmpty {
+      var aggregated: [Track] = []
+      for sourceID in sourceIDs {
+        if let sourcePlaylist = playlists.first(where: { $0.id == sourceID && $0.kind == .folderList }) {
+          aggregated.append(contentsOf: tracksForFolderPlaylist(sourcePlaylist))
+        }
+      }
+      sourceTracks = aggregated
+    } else {
+      sourceTracks = tracks
+    }
+
+    playlists[index].trackIDs = predicate.filter(tracks: sourceTracks).map(\.id)
   }
 
   /// Persist all playlists to SwiftData (incremental update).
@@ -1324,6 +1417,7 @@ public final class MusicLibrary {
           existing.kindRawValue = entry.playlist.kind.rawValue
           existing.compoundSortData = entry.playlist.compoundSortData
           existing.predicateData = entry.playlist.predicateData
+          existing.sourceFolderPlaylistIDs = Array(entry.playlist.sourceFolderPlaylistIDSet)
           newPlaylistIDs.remove(existing.id)
         } else {
           context.delete(existing)
@@ -1339,7 +1433,8 @@ public final class MusicLibrary {
           sortIndex: entry.index,
           kindRawValue: entry.playlist.kind.rawValue,
           compoundSortData: entry.playlist.compoundSortData,
-          predicateData: entry.playlist.predicateData
+          predicateData: entry.playlist.predicateData,
+          sourceFolderPlaylistIDs: Array(entry.playlist.sourceFolderPlaylistIDSet)
         ))
       }
       try context.save()

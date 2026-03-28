@@ -83,6 +83,12 @@ public protocol MusicLibraryProviding: AnyObject {
   func evaluateDynamicPlaylist(id: UUID)
   /// Phase 117: Re-evaluate all dynamic playlists.
   func evaluateAllDynamicPlaylists()
+  /// Phase 135: Update a dynamic playlist's source folder playlist ID.
+  func toggleSourceFolderPlaylist(playlistID: UUID, folderPlaylistID: UUID)
+  /// Phase 135: Clear all source folder playlist bindings (revert to full library).
+  func clearAllSourceFolderPlaylists(playlistID: UUID)
+  /// Phase 135: Get all folder playlists available as data sources.
+  func folderPlaylistsAsDataSources() -> [Playlist]
   func removeTracks(ids: Set<UUID>)
   func tracks(for playlist: Playlist) -> [Track]
   func albums(for playlist: Playlist) -> [Album]

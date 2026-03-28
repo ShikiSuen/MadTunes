@@ -13,13 +13,13 @@ struct WPPredicateEditorView: View {
 
   /// Phase 121: Accept an externally-owned VM so editing state survives iPad WPUI↔desktop switch.
   init(vm: PredicateEditorViewModel) {
-    self.vm = vm
+    self.peVM = vm
   }
 
   // MARK: Internal
 
   var body: some View {
-    @Bindable var bindableVM = vm
+    @Bindable var bindableVM = peVM
 
     NavigationStack {
       ZStack {
@@ -49,6 +49,11 @@ struct WPPredicateEditorView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
       #endif
         .toolbar {
+          ToolbarItem(placement: .automatic) {
+            if let playlist = peVM.playlist {
+              DataSourceMenu(playlist: playlist, library: peVM.dataSourceLibrary)
+            }
+          }
           ToolbarItem(placement: .cancellationAction) {
             Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {
               dismiss()
@@ -65,14 +70,14 @@ struct WPPredicateEditorView: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(WPPhoneViewModel.self) private var phoneVM
 
-  private var vm: PredicateEditorViewModel
+  private var peVM: PredicateEditorViewModel
 
   private var accentColor: Color {
     phoneVM.wpAccentColor.color
   }
 
   private var matchingCountText: String {
-    if let count = vm.matchingTrackCount() {
+    if let count = peVM.matchingTrackCount() {
       let format = String(localized: "i18n:PredicateEditor.MatchCount.%lld", bundle: #bundle)
       return String.localizedStringWithFormat(format, Int64(count))
     }
@@ -105,7 +110,7 @@ struct WPPredicateEditorView: View {
       Spacer()
 
       Button(String(localized: "i18n:PredicateEditor.Apply", bundle: #bundle)) {
-        vm.applyChanges()
+        peVM.applyChanges()
         dismiss()
       }
       .font(.headline)
@@ -125,7 +130,7 @@ struct WPPredicateEditorView: View {
 
   private func headerCard(matchMode: Binding<PredicateEditorViewModel.MatchMode>) -> some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text(verbatim: vm.playlistName)
+      Text(verbatim: peVM.playlistName)
         .font(.system(size: 23, weight: .bold, design: .rounded))
         .foregroundStyle(.white)
         .lineLimit(1)

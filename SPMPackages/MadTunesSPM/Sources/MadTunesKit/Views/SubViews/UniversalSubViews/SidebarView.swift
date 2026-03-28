@@ -54,6 +54,8 @@ struct SidebarView: View {
                     systemImage: "slider.horizontal.3"
                   )
                 }
+                // Phase 135: Data source submenu for dynamic playlists.
+                DataSourceMenu(playlist: playlist, library: library)
               }
               if playlist.kind == .folderList {
                 Button {
@@ -272,13 +274,9 @@ struct SidebarView: View {
     }
   }
 
+  /// Phase 135: Delegate to Playlist.icon4SFSymbols().
   private func playlistIcon(for playlist: Playlist) -> String {
-    switch playlist.kind {
-    case .system: return "music.note.list"
-    case .staticList: return "music.note.list"
-    case .dynamicList: return "gearshape.2"
-    case .folderList: return "folder.fill"
-    }
+    playlist.icon4SFSymbols()
   }
 
   #if os(macOS) && !targetEnvironment(macCatalyst)

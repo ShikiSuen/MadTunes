@@ -42,6 +42,8 @@ struct WPPlaylistsSection: View {
                   systemImage: "gearshape.2"
                 )
               }
+              // Phase 135: Data source submenu for dynamic playlists.
+              DataSourceMenu(playlist: playlist, library: vm.library)
             }
             if playlist.kind == .folderList {
               Button {
@@ -196,15 +198,9 @@ struct WPPlaylistsSection: View {
     }
   }
 
+  /// Phase 135: Delegate to Playlist.icon4SFSymbols(idx:).
   private func iconForPlaylist(_ playlist: Playlist) -> String {
-    if let idx = vm.library.playlists.firstIndex(where: { $0.id == playlist.id }) {
-      if idx == 0 { return "music.note.list" }
-      if idx == 1 { return "heart.fill" }
-    }
-    switch playlist.kind {
-    case .dynamicList: return "gearshape.2"
-    case .folderList: return "folder.fill"
-    default: return "music.note"
-    }
+    let idx = vm.library.playlists.firstIndex(where: { $0.id == playlist.id })
+    return playlist.icon4SFSymbols(idx: idx)
   }
 }

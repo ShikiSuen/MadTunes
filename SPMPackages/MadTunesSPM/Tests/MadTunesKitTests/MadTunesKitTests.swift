@@ -446,6 +446,327 @@ struct Phase130RegressionTests {
   }
 }
 
+// MARK: - Phase135RegressionTests
+
+@Suite("Phase 135 Regressions")
+struct Phase135RegressionTests {
+  @Test("dynamic playlist with folder datasource resolves matched tracks")
+  func dynamicPlaylistWithFolderDatasource() throws {
+    let library = MusicLibrary()
+
+    let folderPlaylist = Playlist(name: "HoYo Folder", kind: .folderList)
+    let matchTrack = makeTrack(title: "A", artist: "HoYo")
+    let nonMatchTrack = makeTrack(title: "B", artist: "Other")
+
+    library.playlists.append(folderPlaylist)
+    library.folderPlaylistTracks[folderPlaylist.id] = [matchTrack, nonMatchTrack]
+
+    let predicate = PlaylistPredicate.single(
+      PlaylistCondition(field: .artist, comparator: .contains, value: .string("HoYo"))
+    )
+    let predicateData = try JSONEncoder().encode(predicate)
+
+    let dynamicPlaylist = Playlist(
+      name: "Filtered HoYo",
+      kind: .dynamicList,
+      predicateData: predicateData,
+      sourceFolderPlaylistIDSet: [folderPlaylist.id]
+    )
+    library.playlists.append(dynamicPlaylist)
+
+    library.evaluateDynamicPlaylist(id: dynamicPlaylist.id)
+
+    guard let evaluatedPlaylist = library.playlists.first(where: { $0.id == dynamicPlaylist.id }) else {
+      Issue.record("Failed to find evaluated dynamic playlist")
+      return
+    }
+
+    #expect(evaluatedPlaylist.trackIDs == [matchTrack.id])
+    #expect(library.tracks(for: evaluatedPlaylist).map(\.id) == [matchTrack.id])
+  }
+
+  @Test("duplicatePlaylist preserves sourceFolderPlaylistIDSet")
+  func duplicatePreservesSourceFolder() throws {
+    let library = MusicLibrary()
+
+    let folderPlaylist = Playlist(name: "Source Folder", kind: .folderList)
+    library.playlists.append(folderPlaylist)
+    library.folderPlaylistTracks[folderPlaylist.id] = [makeTrack(title: "X")]
+
+    let predicate = PlaylistPredicate.single(
+      PlaylistCondition(field: .artist, comparator: .contains, value: .string("Any"))
+    )
+    let predicateData = try JSONEncoder().encode(predicate)
+
+    let dynamic = Playlist(
+      name: "BoundDynamic",
+      kind: .dynamicList,
+      predicateData: predicateData,
+      sourceFolderPlaylistIDSet: [folderPlaylist.id]
+    )
+    library.playlists.append(dynamic)
+
+    guard let dupID = library.duplicatePlaylist(id: dynamic.id),
+          let dup = library.playlists.first(where: { $0.id == dupID })
+    else {
+      Issue.record("duplicatePlaylist returned nil")
+      return
+    }
+
+    #expect(dup.sourceFolderPlaylistIDSet == [folderPlaylist.id])
+    #expect(dup.predicateData == predicateData)
+    #expect(dup.kind == .dynamicList)
+    #expect(dup.id != dynamic.id)
+  }
+
+  @Test("toggleSourceFolderPlaylist adds and removes folder datasource")
+  func toggleSourceAddsAndRemoves() throws {
+    let library = MusicLibrary()
+
+    let libTrack = makeTrack(title: "LibSong", artist: "CommonArtist")
+    library.tracks = [libTrack]
+
+    let folderPlaylist = Playlist(name: "Folder", kind: .folderList)
+    let folderTrack = makeTrack(title: "FolderSong", artist: "CommonArtist")
+    library.playlists.append(folderPlaylist)
+    library.folderPlaylistTracks[folderPlaylist.id] = [folderTrack]
+
+    let predicate = PlaylistPredicate.single(
+      PlaylistCondition(field: .artist, comparator: .contains, value: .string("CommonArtist"))
+    )
+    let predicateData = try JSONEncoder().encode(predicate)
+
+    let dynamic = Playlist(name: "Dynamic", kind: .dynamicList, predicateData: predicateData)
+    library.playlists.append(dynamic)
+    library.evaluateDynamicPlaylist(id: dynamic.id)
+
+    // Should match main library track.
+    let beforeToggle = library.playlists.first(where: { $0.id == dynamic.id })!
+    #expect(beforeToggle.trackIDs == [libTrack.id])
+
+    // Toggle folder datasource on.
+    library.toggleSourceFolderPlaylist(playlistID: dynamic.id, folderPlaylistID: folderPlaylist.id)
+
+    let afterToggleOn = library.playlists.first(where: { $0.id == dynamic.id })!
+    #expect(afterToggleOn.sourceFolderPlaylistIDSet.contains(folderPlaylist.id))
+    #expect(afterToggleOn.trackIDs == [folderTrack.id])
+    #expect(library.tracks(for: afterToggleOn).map(\.id) == [folderTrack.id])
+
+    // Toggle folder datasource off.
+    library.toggleSourceFolderPlaylist(playlistID: dynamic.id, folderPlaylistID: folderPlaylist.id)
+
+    let afterToggleOff = library.playlists.first(where: { $0.id == dynamic.id })!
+    #expect(afterToggleOff.sourceFolderPlaylistIDSet.isEmpty)
+    #expect(afterToggleOff.trackIDs == [libTrack.id])
+  }
+
+  @Test("clearAllSourceFolderPlaylists reverts to library-wide evaluation")
+  func clearAllRevertsToLibrary() throws {
+    let library = MusicLibrary()
+
+    let libTrack = makeTrack(title: "LibOnly", artist: "Band")
+    library.tracks = [libTrack]
+
+    let folderPlaylist = Playlist(name: "Folder", kind: .folderList)
+    let folderTrack = makeTrack(title: "FolderOnly", artist: "Band")
+    library.playlists.append(folderPlaylist)
+    library.folderPlaylistTracks[folderPlaylist.id] = [folderTrack]
+
+    let predicate = PlaylistPredicate.single(
+      PlaylistCondition(field: .artist, comparator: .contains, value: .string("Band"))
+    )
+    let predicateData = try JSONEncoder().encode(predicate)
+
+    let dynamic = Playlist(
+      name: "Dynamic",
+      kind: .dynamicList,
+      predicateData: predicateData,
+      sourceFolderPlaylistIDSet: [folderPlaylist.id]
+    )
+    library.playlists.append(dynamic)
+    library.evaluateDynamicPlaylist(id: dynamic.id)
+
+    // Currently bound to folder.
+    let bound = library.playlists.first(where: { $0.id == dynamic.id })!
+    #expect(bound.trackIDs == [folderTrack.id])
+
+    // Revert to full library.
+    library.clearAllSourceFolderPlaylists(playlistID: dynamic.id)
+
+    let reverted = library.playlists.first(where: { $0.id == dynamic.id })!
+    #expect(reverted.sourceFolderPlaylistIDSet.isEmpty)
+    #expect(reverted.trackIDs == [libTrack.id])
+    #expect(library.tracks(for: reverted).map(\.id) == [libTrack.id])
+  }
+
+  @Test("removeFolderPlaylist removes ID from sourceFolderPlaylistIDSet")
+  func removeFolderClearsDynamicReferences() throws {
+    let library = MusicLibrary()
+
+    let libTrack = makeTrack(title: "LibTrack", artist: "Shared")
+    library.tracks = [libTrack]
+
+    let folderPlaylist = Playlist(name: "WillDelete", kind: .folderList)
+    let folderTrack = makeTrack(title: "FolderTrack", artist: "Shared")
+    library.playlists.append(folderPlaylist)
+    library.folderPlaylistTracks[folderPlaylist.id] = [folderTrack]
+
+    let predicate = PlaylistPredicate.single(
+      PlaylistCondition(field: .artist, comparator: .contains, value: .string("Shared"))
+    )
+    let predicateData = try JSONEncoder().encode(predicate)
+
+    let dynamic = Playlist(
+      name: "Dependent",
+      kind: .dynamicList,
+      predicateData: predicateData,
+      sourceFolderPlaylistIDSet: [folderPlaylist.id]
+    )
+    library.playlists.append(dynamic)
+    library.evaluateDynamicPlaylist(id: dynamic.id)
+
+    // Sanity: bound to folder.
+    #expect(library.playlists.first(where: { $0.id == dynamic.id })!.trackIDs == [folderTrack.id])
+
+    // Delete the folder playlist.
+    library.removeFolderPlaylist(id: folderPlaylist.id)
+
+    // Dynamic playlist should have source removed and be re-evaluated against library.
+    let afterDelete = library.playlists.first(where: { $0.id == dynamic.id })!
+    #expect(afterDelete.sourceFolderPlaylistIDSet.isEmpty)
+    #expect(afterDelete.trackIDs == [libTrack.id])
+  }
+
+  @Test("multiple folder datasources aggregate tracks for evaluation")
+  func multipleFolderDatasources() throws {
+    let library = MusicLibrary()
+
+    let folder1 = Playlist(name: "Folder1", kind: .folderList)
+    let folder2 = Playlist(name: "Folder2", kind: .folderList)
+    let track1 = makeTrack(title: "Song1", artist: "TargetArtist")
+    let track2 = makeTrack(title: "Song2", artist: "TargetArtist")
+    let track3 = makeTrack(title: "Song3", artist: "Other")
+
+    library.playlists.append(contentsOf: [folder1, folder2])
+    library.folderPlaylistTracks[folder1.id] = [track1, track3]
+    library.folderPlaylistTracks[folder2.id] = [track2]
+
+    let predicate = PlaylistPredicate.single(
+      PlaylistCondition(field: .artist, comparator: .contains, value: .string("TargetArtist"))
+    )
+    let predicateData = try JSONEncoder().encode(predicate)
+
+    let dynamic = Playlist(
+      name: "MultiSource",
+      kind: .dynamicList,
+      predicateData: predicateData,
+      sourceFolderPlaylistIDSet: [folder1.id, folder2.id]
+    )
+    library.playlists.append(dynamic)
+    library.evaluateDynamicPlaylist(id: dynamic.id)
+
+    let evaluated = library.playlists.first(where: { $0.id == dynamic.id })!
+    #expect(Set(evaluated.trackIDs) == [track1.id, track2.id])
+
+    let resolved = library.tracks(for: evaluated)
+    #expect(Set(resolved.map(\.id)) == [track1.id, track2.id])
+  }
+
+  @Test("predicate editor matched count respects folder datasource")
+  func predicateEditorCountRespectsFolderDatasource() throws {
+    let library = MusicLibrary()
+
+    // These should be ignored because dynamic playlist is bound to folder datasource.
+    let libMatch1 = makeTrack(title: "Lib1", artist: "Target")
+    let libMatch2 = makeTrack(title: "Lib2", artist: "Target")
+    library.tracks = [libMatch1, libMatch2]
+
+    let folder = Playlist(name: "Folder", kind: .folderList)
+    let folderMatch = makeTrack(title: "FolderMatch", artist: "Target")
+    let folderMiss = makeTrack(title: "FolderMiss", artist: "Other")
+    library.playlists.append(folder)
+    library.folderPlaylistTracks[folder.id] = [folderMatch, folderMiss]
+
+    let predicate = PlaylistPredicate.single(
+      PlaylistCondition(field: .artist, comparator: .contains, value: .string("Target"))
+    )
+    let predicateData = try JSONEncoder().encode(predicate)
+
+    let dynamic = Playlist(
+      name: "Dynamic",
+      kind: .dynamicList,
+      predicateData: predicateData,
+      sourceFolderPlaylistIDSet: [folder.id]
+    )
+    library.playlists.append(dynamic)
+
+    let vm = PredicateEditorViewModel(playlist: dynamic, library: library)
+    #expect(vm.matchingTrackCount() == 1)
+  }
+
+  @Test("predicate editor matched count aggregates all selected datasources")
+  func predicateEditorCountAggregatesSelectedDatasources() throws {
+    let library = MusicLibrary()
+
+    // Should not affect count when datasource set is non-empty.
+    library.tracks = [makeTrack(title: "Lib", artist: "Target")]
+
+    let folder1 = Playlist(name: "Folder1", kind: .folderList)
+    let folder2 = Playlist(name: "Folder2", kind: .folderList)
+    let folder1Match = makeTrack(title: "F1", artist: "Target")
+    let folder2Match = makeTrack(title: "F2", artist: "Target")
+
+    library.playlists.append(contentsOf: [folder1, folder2])
+    library.folderPlaylistTracks[folder1.id] = [folder1Match]
+    library.folderPlaylistTracks[folder2.id] = [folder2Match]
+
+    let predicate = PlaylistPredicate.single(
+      PlaylistCondition(field: .artist, comparator: .contains, value: .string("Target"))
+    )
+    let predicateData = try JSONEncoder().encode(predicate)
+
+    let dynamic = Playlist(
+      name: "Dynamic",
+      kind: .dynamicList,
+      predicateData: predicateData,
+      sourceFolderPlaylistIDSet: [folder1.id, folder2.id]
+    )
+    library.playlists.append(dynamic)
+
+    let vm = PredicateEditorViewModel(playlist: dynamic, library: library)
+    #expect(vm.matchingTrackCount() == 2)
+  }
+
+  @Test("folderPlaylistsAsDataSources returns only folder playlists")
+  func folderPlaylistsAsDataSourcesFilter() {
+    let library = MusicLibrary()
+
+    let folder1 = Playlist(name: "Folder1", kind: .folderList)
+    let folder2 = Playlist(name: "Folder2", kind: .folderList)
+    let staticPL = Playlist(name: "Static", kind: .staticList)
+    let dynamicPL = Playlist(name: "Dynamic", kind: .dynamicList)
+
+    library.playlists.append(contentsOf: [folder1, folder2, staticPL, dynamicPL])
+
+    let sources = library.folderPlaylistsAsDataSources()
+    #expect(sources.count == 2)
+    #expect(Set(sources.map(\.id)) == [folder1.id, folder2.id])
+  }
+
+  @Test("dynamic playlist icon changes with sourceFolderPlaylistIDSet")
+  func iconReflectsDataSource() {
+    let unboundDynamic = Playlist(name: "Unbound", kind: .dynamicList)
+    #expect(unboundDynamic.icon4SFSymbols() == "gearshape.2")
+
+    let boundDynamic = Playlist(
+      name: "Bound",
+      kind: .dynamicList,
+      sourceFolderPlaylistIDSet: [UUID()]
+    )
+    #expect(boundDynamic.icon4SFSymbols() == "folder.fill.badge.gearshape")
+  }
+}
+
 // MARK: - Phase96ObservationTests
 
 @Suite("Phase 96: ViewModel Observation Migration")

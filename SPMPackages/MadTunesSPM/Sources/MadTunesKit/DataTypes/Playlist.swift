@@ -15,7 +15,8 @@ public struct Playlist: Identifiable, Hashable, Sendable {
     compoundSortData: Data = Data(),
     predicateData: Data = Data(),
     folderURL: URL? = nil,
-    folderBookmarkData: Data? = nil
+    folderBookmarkData: Data? = nil,
+    sourceFolderPlaylistIDSet: Set<UUID> = []
   ) {
     self.id = id
     self.name = name
@@ -25,6 +26,7 @@ public struct Playlist: Identifiable, Hashable, Sendable {
     self.predicateData = predicateData
     self.folderURL = folderURL
     self.folderBookmarkData = folderBookmarkData
+    self.sourceFolderPlaylistIDSet = sourceFolderPlaylistIDSet
   }
 
   /// Phase 135: Create a duplicate of an existing playlist with a new UUID.
@@ -41,6 +43,7 @@ public struct Playlist: Identifiable, Hashable, Sendable {
     self.predicateData = source.predicateData
     self.folderURL = source.folderURL
     self.folderBookmarkData = source.folderBookmarkData
+    self.sourceFolderPlaylistIDSet = source.sourceFolderPlaylistIDSet
   }
 
   // MARK: Public
@@ -59,9 +62,27 @@ public struct Playlist: Identifiable, Hashable, Sendable {
   public var folderURL: URL?
   /// Phase 129: Security-scoped bookmark data for the folder URL.
   public var folderBookmarkData: Data?
+  /// Phase 135: Source folder playlist IDs for dynamic playlists.
+  /// When non-empty, the dynamic playlist evaluates its predicate against tracks from these folder playlists.
+  /// When empty (default), evaluates against all tracks in the library.
+  public var sourceFolderPlaylistIDSet: Set<UUID>
 
   /// 是否為系統播放清單（不可刪除）
   public var isSystemPlaylist: Bool {
     kind == .system
+  }
+
+  public func icon4SFSymbols(idx: Int? = nil) -> String {
+    switch idx {
+    case 0: return "music.quarternote.3"
+    case 1: return "heart.fill"
+    default: break
+    }
+    switch kind {
+    case .dynamicList:
+      return !sourceFolderPlaylistIDSet.isEmpty ? "folder.fill.badge.gearshape" : "gearshape.2"
+    case .folderList: return "folder.fill"
+    default: return "music.note.list"
+    }
   }
 }

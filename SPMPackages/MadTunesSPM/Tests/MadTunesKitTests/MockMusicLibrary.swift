@@ -180,6 +180,28 @@ final class MockMusicLibrary: MusicLibraryProviding {
     }
   }
 
+  func toggleSourceFolderPlaylist(playlistID: UUID, folderPlaylistID: UUID) {
+    guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+    guard playlists[idx].kind == .dynamicList else { return }
+    if playlists[idx].sourceFolderPlaylistIDSet.contains(folderPlaylistID) {
+      playlists[idx].sourceFolderPlaylistIDSet.remove(folderPlaylistID)
+    } else {
+      playlists[idx].sourceFolderPlaylistIDSet.insert(folderPlaylistID)
+    }
+    evaluateDynamicPlaylist(id: playlistID)
+  }
+
+  func clearAllSourceFolderPlaylists(playlistID: UUID) {
+    guard let idx = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+    guard playlists[idx].kind == .dynamicList else { return }
+    playlists[idx].sourceFolderPlaylistIDSet.removeAll()
+    evaluateDynamicPlaylist(id: playlistID)
+  }
+
+  func folderPlaylistsAsDataSources() -> [Playlist] {
+    playlists.filter { $0.kind == .folderList }
+  }
+
   func removeTracks(ids: Set<UUID>) {
     tracks.removeAll { ids.contains($0.id) }
     albums = buildAlbums(from: tracks)

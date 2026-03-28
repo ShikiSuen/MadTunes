@@ -13,13 +13,13 @@ struct PredicateEditorView: View {
 
   /// Phase 121: Accept an externally-owned VM so editing state survives iPad WPUI↔desktop switch.
   init(vm: PredicateEditorViewModel) {
-    self.vm = vm
+    self.peVM = vm
   }
 
   // MARK: Internal
 
   var body: some View {
-    @Bindable var bindableVM = vm
+    @Bindable var bindableVM = peVM
 
     // 此處以 SafeAreaInset 取代 Toolbar 以完美控制在 AppKit 的 UI 的顯示位置。
     NavigationStack {
@@ -41,10 +41,10 @@ struct PredicateEditorView: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-  private var vm: PredicateEditorViewModel
+  private var peVM: PredicateEditorViewModel
 
   private var matchingCountText: String {
-    if let count = vm.matchingTrackCount() {
+    if let count = peVM.matchingTrackCount() {
       let format = String(localized: "i18n:PredicateEditor.MatchCount.%lld", bundle: #bundle)
       return String.localizedStringWithFormat(format, Int64(count))
     }
@@ -65,7 +65,7 @@ struct PredicateEditorView: View {
       }
       .buttonStyle(.bordered)
       Button(String(localized: "i18n:PredicateEditor.Apply", bundle: #bundle)) {
-        vm.applyChanges()
+        peVM.applyChanges()
         dismiss()
       }
       .buttonStyle(.borderedProminent)
@@ -77,7 +77,7 @@ struct PredicateEditorView: View {
 
   private func headerBar(matchMode: Binding<PredicateEditorViewModel.MatchMode>) -> some View {
     HStack {
-      Text(vm.playlistName)
+      Text(peVM.playlistName)
         .font(.headline)
         .frame(maxWidth: .infinity, alignment: .leading)
       Picker(
@@ -91,6 +91,10 @@ struct PredicateEditorView: View {
       }
       .pickerStyle(.segmented)
       .fixedSize()
+      if let playlist = peVM.playlist {
+        DataSourceMenu(playlist: playlist, library: peVM.dataSourceLibrary)
+          .labelStyle(.iconOnly)
+      }
     }
     .padding()
   }
