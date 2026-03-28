@@ -296,6 +296,13 @@ struct MadTunesMainView: View {
       .onChange(of: vm.gridVM.highlightedAlbumIDs) { _, _ in
         isContentFocused = true
       }
+      // Phase 141: Search input should immediately leave table edit mode.
+      .onChange(of: vm.searchText) { _, newValue in
+        let hasSearchText = !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if hasSearchText, vm.tableVM.isEditModeActive {
+          vm.tableVM.isEditModeActive = false
+        }
+      }
       // Phase 141: Active Column Browser rules should also leave table edit mode.
       .onChange(of: vm.isColumnBrowserFiltering) { _, isFiltering in
         if isFiltering, vm.tableVM.isEditModeActive {

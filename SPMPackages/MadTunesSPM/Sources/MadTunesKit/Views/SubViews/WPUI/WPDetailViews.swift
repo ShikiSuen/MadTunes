@@ -426,7 +426,8 @@ struct WPPlaylistDetailView: View {
     return phoneVM.albumsWithRecentFirst(albums)
   }
 
-  /// Phase 76: Whether this playlist supports drag-reorder.
+  /// Phase 76 / Phase 141: Whether this playlist supports drag-reorder.
+  /// Phase 141: Also disabled when Column Browser filters are active.
   private var canReorder: Bool {
     guard let index = vm.library.playlists.firstIndex(where: { $0.id == playlist.id }) else {
       return false
@@ -435,7 +436,7 @@ struct WPPlaylistDetailView: View {
     let pl = vm.library.playlists[index]
     let isStaticOrFavorites = pl.kind == .staticList || (pl.kind == .system && index == 1)
     return isStaticOrFavorites
-      && !vm.isColumnBrowserFiltering
+      && !vm.isColumnBrowserFiltering // Phase 141
   }
 
   /// Phase 124: Static playlist ID (if current playlist is static), for swipe-to-remove.

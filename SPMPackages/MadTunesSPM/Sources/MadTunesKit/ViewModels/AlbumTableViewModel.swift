@@ -169,7 +169,10 @@ final class AlbumTableViewModel {
     if index == 0 { return false }
     let playlist = mainVM.library.playlists[index]
     let isFavorites = playlist.kind == .system && index == 1
+    let hasSearchText = !mainVM.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    // Phase 141: Also gate on search text and Column Browser filtering.
     return (isFavorites || playlist.kind == .staticList)
+      && !hasSearchText
       && !mainVM.isColumnBrowserFiltering
   }
 
