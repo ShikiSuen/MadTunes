@@ -741,6 +741,21 @@ public final class MusicLibrary {
     persistAllPlaylists()
   }
 
+  /// Phase 135: Duplicate a playlist with a new UUID.
+  /// Folder playlists (.folderList) and system playlists cannot be duplicated.
+  /// Returns the ID of the newly created playlist, or nil if duplication failed.
+  @discardableResult
+  public func duplicatePlaylist(id: UUID) -> UUID? {
+    guard let index = playlists.firstIndex(where: { $0.id == id }),
+          index > 1 else { return nil }
+    let source = playlists[index]
+    guard source.kind != .folderList else { return nil }
+    let duplicate = Playlist(duplicating: source)
+    playlists.append(duplicate)
+    persistAllPlaylists()
+    return duplicate.id
+  }
+
   /// Phase 117: Re-evaluate a dynamic playlist's predicate and update its trackIDs cache.
   public func evaluateDynamicPlaylist(id: UUID) {
     guard let idx = playlists.firstIndex(where: { $0.id == id }) else { return }

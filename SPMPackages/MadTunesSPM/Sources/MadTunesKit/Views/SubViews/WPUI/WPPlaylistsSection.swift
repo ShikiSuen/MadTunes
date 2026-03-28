@@ -62,6 +62,13 @@ struct WPPlaylistsSection: View {
             } label: {
               Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
             }
+            if playlist.kind != .folderList {
+              Button {
+                vm.library.duplicatePlaylist(id: playlist.id)
+              } label: {
+                Label(String(localized: "i18n:Sidebar.DuplicatePlaylist", bundle: #bundle), systemImage: "doc.on.doc")
+              }
+            }
             Divider()
             Button(role: .destructive) {
               if vm.selectedPlaylistID == playlist.id {

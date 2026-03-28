@@ -27,6 +27,22 @@ public struct Playlist: Identifiable, Hashable, Sendable {
     self.folderBookmarkData = folderBookmarkData
   }
 
+  /// Phase 135: Create a duplicate of an existing playlist with a new UUID.
+  /// Note: Folder playlists (.folderList) should not be duplicated.
+  public init(duplicating source: Self) {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyyMMdd-HHmmss"
+    let timeTag = formatter.string(from: Date())
+    self.id = .init()
+    self.name = "\(source.name) \(timeTag)"
+    self.trackIDs = source.trackIDs
+    self.kind = source.kind
+    self.compoundSortData = source.compoundSortData
+    self.predicateData = source.predicateData
+    self.folderURL = source.folderURL
+    self.folderBookmarkData = source.folderBookmarkData
+  }
+
   // MARK: Public
 
   public let id: UUID
