@@ -381,6 +381,16 @@ struct WPPlaylistDetailView: View {
           // Phase 139: Re-set playlist scope on appear so that returning from a
           // pushed album-detail view restores the correct selectedPlaylistID.
           vm.selectedPlaylistID = playlist.id
+          // Phase 141: If filters are already active, leave track selection mode.
+          if !canReorder, phoneVM.isWPTrackSelectionModeActive {
+            phoneVM.wpSelectedTrackIDs = []
+          }
+        }
+        // Phase 141: Reorder mode is disabled when Column Browser filters are active.
+        .onChange(of: vm.isColumnBrowserFiltering) { _, _ in
+          if !canReorder, phoneVM.isWPTrackSelectionModeActive {
+            phoneVM.wpSelectedTrackIDs = []
+          }
         }
         .onDisappear {
           // Phase 124: Clear track selection when leaving playlist detail.
@@ -423,7 +433,9 @@ struct WPPlaylistDetailView: View {
     }
     if index == 0 { return false } // All Music is never reorderable.
     let pl = vm.library.playlists[index]
-    return pl.kind == .staticList || (pl.kind == .system && index == 1)
+    let isStaticOrFavorites = pl.kind == .staticList || (pl.kind == .system && index == 1)
+    return isStaticOrFavorites
+      && !vm.isColumnBrowserFiltering
   }
 
   /// Phase 124: Static playlist ID (if current playlist is static), for swipe-to-remove.

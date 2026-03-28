@@ -296,6 +296,12 @@ struct MadTunesMainView: View {
       .onChange(of: vm.gridVM.highlightedAlbumIDs) { _, _ in
         isContentFocused = true
       }
+      // Phase 141: Active Column Browser rules should also leave table edit mode.
+      .onChange(of: vm.isColumnBrowserFiltering) { _, isFiltering in
+        if isFiltering, vm.tableVM.isEditModeActive {
+          vm.tableVM.isEditModeActive = false
+        }
+      }
       .overlay {
         ContentAvailabilityOverlay(
           displayAlbums: displayAlbums,

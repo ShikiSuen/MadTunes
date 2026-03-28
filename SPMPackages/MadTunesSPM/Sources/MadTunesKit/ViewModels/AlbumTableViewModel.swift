@@ -154,8 +154,9 @@ final class AlbumTableViewModel {
   /// Phase 69: Whether the current playlist supports iOS edit mode (multi-select).
   /// Enabled for Favorites and user static playlists on non-AppKit platforms.
   ///
-  /// Edit mode is mutually exclusive with table sorting: sorting reorders the
-  /// displayed list and therefore cannot be mixed with manual multi-selection.
+  /// Edit mode is mutually exclusive with table sorting and active filtering:
+  /// sorting/filtering reorders or narrows the visible list and therefore cannot
+  /// be mixed with manual reordering mode.
   var canEnterEditMode: Bool {
     guard !OS.isAppKit else { return false }
     guard tableSortCriteria.isEmpty else { return false }
@@ -168,7 +169,8 @@ final class AlbumTableViewModel {
     if index == 0 { return false }
     let playlist = mainVM.library.playlists[index]
     let isFavorites = playlist.kind == .system && index == 1
-    return isFavorites || playlist.kind == .staticList
+    return (isFavorites || playlist.kind == .staticList)
+      && !mainVM.isColumnBrowserFiltering
   }
 
   // MARK: - Phase 52: Menu command helpers for track reordering
