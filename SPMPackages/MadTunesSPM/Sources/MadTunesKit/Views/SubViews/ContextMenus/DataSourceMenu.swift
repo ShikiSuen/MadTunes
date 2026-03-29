@@ -20,31 +20,35 @@ struct DataSourceMenu: View {
   var body: some View {
     let folderPlaylists = library.folderPlaylistsAsDataSources()
     Menu {
-      Button {
-        library.clearAllSourceFolderPlaylists(playlistID: playlist.id)
-      } label: {
-        let isSelected = playlist.sourceFolderPlaylistIDSet.isEmpty
-        Label(
-          String(localized: "i18n:Sidebar.DataSource.AllMusic", bundle: #bundle),
-          systemImage: isSelected ? "checkmark" : ""
-        )
-      }
-      if !folderPlaylists.isEmpty {
-        Divider()
-        ForEach(folderPlaylists) { folderPlaylist in
-          Button {
-            library.toggleSourceFolderPlaylist(
-              playlistID: playlist.id,
-              folderPlaylistID: folderPlaylist.id
-            )
-          } label: {
-            let isSelected = playlist.sourceFolderPlaylistIDSet.contains(folderPlaylist.id)
-            Label(
-              folderPlaylist.name,
-              systemImage: isSelected ? "checkmark" : ""
-            )
+      Section {
+        Button {
+          library.clearAllSourceFolderPlaylists(playlistID: playlist.id)
+        } label: {
+          let isSelected = playlist.sourceFolderPlaylistIDSet.isEmpty
+          Label(
+            String(localized: "i18n:Sidebar.DataSource.AllMusic", bundle: #bundle),
+            systemImage: isSelected ? "checkmark" : ""
+          )
+        }
+        if !folderPlaylists.isEmpty {
+          Divider()
+          ForEach(folderPlaylists) { folderPlaylist in
+            Button {
+              library.toggleSourceFolderPlaylist(
+                playlistID: playlist.id,
+                folderPlaylistID: folderPlaylist.id
+              )
+            } label: {
+              let isSelected = playlist.sourceFolderPlaylistIDSet.contains(folderPlaylist.id)
+              Label(
+                folderPlaylist.name,
+                systemImage: isSelected ? "checkmark" : ""
+              )
+            }
           }
         }
+      } header: {
+        Text("i18n:Sidebar.DataSource", bundle: #bundle)
       }
     } label: {
       // `cylinder.split.1x2` 是資料庫的代表 icon。`externaldrive` 反而會鬧歧義。
