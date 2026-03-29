@@ -68,6 +68,7 @@ public final class AudioOutputDeviceManager {
       mElement: kAudioObjectPropertyElementMain
     )
     var dataSize: UInt32 = 0
+    // WARN: [Internal] Thread running at User-interactive quality-of-service class waiting on a lower QoS thread running at Default quality-of-service class. Investigate ways to avoid priority inversions.
     guard AudioObjectGetPropertyDataSize(
       AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &dataSize
     ) == noErr else { return }
