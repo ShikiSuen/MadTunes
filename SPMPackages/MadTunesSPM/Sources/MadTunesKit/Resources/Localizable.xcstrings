@@ -3249,13 +3249,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "空路径播放清单"
+            "value" : "文件夹播放清单为空"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "空白路徑播放清單"
+            "value" : "資料夾播放清單為空"
           }
         }
       }
