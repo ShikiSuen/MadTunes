@@ -339,7 +339,20 @@ public enum MetadataReader: Sendable {
     -> String? {
     let filtered = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: id)
     guard let item = filtered.first else { return nil }
-    return try? await item.load(.stringValue)
+    guard let rawString = try? await item.load(.stringValue) else { return nil }
+    // Phase 142 follow-up: apply fix only to ID3 keyspace metadata.
+    // Non-UTF8 legacy ID3 can appear in more than just MP3 containers.
+    guard shouldApplyID3EncodingFix(item: item, identifier: id) else { return rawString }
+    return ID3EncodingFixer.fixEncoding(rawString)
+  }
+
+  private static func shouldApplyID3EncodingFix(
+    item: AVMetadataItem,
+    identifier: AVMetadataIdentifier
+  )
+    -> Bool {
+    if item.keySpace == .id3 { return true }
+    return identifier.rawValue.lowercased().contains("id3")
   }
 
   private static func loadData(
