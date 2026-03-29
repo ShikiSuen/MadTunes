@@ -17,23 +17,71 @@ public struct AudioOutputDevice: Identifiable, Hashable, Sendable {
   public let name: String
 }
 
+// MARK: - ListenerState
+
+private final class ListenerState: @unchecked Sendable {
+  var installed = false
+  var block: AudioObjectPropertyListenerBlock?
+  let lock = NSLock()
+
+  func install(_ block: @escaping AudioObjectPropertyListenerBlock) -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    guard !installed else { return false }
+    self.block = block
+    installed = true
+    return true
+  }
+
+  func remove() -> AudioObjectPropertyListenerBlock? {
+    lock.lock()
+    defer { lock.unlock() }
+    let oldBlock = block
+    block = nil
+    installed = false
+    return oldBlock
+  }
+}
+
+// MARK: - SendableListenerBlock
+
+private struct SendableListenerBlock: @unchecked Sendable {
+  let block: AudioObjectPropertyListenerBlock
+}
+
 // MARK: - AudioOutputDeviceManager
 
 /// Phase 127: Enumerates macOS audio output devices via CoreAudio and allows
 /// the caller to route AVPlayer output to a specific device by UID.
+/// Phase 144: All CoreAudio API calls are now async to avoid priority inversion
+/// warnings on macOS 15 + Xcode 26.3 (Intel).
 @Observable
 @MainActor
 public final class AudioOutputDeviceManager {
   // MARK: Lifecycle
 
   public init() {
-    refreshDevices()
-    installDeviceListChangeListener()
+    Task.detached(priority: .userInitiated) {
+      await self.refreshDevices()
+      await self.installDeviceListChangeListener()
+    }
   }
 
   deinit {
-    MainActor.assumeIsolated {
-      removeDeviceListChangeListener()
+    guard let block = listenerState.remove() else { return }
+    let sendableBlock = SendableListenerBlock(block: block)
+    Task.detached(priority: .medium) {
+      var address = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDevices,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+      )
+      AudioObjectRemovePropertyListenerBlock(
+        AudioObjectID(kAudioObjectSystemObject),
+        &address,
+        DispatchQueue.main,
+        sendableBlock.block
+      )
     }
   }
 
@@ -45,67 +93,93 @@ public final class AudioOutputDeviceManager {
   /// The UID of the currently selected output device, or `nil` for system default.
   public var selectedDeviceUID: String?
 
-  /// Returns the UID of the system default output device, if obtainable.
-  public var systemDefaultDeviceUID: String? {
-    var deviceID = AudioDeviceID(0)
-    var size = UInt32(MemoryLayout<AudioDeviceID>.size)
-    var address = AudioObjectPropertyAddress(
-      mSelector: kAudioHardwarePropertyDefaultOutputDevice,
-      mScope: kAudioObjectPropertyScopeGlobal,
-      mElement: kAudioObjectPropertyElementMain
-    )
-    guard AudioObjectGetPropertyData(
-      AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID
-    ) == noErr else { return nil }
-    return uidForDevice(deviceID)
-  }
+  /// Cached UID of the system default output device, updated during refreshDevices().
+  public private(set) var cachedSystemDefaultDeviceUID: String?
 
   /// Refresh the list of available output devices from CoreAudio.
-  public func refreshDevices() {
-    var address = AudioObjectPropertyAddress(
-      mSelector: kAudioHardwarePropertyDevices,
-      mScope: kAudioObjectPropertyScopeGlobal,
-      mElement: kAudioObjectPropertyElementMain
-    )
-    var dataSize: UInt32 = 0
-    // WARN: [Internal] Thread running at User-interactive quality-of-service class waiting on a lower QoS thread running at Default quality-of-service class. Investigate ways to avoid priority inversions.
-    guard AudioObjectGetPropertyDataSize(
-      AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &dataSize
-    ) == noErr else { return }
-
-    let deviceCount = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
-    var deviceIDs = [AudioDeviceID](repeating: 0, count: deviceCount)
-    guard AudioObjectGetPropertyData(
-      AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &dataSize, &deviceIDs
-    ) == noErr else { return }
-
-    var devices: [AudioOutputDevice] = []
-    for deviceID in deviceIDs {
-      // Check if this device has output streams.
-      var streamAddress = AudioObjectPropertyAddress(
-        mSelector: kAudioDevicePropertyStreams,
-        mScope: kAudioDevicePropertyScopeOutput,
-        mElement: kAudioObjectPropertyElementMain
-      )
-      var streamSize: UInt32 = 0
-      guard AudioObjectGetPropertyDataSize(
-        deviceID, &streamAddress, 0, nil, &streamSize
-      ) == noErr, streamSize > 0 else { continue }
-
-      guard let uid = uidForDevice(deviceID),
-            let name = nameForDevice(deviceID) else { continue }
-
-      devices.append(AudioOutputDevice(id: deviceID, uid: uid, name: name))
+  public func refreshDevices() async {
+    async let devicesTask = Self.fetchOutputDevices()
+    async let defaultUIDTask = Self.fetchSystemDefaultDeviceUID()
+    let devices = await devicesTask
+    let defaultUID = await defaultUIDTask
+    await MainActor.run {
+      self.outputDevices = devices
+      self.cachedSystemDefaultDeviceUID = defaultUID
     }
-    outputDevices = devices
   }
 
   // MARK: Private
 
-  private var listenerInstalled = false
-  private var listenerBlock: AudioObjectPropertyListenerBlock?
+  private let listenerState = ListenerState()
 
-  private func uidForDevice(_ deviceID: AudioDeviceID) -> String? {
+  // MARK: - Static CoreAudio Helpers (nonisolated)
+
+  private nonisolated static func performCoreAudioCall<T>(
+    priority: TaskPriority = .medium,
+    _ operation: @escaping @Sendable () -> T
+  ) async
+    -> T where T: Sendable {
+    await Task.detached(priority: priority) {
+      operation()
+    }.value
+  }
+
+  private static func fetchSystemDefaultDeviceUID() async -> String? {
+    await performCoreAudioCall {
+      var deviceID = AudioDeviceID(0)
+      var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+      var address = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+      )
+      let result = AudioObjectGetPropertyData(
+        AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID
+      ) == noErr
+      return result ? Self.uidForDeviceSync(deviceID) : nil
+    }
+  }
+
+  private static func fetchOutputDevices() async -> [AudioOutputDevice] {
+    await performCoreAudioCall {
+      var address = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDevices,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+      )
+      var dataSize: UInt32 = 0
+      guard AudioObjectGetPropertyDataSize(
+        AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &dataSize
+      ) == noErr else { return [] }
+
+      let deviceCount = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+      var deviceIDs = [AudioDeviceID](repeating: 0, count: deviceCount)
+      guard AudioObjectGetPropertyData(
+        AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &dataSize, &deviceIDs
+      ) == noErr else { return [] }
+
+      var devices: [AudioOutputDevice] = []
+      for deviceID in deviceIDs {
+        var streamAddress = AudioObjectPropertyAddress(
+          mSelector: kAudioDevicePropertyStreams,
+          mScope: kAudioDevicePropertyScopeOutput,
+          mElement: kAudioObjectPropertyElementMain
+        )
+        var streamSize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(
+          deviceID, &streamAddress, 0, nil, &streamSize
+        ) == noErr, streamSize > 0 else { continue }
+
+        guard let uid = Self.uidForDeviceSync(deviceID),
+              let name = Self.nameForDeviceSync(deviceID) else { continue }
+
+        devices.append(AudioOutputDevice(id: deviceID, uid: uid, name: name))
+      }
+      return devices
+    }
+  }
+
+  private nonisolated static func uidForDeviceSync(_ deviceID: AudioDeviceID) -> String? {
     var address = AudioObjectPropertyAddress(
       mSelector: kAudioDevicePropertyDeviceUID,
       mScope: kAudioObjectPropertyScopeGlobal,
@@ -119,7 +193,7 @@ public final class AudioOutputDeviceManager {
     return uid?.takeUnretainedValue() as String?
   }
 
-  private func nameForDevice(_ deviceID: AudioDeviceID) -> String? {
+  private nonisolated static func nameForDeviceSync(_ deviceID: AudioDeviceID) -> String? {
     var address = AudioObjectPropertyAddress(
       mSelector: kAudioObjectPropertyName,
       mScope: kAudioObjectPropertyScopeGlobal,
@@ -133,47 +207,30 @@ public final class AudioOutputDeviceManager {
     return name?.takeUnretainedValue() as String?
   }
 
-  private func installDeviceListChangeListener() {
-    guard !listenerInstalled else { return }
-    var address = AudioObjectPropertyAddress(
-      mSelector: kAudioHardwarePropertyDevices,
-      mScope: kAudioObjectPropertyScopeGlobal,
-      mElement: kAudioObjectPropertyElementMain
-    )
+  private func installDeviceListChangeListener() async {
     let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-      Task { @MainActor in
-        self?.refreshDevices()
+      Task { @MainActor [weak self] in
+        await self?.refreshDevices()
       }
     }
-    let status = AudioObjectAddPropertyListenerBlock(
-      AudioObjectID(kAudioObjectSystemObject),
-      &address,
-      DispatchQueue.main,
-      block
-    )
-    if status == noErr {
-      listenerBlock = block
-      listenerInstalled = true
-    }
-  }
-
-  private func removeDeviceListChangeListener() {
-    guard listenerInstalled else { return }
-    var address = AudioObjectPropertyAddress(
-      mSelector: kAudioHardwarePropertyDevices,
-      mScope: kAudioObjectPropertyScopeGlobal,
-      mElement: kAudioObjectPropertyElementMain
-    )
-    if let block = listenerBlock {
-      AudioObjectRemovePropertyListenerBlock(
+    guard listenerState.install(block) else { return }
+    let sendableBlock = SendableListenerBlock(block: block)
+    let success = await Self.performCoreAudioCall(priority: .medium) {
+      var address = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDevices,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+      )
+      return AudioObjectAddPropertyListenerBlock(
         AudioObjectID(kAudioObjectSystemObject),
         &address,
         DispatchQueue.main,
-        block
-      )
+        sendableBlock.block
+      ) == noErr
     }
-    listenerBlock = nil
-    listenerInstalled = false
+    if !success {
+      _ = listenerState.remove()
+    }
   }
 }
 

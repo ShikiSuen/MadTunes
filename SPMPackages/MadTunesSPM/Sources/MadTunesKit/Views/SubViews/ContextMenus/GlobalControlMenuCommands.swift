@@ -365,7 +365,7 @@ struct GlobalControlMenuCommands: Commands {
   @ViewBuilder private var audioOutputDeviceMenu: some View {
     let manager = vm.player.outputDeviceManager
     let currentUID = manager.selectedDeviceUID
-    let defaultUID = manager.systemDefaultDeviceUID
+    let defaultUID = manager.cachedSystemDefaultDeviceUID
 
     Menu {
       Button {

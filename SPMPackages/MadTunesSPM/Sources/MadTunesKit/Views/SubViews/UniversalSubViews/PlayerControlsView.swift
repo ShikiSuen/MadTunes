@@ -450,7 +450,7 @@ struct PlayerControlsView: View {
   @ViewBuilder private var audioOutputDeviceMenuContent: some View {
     let manager = player.outputDeviceManager
     let currentUID = manager.selectedDeviceUID
-    let defaultUID = manager.systemDefaultDeviceUID
+    let defaultUID = manager.cachedSystemDefaultDeviceUID
 
     // System Default option.
     Button {
