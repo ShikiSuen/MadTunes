@@ -92,8 +92,12 @@ struct PredicateEditorView: View {
       .pickerStyle(.segmented)
       .fixedSize()
       if let playlist = peVM.playlist {
-        DataSourceMenu(playlist: playlist, library: peVM.dataSourceLibrary)
-          .labelStyle(.iconOnly)
+        DataSourceMenu(
+          playlist: playlist,
+          library: peVM.dataSourceLibrary,
+          showDropDownMenuButtonTitle: false
+        )
+        .fixedSize()
       }
     }
     .padding()

@@ -10,9 +10,14 @@ import SwiftUI
 struct DataSourceMenu: View {
   // MARK: Lifecycle
 
-  init(playlist: Playlist, library: any MusicLibraryProviding) {
+  init(
+    playlist: Playlist,
+    library: any MusicLibraryProviding,
+    showDropDownMenuButtonTitle: Bool = true
+  ) {
     self.playlist = playlist
     self.library = library
+    self.showDropDownMenuButtonTitle = showDropDownMenuButtonTitle
   }
 
   // MARK: Internal
@@ -53,10 +58,15 @@ struct DataSourceMenu: View {
         }
       } label: {
         // `cylinder.split.1x2` 是資料庫的代表 icon。`externaldrive` 反而會鬧歧義。
-        Label(
-          String(localized: "i18n:Sidebar.DataSource", bundle: #bundle),
-          systemImage: "cylinder.split.1x2"
-        )
+        if showDropDownMenuButtonTitle {
+          Label(
+            String(localized: "i18n:Sidebar.DataSource", bundle: #bundle),
+            systemImage: "cylinder.split.1x2"
+          )
+        } else {
+          Image(systemName: "cylinder.split.1x2")
+            .help(String(localized: "i18n:Sidebar.DataSource", bundle: #bundle))
+        }
       }
     }
   }
@@ -65,4 +75,5 @@ struct DataSourceMenu: View {
 
   private let playlist: Playlist
   private let library: any MusicLibraryProviding
+  private let showDropDownMenuButtonTitle: Bool
 }
