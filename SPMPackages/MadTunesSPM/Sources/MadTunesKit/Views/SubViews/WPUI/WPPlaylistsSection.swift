@@ -33,43 +33,47 @@ struct WPPlaylistsSection: View {
       ForEach(userPlaylists) { playlist in
         playlistRow(playlist)
           .contextMenu {
-            if playlist.kind == .dynamicList {
-              Button {
-                vm.openPredicateEditor(for: playlist)
-              } label: {
-                Label(
-                  String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
-                  systemImage: "gearshape.2"
-                )
-              }
-              // Phase 135: Data source submenu for dynamic playlists.
-              DataSourceMenu(playlist: playlist, library: vm.library)
-            }
-            if playlist.kind == .folderList {
-              Button {
-                Task {
-                  await vm.library.rescanFolderPlaylist(id: playlist.id)
+            Section {
+              if playlist.kind == .dynamicList {
+                Button {
+                  vm.openPredicateEditor(for: playlist)
+                } label: {
+                  Label(
+                    String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
+                    systemImage: "gearshape.2"
+                  )
                 }
-              } label: {
-                Label(
-                  String(localized: "i18n:Sidebar.RescanFolder", bundle: #bundle),
-                  systemImage: "arrow.clockwise"
-                )
+                // Phase 135: Data source submenu for dynamic playlists.
+                DataSourceMenu(playlist: playlist, library: vm.library)
               }
-            }
-            Button {
-              phoneVM.renamePlaylistName = playlist.name
-              phoneVM.renamePlaylistID = playlist.id
-              phoneVM.isRenamePlaylistAlertPresented = true
-            } label: {
-              Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
-            }
-            if playlist.kind != .folderList {
+              if playlist.kind == .folderList {
+                Button {
+                  Task {
+                    await vm.library.rescanFolderPlaylist(id: playlist.id)
+                  }
+                } label: {
+                  Label(
+                    String(localized: "i18n:Sidebar.RescanFolder", bundle: #bundle),
+                    systemImage: "arrow.clockwise"
+                  )
+                }
+              }
               Button {
-                vm.library.duplicatePlaylist(id: playlist.id)
+                phoneVM.renamePlaylistName = playlist.name
+                phoneVM.renamePlaylistID = playlist.id
+                phoneVM.isRenamePlaylistAlertPresented = true
               } label: {
-                Label(String(localized: "i18n:Sidebar.DuplicatePlaylist", bundle: #bundle), systemImage: "doc.on.doc")
+                Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
               }
+              if playlist.kind != .folderList {
+                Button {
+                  vm.library.duplicatePlaylist(id: playlist.id)
+                } label: {
+                  Label(String(localized: "i18n:Sidebar.DuplicatePlaylist", bundle: #bundle), systemImage: "doc.on.doc")
+                }
+              }
+            } header: {
+              Text(playlist.kind.localizedDescription)
             }
             Divider()
             Button(role: .destructive) {

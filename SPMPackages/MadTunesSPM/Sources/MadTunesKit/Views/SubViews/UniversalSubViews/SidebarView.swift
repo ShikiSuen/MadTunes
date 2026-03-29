@@ -45,55 +45,62 @@ struct SidebarView: View {
           Label(playlist.name, systemImage: playlistIcon(for: playlist))
             .tag(playlist.id)
             .contextMenu {
-              if playlist.kind == .dynamicList {
-                Button {
-                  mainVM.openPredicateEditor(for: playlist)
-                } label: {
-                  Label(
-                    String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
-                    systemImage: "slider.horizontal.3"
-                  )
-                }
-                // Phase 135: Data source submenu for dynamic playlists.
-                DataSourceMenu(playlist: playlist, library: library)
-              }
-              if playlist.kind == .folderList {
-                Button {
-                  Task {
-                    await library.rescanFolderPlaylist(id: playlist.id)
+              Section {
+                if playlist.kind == .dynamicList {
+                  Button {
+                    mainVM.openPredicateEditor(for: playlist)
+                  } label: {
+                    Label(
+                      String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
+                      systemImage: "slider.horizontal.3"
+                    )
                   }
-                } label: {
-                  Label(
-                    String(localized: "i18n:Sidebar.RescanFolder", bundle: #bundle),
-                    systemImage: "arrow.clockwise"
-                  )
+                  // Phase 135: Data source submenu for dynamic playlists.
+                  DataSourceMenu(playlist: playlist, library: library)
                 }
+                if playlist.kind == .folderList {
+                  Button {
+                    Task {
+                      await library.rescanFolderPlaylist(id: playlist.id)
+                    }
+                  } label: {
+                    Label(
+                      String(localized: "i18n:Sidebar.RescanFolder", bundle: #bundle),
+                      systemImage: "arrow.clockwise"
+                    )
+                  }
 
-                #if os(macOS) && !targetEnvironment(macCatalyst)
-                Divider()
-                Button {
-                  openFolderInFinder(for: playlist.id)
-                } label: {
-                  Label(
-                    String(localized: "i18n:ContextMenu.ShowInFinder", bundle: #bundle),
-                    systemImage: "folder"
-                  )
+                  #if os(macOS) && !targetEnvironment(macCatalyst)
+                  Divider()
+                  Button {
+                    openFolderInFinder(for: playlist.id)
+                  } label: {
+                    Label(
+                      String(localized: "i18n:ContextMenu.ShowInFinder", bundle: #bundle),
+                      systemImage: "folder"
+                    )
+                  }
+                  .disabled(library.folderURL(forFolderPlaylistID: playlist.id) == nil)
+                  #endif
                 }
-                .disabled(library.folderURL(forFolderPlaylistID: playlist.id) == nil)
-                #endif
-              }
-              Button {
-                alertText = playlist.name
-                alertKind = .rename(playlist.id)
-              } label: {
-                Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
-              }
-              if playlist.kind != .folderList {
                 Button {
-                  library.duplicatePlaylist(id: playlist.id)
+                  alertText = playlist.name
+                  alertKind = .rename(playlist.id)
                 } label: {
-                  Label(String(localized: "i18n:Sidebar.DuplicatePlaylist", bundle: #bundle), systemImage: "doc.on.doc")
+                  Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
                 }
+                if playlist.kind != .folderList {
+                  Button {
+                    library.duplicatePlaylist(id: playlist.id)
+                  } label: {
+                    Label(
+                      String(localized: "i18n:Sidebar.DuplicatePlaylist", bundle: #bundle),
+                      systemImage: "doc.on.doc"
+                    )
+                  }
+                }
+              } header: {
+                Text(playlist.kind.localizedDescription)
               }
               Divider()
               Button(role: .destructive) {
