@@ -14,8 +14,9 @@ import NaturalLanguage
 ///
 /// This utility attempts to detect and fix such encoding errors by:
 /// 1. Converting the ISO-8859-1 string back to raw bytes
-/// 2. Trying various CJK encodings
-/// 3. Selecting the encoding that produces the most valid CJK characters
+/// 2. Trying various candidate encodings
+/// 3. Selecting the encoding that produces the most valid target-script characters,
+///    weighted by round-trip verification, NLTagger language detection, and system locale
 public enum ID3EncodingFixer: Sendable {
   // MARK: Public
 
@@ -24,17 +25,7 @@ public enum ID3EncodingFixer: Sendable {
   /// Attempts to fix encoding issues in an ID3 metadata string.
   /// Returns the corrected string if a better encoding is found, otherwise returns the original.
   public static func fixEncoding(_ string: String) -> String {
-    guard needsEncodingFix(string) else { return string }
-
-    let latin1Data = string.data(using: .isoLatin1) ?? Data()
-    guard !latin1Data.isEmpty else { return string }
-
-    let originalScore = scoreCandidate(string)
-    guard let bestMatch = findBestEncoding(for: latin1Data, minimumScore: originalScore + 20) else {
-      return string
-    }
-
-    return bestMatch.string
+    fixEncoding(string, preferredLanguages: Locale.preferredLanguages)
   }
 
   /// Checks if a string likely has encoding issues (contains high-byte Latin-1 characters).
@@ -66,6 +57,99 @@ public enum ID3EncodingFixer: Sendable {
     if isLikelyLegitimateLatinText(string, highByteCount: highByteCount) { return false }
 
     return true
+  }
+
+  // MARK: Internal
+
+  // MARK: - Phase 143: Locale-aware encoding family preference
+
+  /// Encoding families grouped by script/region.
+  enum EncodingFamily: Sendable {
+    case simplifiedChinese
+    case traditionalChinese
+    case japanese
+    case korean
+    case cyrillic
+    case neutral
+
+    // MARK: Internal
+
+    func matches(encodingName: String) -> Bool {
+      switch self {
+      case .simplifiedChinese: return encodingName == "GB18030"
+      case .traditionalChinese: return encodingName == "Big5"
+      case .japanese: return ["ShiftJIS", "EUC-JP", "ISO-2022-JP"].contains(encodingName)
+      case .korean: return encodingName == "EUC-KR"
+      case .cyrillic: return ["Windows-1251", "KOI8-R"].contains(encodingName)
+      case .neutral: return false
+      }
+    }
+  }
+
+  // Phase 143: injectable entry point for testability.
+  static func fixEncoding(_ string: String, preferredLanguages: [String]) -> String {
+    guard needsEncodingFix(string) else { return string }
+
+    let latin1Data = string.data(using: .isoLatin1) ?? Data()
+    guard !latin1Data.isEmpty else { return string }
+
+    let originalScore = scoreCandidate(string)
+    let families = preferredEncodingFamilies(from: preferredLanguages)
+    guard let bestMatch = findBestEncoding(
+      for: latin1Data, minimumScore: originalScore + 20, families: families
+    ) else {
+      return string
+    }
+
+    return bestMatch.string
+  }
+
+  /// Determines encoding families from the full preferred-languages list.
+  /// Returns `(family, bonus)` pairs with decaying bonus (200, 120, 60 …).
+  /// When both Simplified and Traditional Chinese appear, their bonuses are
+  /// unified to the maximum — the CJK alignment heuristic (+250 GB18030 vs
+  /// +200 Big5) provides sufficient disambiguation between the two.
+  static func preferredEncodingFamilies(
+    from preferredLanguages: [String] = Locale.preferredLanguages
+  )
+    -> [(EncodingFamily, Int)] {
+    var seen = Set<EncodingFamily>()
+    var result: [(EncodingFamily, Int)] = []
+    let bonuses = [200, 120, 60, 30]
+
+    for (index, lang) in preferredLanguages.enumerated() {
+      let family = encodingFamily(forLanguageTag: lang)
+      guard family != .neutral, !seen.contains(family) else { continue }
+      seen.insert(family)
+      let bonus = index < bonuses.count ? bonuses[index] : 15
+      result.append((family, bonus))
+    }
+
+    // Unify sibling Chinese families: a user with both zh-Hant and zh-Hans
+    // encounters both Big5 and GBK files equally.
+    let chineseFamilies: Set<EncodingFamily> = [.simplifiedChinese, .traditionalChinese]
+    let chineseBonuses = result.filter { chineseFamilies.contains($0.0) }.map(\.1)
+    if chineseBonuses.count > 1, let maxBonus = chineseBonuses.max() {
+      result = result.map { item in
+        chineseFamilies.contains(item.0) ? (item.0, maxBonus) : item
+      }
+    }
+
+    return result
+  }
+
+  static func countCJKCharacters(_ string: String) -> Int {
+    string.filter { char in
+      let scalar = char.unicodeScalars.first?.value ?? 0
+      // CJK Unified Ideographs
+      return (0x4E00 ... 0x9FFF).contains(scalar) ||
+        // CJK Unified Ideographs Extension A
+        (0x3400 ... 0x4DBF).contains(scalar) ||
+        // CJK Unified Ideographs Extension B-F
+        (0x20000 ... 0x2CEAF).contains(scalar) ||
+        // CJK Compatibility Ideographs
+        (0xF900 ... 0xFAFF).contains(scalar)
+    }.count
   }
 
   // MARK: Private
@@ -140,6 +224,28 @@ public enum ID3EncodingFixer: Sendable {
     return encodings
   }()
 
+  /// Maps a BCP-47 language tag (e.g. "zh-Hant-CN", "ja-JP") to an encoding family.
+  private static func encodingFamily(forLanguageTag tag: String) -> EncodingFamily {
+    let locale = Locale(identifier: tag)
+    guard let langCode = locale.language.languageCode?.identifier else { return .neutral }
+    switch langCode {
+    case "ja":
+      return .japanese
+    case "ko":
+      return .korean
+    case "zh":
+      let script = locale.language.script?.identifier ?? ""
+      if script == "Hant" {
+        return .traditionalChinese
+      }
+      return .simplifiedChinese
+    case "be", "bg", "mk", "ru", "sr", "uk":
+      return .cyrillic
+    default:
+      return .neutral
+    }
+  }
+
   private static func isLikelyLegitimateLatinText(_ string: String, highByteCount: Int) -> Bool {
     var latinLetterCount = 0
     var asciiLetterCount = 0
@@ -190,13 +296,12 @@ public enum ID3EncodingFixer: Sendable {
     if kanaCount > 0 { score += 120 }
     if cyrillicCount > 0 { score += 30 }
 
-    // strongly favor candidates that contain CJK characters in this context,
-    // because most ID3 polish/track metadata in this repo is CJK-heavy.
-    if cjkCount > 0 {
-      score += 1200
-    } else if cyrillicCount > 0 {
-      score += 200
-    }
+    // Phase 143: scaled script-count bonus (replaces old CJK +1200 / Cyrillic +200).
+    // Evidence-proportional: more characters = higher confidence = higher bonus,
+    // capped to prevent runaway scores. Locale preference (in findBestEncoding)
+    // and round-trip verification disambiguate competing encodings.
+    score += min(cjkCount * 80, 500)
+    score += min(cyrillicCount * 25, 300)
 
     // reject invalid UTF-8 replacement characters quickly
     score -= replacementCount * 200
@@ -237,7 +342,11 @@ public enum ID3EncodingFixer: Sendable {
     }
   }
 
-  private static func findBestEncoding(for data: Data, minimumScore: Int) -> (string: String, score: Int)? {
+  private static func findBestEncoding(
+    for data: Data, minimumScore: Int,
+    families: [(EncodingFamily, Int)] = []
+  )
+    -> (string: String, score: Int)? {
     var bestResult: (string: String, score: Int, preferenceIndex: Int)?
 
     for (index, (encoding, _)) in cjkEncodings.enumerated() {
@@ -260,6 +369,10 @@ public enum ID3EncodingFixer: Sendable {
       )
       if roundTripMatches {
         candidateScore += 1_000
+      }
+      // Phase 143: locale-based encoding family preference (from preferredLanguages).
+      for (family, bonus) in families where family.matches(encodingName: cjkEncodings[index].1) {
+        candidateScore += bonus
       }
 
       // Skip if no meaningful score.
@@ -338,20 +451,6 @@ public enum ID3EncodingFixer: Sendable {
     }
 
     return bonus
-  }
-
-  private static func countCJKCharacters(_ string: String) -> Int {
-    string.filter { char in
-      let scalar = char.unicodeScalars.first?.value ?? 0
-      // CJK Unified Ideographs
-      return (0x4E00 ... 0x9FFF).contains(scalar) ||
-        // CJK Unified Ideographs Extension A
-        (0x3400 ... 0x4DBF).contains(scalar) ||
-        // CJK Unified Ideographs Extension B-F
-        (0x20000 ... 0x2CEAF).contains(scalar) ||
-        // CJK Compatibility Ideographs
-        (0xF900 ... 0xFAFF).contains(scalar)
-    }.count
   }
 
   private static func countCyrillicCharacters(_ string: String) -> Int {

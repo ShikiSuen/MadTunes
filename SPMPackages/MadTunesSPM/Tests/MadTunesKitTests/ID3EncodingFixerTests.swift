@@ -85,7 +85,8 @@ struct ID3EncodingFixerTests {
   func fixGBKMojibake() {
     let original = "山川挽歌"
     let mojibake = simulateMojibake(original, realEncoding: gb18030)!
-    let fixed = ID3EncodingFixer.fixEncoding(mojibake)
+    // Phase 143: use explicit Simplified Chinese preferred language for GBK test.
+    let fixed = ID3EncodingFixer.fixEncoding(mojibake, preferredLanguages: ["zh-Hans"])
     #expect(fixed == original)
   }
 
@@ -93,7 +94,7 @@ struct ID3EncodingFixerTests {
   func fixGBKArtist() {
     let original = "知月倾城"
     let mojibake = simulateMojibake(original, realEncoding: gb18030)!
-    let fixed = ID3EncodingFixer.fixEncoding(mojibake)
+    let fixed = ID3EncodingFixer.fixEncoding(mojibake, preferredLanguages: ["zh-Hans"])
     #expect(fixed == original)
   }
 
@@ -101,7 +102,8 @@ struct ID3EncodingFixerTests {
   func fixBig5Mojibake() {
     let original = "測試音樂"
     let mojibake = simulateMojibake(original, realEncoding: big5)!
-    let fixed = ID3EncodingFixer.fixEncoding(mojibake)
+    // Phase 143: use explicit Traditional Chinese preferred language for Big5 test.
+    let fixed = ID3EncodingFixer.fixEncoding(mojibake, preferredLanguages: ["zh-Hant"])
     #expect(fixed == original)
   }
 
@@ -109,7 +111,8 @@ struct ID3EncodingFixerTests {
   func fixShiftJISMojibake() {
     let original = "東京事変"
     let mojibake = simulateMojibake(original, realEncoding: shiftJIS)!
-    let fixed = ID3EncodingFixer.fixEncoding(mojibake)
+    // Phase 143: use explicit Japanese preferred language for Shift-JIS test.
+    let fixed = ID3EncodingFixer.fixEncoding(mojibake, preferredLanguages: ["ja"])
     #expect(fixed == original)
   }
 
@@ -134,5 +137,68 @@ struct ID3EncodingFixerTests {
   @Test("Returns original for empty string")
   func fixEncodingEmptyString() {
     #expect(ID3EncodingFixer.fixEncoding("") == "")
+  }
+
+  // MARK: - Phase 143: Locale-aware encoding preference (preferredLanguages)
+
+  @Test("Each preferred language resolves its own encoding's mojibake correctly")
+  func localeMatchingEncoding() {
+    // GBK → zh-Hans
+    let gbkOriginal = "山川挽歌"
+    let gbkMojibake = simulateMojibake(gbkOriginal, realEncoding: gb18030)!
+    #expect(
+      ID3EncodingFixer.fixEncoding(gbkMojibake, preferredLanguages: ["zh-Hans"]) == gbkOriginal
+    )
+
+    // Big5 → zh-Hant
+    let big5Original = "測試音樂"
+    let big5Mojibake = simulateMojibake(big5Original, realEncoding: big5)!
+    #expect(
+      ID3EncodingFixer.fixEncoding(big5Mojibake, preferredLanguages: ["zh-Hant"]) == big5Original
+    )
+
+    // ShiftJIS → ja
+    let sjisOriginal = "東京事変"
+    let sjisMojibake = simulateMojibake(sjisOriginal, realEncoding: shiftJIS)!
+    #expect(
+      ID3EncodingFixer.fixEncoding(sjisMojibake, preferredLanguages: ["ja"]) == sjisOriginal
+    )
+  }
+
+  @Test("Hant-primary with Hans-secondary resolves GBK mojibake via fallback")
+  func hantPrimaryHansSecondary() {
+    // Simulates a user like zh-Hant-CN, zh-Hans-CN — primary is Big5-preferred,
+    // but secondary covers GB18030 so GBK mojibake should still resolve.
+    let original = "山川挽歌"
+    let mojibake = simulateMojibake(original, realEncoding: gb18030)!
+    let fixed = ID3EncodingFixer.fixEncoding(
+      mojibake, preferredLanguages: ["zh-Hant-CN", "zh-Hans-CN", "ja-CN", "en-CN"]
+    )
+    #expect(fixed == original)
+  }
+
+  @Test("Neutral locale (en_US only) resolves mojibake using evidence-based scoring")
+  func neutralLocaleResolution() {
+    let original = "知月倾城"
+    let mojibake = simulateMojibake(original, realEncoding: gb18030)!
+    let fixed = ID3EncodingFixer.fixEncoding(mojibake, preferredLanguages: ["en"])
+    // Should produce CJK text, not the original mojibake.
+    #expect(fixed != mojibake)
+    #expect(ID3EncodingFixer.countCJKCharacters(fixed) > 0)
+  }
+
+  @Test("Preferred encoding families from preferredLanguages")
+  func encodingFamiliesDetection() {
+    let families = ID3EncodingFixer.preferredEncodingFamilies(
+      from: ["zh-Hant-CN", "zh-Hans-CN", "ja-CN", "en-CN"]
+    )
+    #expect(families.count == 3) // traditionalChinese, simplifiedChinese, japanese
+    #expect(families[0].0 == .traditionalChinese)
+    #expect(families[1].0 == .simplifiedChinese)
+    #expect(families[2].0 == .japanese)
+    // Sibling Chinese families are unified to the max bonus (200).
+    #expect(families[0].1 == 200)
+    #expect(families[1].1 == 200)
+    #expect(families[2].1 == 60)
   }
 }
