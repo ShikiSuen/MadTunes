@@ -127,7 +127,11 @@ struct SidebarView: View {
         .onMove { source, destination in
           library.moveUserPlaylists(fromOffsets: source, toOffset: destination)
         }
-        newPlaylistMenu
+        getMenu4CreatingPlaylist()
+          .buttonBorderShape(.capsule)
+          .menuIndicator(.hidden)
+          .buttonStyle(.bordered)
+          .tint(.primary)
       } header: {
         Text("i18n:Sidebar.Sections.Playlists", bundle: #bundle)
       }
@@ -210,7 +214,8 @@ struct SidebarView: View {
     )
   }
 
-  @ViewBuilder private var newPlaylistMenu: some View {
+  @ViewBuilder
+  private func getMenu4CreatingPlaylist(implicitTextControl: Bool = true) -> some View {
     Menu {
       Button {
         alertText = ""
@@ -243,16 +248,21 @@ struct SidebarView: View {
         )
       }
     } label: {
-      Label(
-        String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle),
-        systemImage: "plus"
-      )
+      Group {
+        if !implicitTextControl || userPlaylists.isEmpty {
+          Label {
+            Text("i18n:Sidebar.NewPlaylist", bundle: #bundle)
+              .font(.caption)
+          } icon: {
+            Image(systemName: "plus")
+          }
+        } else {
+          Image(systemName: "plus")
+            .help(Text("i18n:Sidebar.NewPlaylist", bundle: #bundle))
+        }
+      }
       .frame(maxWidth: .infinity, alignment: .leading)
     }
-    .buttonBorderShape(.capsule)
-    .menuIndicator(.hidden)
-    .buttonStyle(.bordered)
-    .tint(.primary)
   }
 
   /// Phase 135: Delegate to Playlist.icon4SFSymbols().
