@@ -223,6 +223,7 @@ struct SidebarView: View {
 
   @ViewBuilder
   private func getMenu4CreatingPlaylist(implicitTextControl: Bool = true) -> some View {
+    let showDropdownButtonTitleText = !implicitTextControl || userPlaylists.isEmpty
     Menu {
       Button {
         alertText = ""
@@ -256,20 +257,21 @@ struct SidebarView: View {
       }
     } label: {
       Group {
-        if !implicitTextControl || userPlaylists.isEmpty {
+        if showDropdownButtonTitleText {
           Label {
             Text("i18n:Sidebar.NewPlaylist", bundle: #bundle)
               .font(.caption)
           } icon: {
             Image(systemName: "plus")
           }
+          .frame(maxWidth: .infinity, alignment: .leading)
         } else {
           Image(systemName: "plus")
             .help(Text("i18n:Sidebar.NewPlaylist", bundle: #bundle))
         }
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
     }
+    .fixedSize(horizontal: !showDropdownButtonTitleText, vertical: false)
   }
 
   /// Phase 135: Delegate to Playlist.icon4SFSymbols().
