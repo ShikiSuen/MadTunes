@@ -393,6 +393,7 @@ public enum MetadataReader: Sendable {
   }
 
   /// 將 FourCC 代碼轉換為可讀的字串
+  /// Phase 142: 移除 leading dot（例如 MP3 的 FourCC 是 ".mp3"）
   private static func formatFourCCToString(_ fourcc: FourCharCode) -> String {
     let bytes: [UInt8] = [
       UInt8((fourcc >> 24) & 0xFF),
@@ -400,7 +401,10 @@ public enum MetadataReader: Sendable {
       UInt8((fourcc >> 8) & 0xFF),
       UInt8(fourcc & 0xFF),
     ]
-    return String(decoding: bytes, as: UTF8.self).trimmingCharacters(in: .whitespaces)
+    let raw = String(decoding: bytes, as: UTF8.self).trimmingCharacters(in: .whitespaces)
+    // Phase 142: Some FourCC codes have a leading dot (e.g., ".mp3" for MP3)
+    // Remove it for cleaner display
+    return raw.split(separator: ".").last?.description ?? raw
   }
 
   /// Attempts to read bit depth via AudioFile APIs.
