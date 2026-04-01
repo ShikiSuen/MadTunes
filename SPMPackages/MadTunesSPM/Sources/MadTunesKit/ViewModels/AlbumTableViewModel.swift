@@ -181,7 +181,8 @@ final class AlbumTableViewModel {
   /// Whether the selected tracks can be moved up in the current playlist.
   var canMoveSelectedTracksUp: Bool {
     guard let mainVM else { return false }
-    guard mainVM.useTableView, canReorderCurrentPlaylist, !mainVM.selectedTrackIDs.isEmpty else { return false }
+    guard mainVM.desktopContentLayout == .asTableView, canReorderCurrentPlaylist,
+          !mainVM.selectedTrackIDs.isEmpty else { return false }
     let tracks = currentTracksDisplayed
     let firstSelectedIdx = tracks.firstIndex { mainVM.selectedTrackIDs.contains($0.id) }
     return (firstSelectedIdx ?? 0) > 0
@@ -190,7 +191,8 @@ final class AlbumTableViewModel {
   /// Whether the selected tracks can be moved down in the current playlist.
   var canMoveSelectedTracksDown: Bool {
     guard let mainVM else { return false }
-    guard mainVM.useTableView, canReorderCurrentPlaylist, !mainVM.selectedTrackIDs.isEmpty else { return false }
+    guard mainVM.desktopContentLayout == .asTableView, canReorderCurrentPlaylist,
+          !mainVM.selectedTrackIDs.isEmpty else { return false }
     let tracks = currentTracksDisplayed
     let lastSelectedIdx = tracks.lastIndex { mainVM.selectedTrackIDs.contains($0.id) }
     return (lastSelectedIdx ?? tracks.count - 1) < tracks.count - 1

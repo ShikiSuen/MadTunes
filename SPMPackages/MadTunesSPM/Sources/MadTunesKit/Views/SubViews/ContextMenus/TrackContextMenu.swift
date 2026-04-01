@@ -6,7 +6,7 @@ import SwiftUI
 
 // MARK: - TrackContextMenu
 
-/// 樂曲右鍵選單，用於 ExpandedAlbumView 內的 TrackRow。
+/// 樂曲右鍵選單，用於 VerticallyExpandedAlbumView 內的 TrackRow。
 struct TrackContextMenu: View {
   // MARK: Lifecycle
 

@@ -5,6 +5,14 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+// MARK: - DesktopContentLayout
+
+/// Phase 145: Layout mode for the desktop main content area.
+enum DesktopContentLayout: Int {
+  case asTableView = 0
+  case asAlbumVGrid = 1
+}
+
 // MARK: - MadTunesViewModel
 
 @Observable
@@ -43,9 +51,9 @@ final class MadTunesViewModel {
 
   var selectedPlaylistID: UUID?
   var selectedTrackIDs: Set<UUID> = []
-  /// Phase 127: Anchor for Shift+Arrow range selection in ExpandedAlbumView.
+  /// Phase 127: Anchor for Shift+Arrow range selection in VerticallyExpandedAlbumView.
   var trackSelectionAnchorID: UUID?
-  /// Phase 127: Cursor (moving end) for Shift+Arrow range selection in ExpandedAlbumView.
+  /// Phase 127: Cursor (moving end) for Shift+Arrow range selection in VerticallyExpandedAlbumView.
   var trackSelectionCursorID: UUID?
   var isFileImporterPresented = false // Only for non-AppKit targets.
   var isFolderImporterPresented = false // Also used on macOS AppKit as File Importer.
@@ -79,9 +87,10 @@ final class MadTunesViewModel {
   /// Phase 108: Pre-computed dominant color for the current track's artwork.
   var currentTrackDominantColor: Color?
 
-  var useTableView: Bool {
-    get { access(keyPath: \.useTableView); return _useTableView }
-    set { withMutation(keyPath: \.useTableView) { _useTableView = newValue } }
+  /// Phase 145: Desktop content layout mode (replaces `useTableView: Bool`).
+  var desktopContentLayout: DesktopContentLayout {
+    get { access(keyPath: \.desktopContentLayout); return _desktopContentLayout }
+    set { withMutation(keyPath: \.desktopContentLayout) { _desktopContentLayout = newValue } }
   }
 
   // Phase 63: SwiftUI-tracked modifier key state, replacing NSEvent.modifierFlags.
@@ -191,7 +200,7 @@ final class MadTunesViewModel {
 
   /// Shared per-track search filter following Phase 58 spec.
   /// Returns true if the track matches the given tokens under the specified mode.
-  /// Reusable by ViewModel, ContextMenu, and ExpandedAlbumView.
+  /// Reusable by ViewModel, ContextMenu, and VerticallyExpandedAlbumView.
   func trackMatchesSearch(_ track: Track, tokens: Set<String>, mode: SearchFilterMode) -> Bool {
     guard !tokens.isEmpty else { return true }
     switch mode {
@@ -393,7 +402,7 @@ final class MadTunesViewModel {
 
   /// 獲取指定專輯中經過篩選的曲目。
   /// 使用共用的 `trackMatchesSearch` 做 per-track 篩選。
-  /// 此函式在 ExpandedAlbumView、ContextMenu 等處皆可複用。
+  /// 此函式在 VerticallyExpandedAlbumView、ContextMenu 等處皆可複用。
   func filteredTracks(for album: Album) -> [Track] {
     let tokens = searchTokens(from: searchText)
     guard !tokens.isEmpty else { return album.tracks }
@@ -462,9 +471,9 @@ final class MadTunesViewModel {
 
   // MARK: Private
 
-  /// When true the main content area shows AlbumTableView instead of AlbumGridView.
-  /// Phase 97: Persisted via @AppStorage + @ObservationIgnored bridge.
-  @ObservationIgnored @AppStorage("MadTunes.useTableView") private var _useTableView = false
+  /// Phase 145: Desktop layout mode persisted via @AppStorage + @ObservationIgnored bridge.
+  @ObservationIgnored @AppStorage("MadTunes.desktopContentLayout")
+  private var _desktopContentLayout: DesktopContentLayout = .asAlbumVGrid
 
   // MARK: - Phase 96: ViewModel-level Observations (replacing View .onChange blocks)
 
@@ -474,8 +483,8 @@ final class MadTunesViewModel {
   private var _previousExpandedAlbumID: UUID?
   /// Tracks the last known value of `player.currentTrack?.id` for change detection.
   private var _previousCurrentTrackID: UUID?
-  /// Tracks the last known value of `useTableView` for change detection.
-  private var _previousUseTableView: Bool?
+  /// Tracks the last known value of `desktopContentLayout` for change detection.
+  private var _previousDesktopContentLayout: DesktopContentLayout?
 
   // --- Async search/cache (Phase 57):
   // Cached filtered results produced by the debounced async search task.
@@ -554,7 +563,7 @@ final class MadTunesViewModel {
   }
 
   private func setupObservations() {
-    observeUseTableViewChange()
+    observeDesktopContentLayoutChange()
     observeExpandedAlbumIDChange()
     observeSelectedPlaylistIDChange()
     observeCurrentTrackChange()
@@ -562,28 +571,28 @@ final class MadTunesViewModel {
     observePredicateEditorDismissal()
   }
 
-  /// Phase 96: When `useTableView` changes, persist and clean up cross-view state.
-  private func observeUseTableViewChange() {
+  /// Phase 96/145: When `desktopContentLayout` changes, persist and clean up cross-view state.
+  private func observeDesktopContentLayoutChange() {
     withObservationTracking {
-      _ = self.useTableView
+      _ = self.desktopContentLayout
     } onChange: {
       Task { @MainActor [weak self] in
         guard let self else { return }
-        let newValue = self.useTableView
-        let oldValue = self._previousUseTableView
-        self._previousUseTableView = newValue
+        let newValue = self.desktopContentLayout
+        let oldValue = self._previousDesktopContentLayout
+        self._previousDesktopContentLayout = newValue
         if oldValue != nil, oldValue != newValue {
           self.tableVM.isEditModeActive = false
-          if newValue {
+          if newValue == .asTableView {
             self.gridVM.expandedAlbumID = nil
             self.gridVM.highlightedAlbumIDs.removeAll()
             self.selectedTrackIDs.removeAll()
           }
         }
-        self.observeUseTableViewChange()
+        self.observeDesktopContentLayoutChange()
       }
     }
-    _previousUseTableView = useTableView
+    _previousDesktopContentLayout = desktopContentLayout
   }
 
   /// Phase 96: When `expandedAlbumID` changes, clear track selection.

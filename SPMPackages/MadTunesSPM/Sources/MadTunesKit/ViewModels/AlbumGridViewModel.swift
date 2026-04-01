@@ -8,7 +8,7 @@ import SwiftUI
 
 // MARK: - AlbumGridViewModel
 
-/// Phase 60: Sub-ViewModel for AlbumGridView.
+/// Phase 60: Sub-ViewModel for AlbumVGrid.VerticalAlbumGridView.
 /// Extracts display buffering, selection logic, drag state,
 /// and context-menu state from the View layer.
 ///
@@ -35,7 +35,7 @@ final class AlbumGridViewModel {
   var albumSelectionFixedAnchorID: UUID?
   /// The moving cursor for Shift+Arrow range selection.
   var albumSelectionCursorID: UUID?
-  // Scroll-to-album trigger (set by artwork double-click, consumed by AlbumGridView)
+  // Scroll-to-album trigger (set by artwork double-click, consumed by VerticalAlbumGridView)
   var scrollToAlbumID: UUID?
 
   // MARK: - Display Buffer
@@ -795,7 +795,7 @@ final class AlbumGridViewModel {
       let columnCount = Swift.max(1, Swift.min(sorted.count, desiredColumns))
       let itemsPerColumn = sorted.isEmpty ? 0 : Int(ceil(Double(sorted.count) / Double(columnCount)))
 
-      // Phase 127: Support Shift+Arrow range selection in ExpandedAlbumView.
+      // Phase 127: Support Shift+Arrow range selection in VerticallyExpandedAlbumView.
       // List View layout: items fill column top-to-bottom, then next column.
       // - Up/Down: move within same column (index ±1)
       // - Left/Right: move to adjacent column at same row (index ±itemsPerColumn)

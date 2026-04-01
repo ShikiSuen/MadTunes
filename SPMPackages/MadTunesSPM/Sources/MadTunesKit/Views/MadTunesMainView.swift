@@ -117,7 +117,7 @@ struct MadTunesMainView: View {
           }
 
           ToolbarItem(placement: .navigation) {
-            if vm.useTableView, vm.tableVM.canEnterEditMode {
+            if vm.desktopContentLayout == .asTableView, vm.tableVM.canEnterEditMode {
               Button {
                 withAnimation {
                   vm.tableVM.isEditModeActive.toggle()
@@ -144,11 +144,11 @@ struct MadTunesMainView: View {
 
           // Phase 41: view mode toggle should come first
           ToolbarItem(placement: .primaryAction) {
-            Picker(selection: $vm.useTableView) {
-              Label(String(localized: "i18n:Toolbar.ViewGrid", bundle: #bundle), systemImage: "square.grid.2x2")
-                .tag(false)
+            Picker(selection: $vm.desktopContentLayout) {
+              Label(String(localized: "i18n:Toolbar.ViewVGrid", bundle: #bundle), systemImage: "square.grid.2x2")
+                .tag(DesktopContentLayout.asAlbumVGrid)
               Label(String(localized: "i18n:Toolbar.ViewTable", bundle: #bundle), systemImage: "tablecells")
-                .tag(true)
+                .tag(DesktopContentLayout.asTableView)
             } label: {
               Text(String(localized: "i18n:Toolbar.ToggleViewLayout", bundle: #bundle))
             }
@@ -160,8 +160,8 @@ struct MadTunesMainView: View {
 
           ToolbarItem(placement: .primaryAction) {
             if !vm.library.tracks.isEmpty {
-              switch vm.useTableView {
-              case false:
+              switch vm.desktopContentLayout {
+              case .asAlbumVGrid:
                 Menu {
                   Picker(
                     String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
@@ -181,7 +181,7 @@ struct MadTunesMainView: View {
                 }
                 .tint(.primary)
                 .disabled(vm.library.isImporting)
-              case true:
+              case .asTableView:
                 Menu {
                   ForEach(TableColumnType.allCases.filter(\.isHidable)) { column in
                     Toggle(column.localizedName, isOn: Binding(
@@ -256,7 +256,8 @@ struct MadTunesMainView: View {
   private func contentArea(albums displayAlbums: [Album]) -> some View {
     Color.clear
       .overlay(alignment: .leading) {
-        if vm.useTableView {
+        switch vm.desktopContentLayout {
+        case .asTableView:
           AlbumTableView()
             // Use selectedPlaylistID as stable identity so SwiftUI fully
             // recreates the List when switching playlists (avoids an expensive
@@ -266,8 +267,8 @@ struct MadTunesMainView: View {
             .focusable()
             .focused($isContentFocused)
             .focusEffectDisabled()
-        } else {
-          AlbumGridView()
+        case .asAlbumVGrid:
+          AlbumVGrid.VerticalAlbumGridView()
             .focusable()
             .focused($isContentFocused)
             .focusEffectDisabled()
@@ -286,9 +287,10 @@ struct MadTunesMainView: View {
       .environment(vm)
       .onKeyPress { press in
         // Phase 63: Dispatch directly to sub-VMs.
-        if vm.useTableView {
+        switch vm.desktopContentLayout {
+        case .asTableView:
           return vm.tableVM.handleKeyPress(press)
-        } else {
+        case .asAlbumVGrid:
           return vm.gridVM.handleKeyPress(press, albums: displayAlbums)
         }
       }

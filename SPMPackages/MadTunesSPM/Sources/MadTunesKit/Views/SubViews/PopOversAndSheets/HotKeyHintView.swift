@@ -167,8 +167,8 @@ struct HotKeyHintView: View {
 extension HotKeyHintView {
   @ArrayBuilder<HotKeyHintRecord>
   private func prepareHotKeyHints() -> [HotKeyHintRecord] {
-    switch vm.useTableView {
-    case true:
+    switch vm.desktopContentLayout {
+    case .asTableView:
       // Phase 91: Space alone = toggle play/pause.
       HotKeyHintRecord(
         modifiers: [],
@@ -369,7 +369,7 @@ extension HotKeyHintView {
           )
         }
       }
-    case false:
+    case .asAlbumVGrid:
       // ── Commands ──
       // ⌘↓: When expanded → play selected tracks; when collapsed → expand.
       HotKeyHintRecord(

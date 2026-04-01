@@ -20,9 +20,10 @@ struct GlobalControlMenuCommands: Commands {
       )
     ) {
       Group {
-        if vm.useTableView {
+        switch vm.desktopContentLayout {
+        case .asTableView:
           commandsOfControlForAlbumTableView
-        } else {
+        case .asAlbumVGrid:
           commandsOfControlForAlbumGridView
         }
         // Phase 98: Performance mode toggle (Intel Mac safeAreaInset expansion).
