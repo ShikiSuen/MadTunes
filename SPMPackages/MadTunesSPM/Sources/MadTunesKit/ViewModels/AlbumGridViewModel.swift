@@ -758,7 +758,7 @@ final class AlbumGridViewModel {
     }
 
     // Phase 74: Home / End — jump to first / last album.
-    handleHomeEndKey: if press.key == .home || press.key == .end {
+    if press.key == .home || press.key == .end {
       let isShift = press.modifiers.contains(.shift)
       let targetIdx = press.key == .home ? 0 : albums.count - 1
       let targetID = albums[targetIdx].id
@@ -775,11 +775,12 @@ final class AlbumGridViewModel {
           albumSelectionFixedAnchorID = targetID
           albumSelectionCursorID = targetID
           scrollToAlbumID = targetID
-          break handleHomeEndKey
+          return .handled
         }
 
         guard let anchorIdx = albums.firstIndex(where: { $0.id == anchorID }) else {
-          break handleHomeEndKey
+          scrollToAlbumID = targetID
+          return .handled
         }
 
         albumSelectionCursorID = targetID
@@ -994,7 +995,7 @@ final class AlbumGridViewModel {
     }
 
     // Phase 153: Home/End navigation within expanded VGrid track list (legacy mode).
-    handleHomeEndKey: if press.key == .home || press.key == .end, legacyHardwareMode {
+    if press.key == .home || press.key == .end, legacyHardwareMode {
       let isShift = press.modifiers.contains(.shift)
       let targetIdx = press.key == .home ? 0 : sorted.count - 1
       let targetID = sorted[targetIdx].id
@@ -1005,7 +1006,7 @@ final class AlbumGridViewModel {
           mainVM.trackSelectionAnchorID = targetID
           mainVM.trackSelectionCursorID = targetID
           expandedTrackScrollTargetID = targetID
-          break handleHomeEndKey
+          return .handled
         }
         let cursorID = mainVM.trackSelectionCursorID ?? mainVM.selectedTrackIDs.first!
         if mainVM.trackSelectionAnchorID == nil {
@@ -1013,7 +1014,10 @@ final class AlbumGridViewModel {
         }
         guard let anchorIDForRange = mainVM.trackSelectionAnchorID,
               let anchorIdxForRange = sorted.firstIndex(where: { $0.id == anchorIDForRange })
-        else { break handleHomeEndKey }
+        else {
+          expandedTrackScrollTargetID = targetID
+          return .handled
+        }
         let range = min(anchorIdxForRange, targetIdx) ... max(anchorIdxForRange, targetIdx)
         mainVM.selectedTrackIDs = Set(sorted[range].map(\.id))
         mainVM.trackSelectionCursorID = targetID
@@ -1206,7 +1210,7 @@ final class AlbumGridViewModel {
       return .handled
     }
 
-    handleHomeEndKey: if press.key == .home || press.key == .end {
+    if press.key == .home || press.key == .end {
       let isShift = press.modifiers.contains(.shift)
       let targetIdx = press.key == .home ? 0 : albums.count - 1
       let targetID = albums[targetIdx].id
@@ -1223,11 +1227,12 @@ final class AlbumGridViewModel {
           albumSelectionFixedAnchorID = targetID
           albumSelectionCursorID = targetID
           scrollToAlbumID = targetID
-          break handleHomeEndKey
+          return .handled
         }
 
         guard let anchorIdx = albums.firstIndex(where: { $0.id == anchorID }) else {
-          break handleHomeEndKey
+          scrollToAlbumID = targetID
+          return .handled
         }
 
         albumSelectionCursorID = targetID
@@ -1425,7 +1430,7 @@ final class AlbumGridViewModel {
     }
 
     // Phase 153: Home/End navigation within expanded HGrid track list.
-    handleHomeEndKey: if press.key == .home || press.key == .end {
+    if press.key == .home || press.key == .end {
       let isShift = press.modifiers.contains(.shift)
       let targetIdx = press.key == .home ? 0 : sorted.count - 1
       let targetID = sorted[targetIdx].id
@@ -1437,7 +1442,7 @@ final class AlbumGridViewModel {
           mainVM.trackSelectionAnchorID = targetID
           mainVM.trackSelectionCursorID = targetID
           expandedTrackScrollTargetID = targetID
-          break handleHomeEndKey
+          return .handled
         }
         let cursorID = mainVM.trackSelectionCursorID ?? mainVM.selectedTrackIDs.first!
         if mainVM.trackSelectionAnchorID == nil {
@@ -1445,7 +1450,10 @@ final class AlbumGridViewModel {
         }
         guard let anchorIDForRange = mainVM.trackSelectionAnchorID,
               let anchorIdxForRange = sorted.firstIndex(where: { $0.id == anchorIDForRange })
-        else { break handleHomeEndKey }
+        else {
+          expandedTrackScrollTargetID = targetID
+          return .handled
+        }
         let range = min(anchorIdxForRange, targetIdx) ... max(anchorIdxForRange, targetIdx)
         mainVM.selectedTrackIDs = Set(sorted[range].map(\.id))
         mainVM.trackSelectionCursorID = targetID
