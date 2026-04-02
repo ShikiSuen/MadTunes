@@ -37,6 +37,8 @@ final class AlbumGridViewModel {
   var albumSelectionCursorID: UUID?
   // Scroll-to-album trigger (set by artwork double-click, consumed by VerticalAlbumGridView)
   var scrollToAlbumID: UUID?
+  // Phase 153: Scroll-to-track trigger for expanded album track list (keyboard navigation only)
+  var expandedTrackScrollTargetID: UUID?
 
   // MARK: - Display Buffer
 
@@ -76,6 +78,10 @@ final class AlbumGridViewModel {
 
   var expandedAlbumWasInView = false
 
+  /// Phase 147: Actual available height for HGrid (after SafeAreaInsets).
+  /// Written by HorizontalAlbumGridView's onGeometryChange.
+  @ObservationIgnored var hGridMeasuredHeight: CGFloat = 0
+
   // MARK: - Phase 98: Intel Mac Performance Mode
 
   /// Phase 98: Whether to use safeAreaInset-based expansion (Intel Mac performance mode).
@@ -102,6 +108,37 @@ final class AlbumGridViewModel {
     let approximateRowHeight: CGFloat = 160 + 50 + gridSpacing
     let visibleRows = max(1, Int((canvasHeight - 100) / approximateRowHeight)) // 100 for player controls
     return visibleRows * gridColumnCount
+  }
+
+  // MARK: - Phase 146: HGrid Computed Properties
+
+  /// Number of rows in horizontal grid mode.
+  var hGridRowCount: Int {
+    let effectiveHeight: CGFloat
+    if hGridMeasuredHeight > 0 {
+      effectiveHeight = hGridMeasuredHeight
+    } else if let mainVM {
+      effectiveHeight = mainVM.screenVM.mainColumnCanvasSizeObserved.height
+    } else {
+      return 1
+    }
+    return max(1, Int((effectiveHeight - gridSpacing) / (minItemWidth + gridSpacing)))
+  }
+
+  /// Number of albums to scroll per page in horizontal grid mode.
+  var hGridPageSize: Int {
+    guard let mainVM else { return 10 }
+    let canvasWidth = mainVM.screenVM.mainColumnCanvasSizeObserved.width
+    let approximateColumnWidth: CGFloat = 160 + gridSpacing
+    let visibleColumns = max(1, Int((canvasWidth - 100) / approximateColumnWidth))
+    return visibleColumns * hGridRowCount
+  }
+
+  /// Phase 153: Number of tracks to scroll per page in expanded HGrid track list.
+  /// Uses a fixed estimate since expanded view height is not directly observable.
+  var hGridExpandedTrackPageSize: Int {
+    // Approximate expanded track list height ~300pt, row height ~28pt.
+    return 10
   }
 
   /// Albums for grid view, derived from filtered tracks.
@@ -429,23 +466,18 @@ final class AlbumGridViewModel {
       }
     }
 
-    // Spacebar: prioritise toggling play/pause when a track is loaded,
-    // but only when an album is expanded.
-    spaceTask: if press.characters == " " {
-      let hasAlbumExpanded = expandedAlbumID != nil
-      switch press.modifiers {
-      case [] where mainVM.player.currentTrack != nil && hasAlbumExpanded:
-        Task {
-          await mainVM.player.togglePlayPause()
-        }
-        return .handled
-      case [.shift] where !(mainVM.player.currentTrack != nil && hasAlbumExpanded):
-        Task {
-          await mainVM.player.togglePlayPause()
-        }
-        return .handled
-      default: break spaceTask
+    // Phase 151: Spacebar prioritises toggling play/pause ONLY when:
+    // (1) unmodified (ignoring CapsLock), (2) album is expanded, AND (3) a track is currently loaded.
+    // All other space presses (with modifiers or without the above conditions)
+    // fall through to handleExpandedKeyPress for expand/collapse/play-selected logic.
+    if press.characters == " ",
+       press.modifiers.subtracting(.capsLock).isEmpty,
+       expandedAlbumID != nil,
+       mainVM.player.currentTrack != nil {
+      Task {
+        await mainVM.player.togglePlayPause()
       }
+      return .handled
     }
 
     switch albums.first(where: { $0.id == expandedAlbumID }) {
@@ -485,6 +517,55 @@ final class AlbumGridViewModel {
         return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
       }
     }
+  }
+
+  // MARK: - Phase 146: HGrid Keyboard Navigation
+
+  /// Main keyboard dispatcher for horizontal grid mode.
+  func handleHGridKeyPress(_ press: KeyPress, albums: [Album]) -> KeyPress.Result {
+    guard let mainVM else { return .ignored }
+
+    // CMD+A: Select All
+    if press.characters == "a", press.modifiers.contains(.command) {
+      if let expandedID = expandedAlbumID,
+         let album = albums.first(where: { $0.id == expandedID }) {
+        mainVM.selectAllVisibleTracks(in: album)
+      } else {
+        mainVM.selectAllVisibleAlbums()
+      }
+      return .handled
+    }
+
+    // CMD+C: Copy selected tracks metadata
+    if press.characters == "c", press.modifiers.contains(.command) {
+      if expandedAlbumID != nil, !mainVM.selectedTrackIDs.isEmpty {
+        mainVM.copySelectedTracksMetadata()
+        return .handled
+      }
+    }
+
+    // Phase 151: Spacebar prioritises toggling play/pause ONLY when:
+    // (1) unmodified (ignoring CapsLock), (2) album is expanded, AND (3) a track is currently loaded.
+    // All other space presses fall through to handleHGridExpandedKeyPress.
+    if press.characters == " ",
+       press.modifiers.subtracting(.capsLock).isEmpty,
+       expandedAlbumID != nil,
+       mainVM.player.currentTrack != nil {
+      Task {
+        await mainVM.player.togglePlayPause()
+      }
+      return .handled
+    }
+
+    switch albums.first(where: { $0.id == expandedAlbumID }) {
+    case .none:
+      return handleHGridGridKeyPress(press, albums: albums)
+    case let .some(album):
+      let result = handleHGridExpandedKeyPress(press, album: album, albums: albums)
+      if result == .handled { return .handled }
+    }
+
+    return .ignored
   }
 
   // MARK: Private
@@ -886,6 +967,426 @@ final class AlbumGridViewModel {
       // Phase 111: Clear stale frame when closing expanded album.
       if newID == nil { expandedAlbumFrame = nil }
     }
+  }
+
+  // MARK: Private – HGrid Grid Navigation
+
+  /// Phase 146: Album-level navigation in horizontal grid mode.
+  /// Rotated from VGrid: ↑↓ = ±1 (within column), ←→ = ±rowCount (column jump).
+  private func handleHGridGridKeyPress(_ press: KeyPress, albums: [Album]) -> KeyPress.Result {
+    guard mainVM != nil, !albums.isEmpty else { return .ignored }
+
+    handleArrowKey: if press.isArrowKey {
+      let isShift = press.modifiers.contains(.shift)
+
+      let referenceID: UUID? = isShift
+        ? (albumSelectionCursorID ?? highlightedAlbumIDs.first)
+        : highlightedAlbumIDs.first
+
+      guard let hID = referenceID,
+            let idx = albums.firstIndex(where: { $0.id == hID }) else {
+        let firstID = albums[0].id
+        highlightedAlbumIDs = [firstID]
+        albumSelectionFixedAnchorID = firstID
+        albumSelectionCursorID = firstID
+        return .handled
+      }
+
+      let newIdx: Int
+      switch press.key {
+      case .downArrow:
+        newIdx = min(idx + 1, albums.count - 1)
+      case .upArrow:
+        newIdx = max(idx - 1, 0)
+      case .rightArrow:
+        newIdx = min(idx + hGridRowCount, albums.count - 1)
+      case .leftArrow:
+        newIdx = max(idx - hGridRowCount, 0)
+      default:
+        break handleArrowKey
+      }
+
+      if isShift {
+        let anchorID: UUID
+        if let existing = albumSelectionFixedAnchorID {
+          anchorID = existing
+        } else if let first = highlightedAlbumIDs.first {
+          anchorID = first
+          albumSelectionFixedAnchorID = anchorID
+        } else {
+          let newID = albums[newIdx].id
+          highlightedAlbumIDs = [newID]
+          albumSelectionFixedAnchorID = newID
+          albumSelectionCursorID = newID
+          expandedAlbumID = nil
+          if newIdx != idx { scrollToAlbumID = newID }
+          return .handled
+        }
+
+        guard let anchorIdx = albums.firstIndex(where: { $0.id == anchorID }) else {
+          return .handled
+        }
+
+        albumSelectionCursorID = albums[newIdx].id
+        let lo = min(anchorIdx, newIdx)
+        let hi = max(anchorIdx, newIdx)
+        highlightedAlbumIDs = Set(albums[lo ... hi].map(\.id))
+        expandedAlbumID = nil
+      } else {
+        let newID = albums[newIdx].id
+        highlightedAlbumIDs = [newID]
+        albumSelectionFixedAnchorID = newID
+        albumSelectionCursorID = newID
+      }
+
+      if newIdx != idx {
+        scrollToAlbumID = albums[newIdx].id
+      }
+      return .handled
+    }
+
+    handlePageKey: if press.isPageKey {
+      let isShift = press.modifiers.contains(.shift)
+      let pageDelta = hGridPageSize
+      guard pageDelta > 0 else { break handlePageKey }
+
+      let referenceID: UUID? = albumSelectionCursorID ?? highlightedAlbumIDs.first
+      guard let hID = referenceID,
+            let idx = albums.firstIndex(where: { $0.id == hID }) else {
+        let isPageDown = press.key == .pageDown
+        let targetIdx = isPageDown ? min(pageDelta, albums.count - 1) : 0
+        let targetID = albums[targetIdx].id
+        highlightedAlbumIDs = [targetID]
+        albumSelectionFixedAnchorID = targetID
+        albumSelectionCursorID = targetID
+        scrollToAlbumID = targetID
+        return .handled
+      }
+
+      let isPageDown = press.key == .pageDown
+      let newIdx = isPageDown
+        ? min(idx + pageDelta, albums.count - 1)
+        : max(idx - pageDelta, 0)
+
+      if isShift {
+        let anchorID: UUID
+        if let existing = albumSelectionFixedAnchorID {
+          anchorID = existing
+        } else if let first = highlightedAlbumIDs.first {
+          anchorID = first
+          albumSelectionFixedAnchorID = anchorID
+        } else {
+          anchorID = albums[idx].id
+          albumSelectionFixedAnchorID = anchorID
+        }
+
+        guard let anchorIdx = albums.firstIndex(where: { $0.id == anchorID }) else {
+          return .handled
+        }
+
+        albumSelectionCursorID = albums[newIdx].id
+        let lo = min(anchorIdx, newIdx)
+        let hi = max(anchorIdx, newIdx)
+        highlightedAlbumIDs = Set(albums[lo ... hi].map(\.id))
+        expandedAlbumID = nil
+      } else {
+        let newID = albums[newIdx].id
+        highlightedAlbumIDs = [newID]
+        albumSelectionFixedAnchorID = newID
+        albumSelectionCursorID = newID
+      }
+
+      scrollToAlbumID = albums[newIdx].id
+      return .handled
+    }
+
+    handleHomeEndKey: if press.key == .home || press.key == .end {
+      let isShift = press.modifiers.contains(.shift)
+      let targetIdx = press.key == .home ? 0 : albums.count - 1
+      let targetID = albums[targetIdx].id
+
+      if isShift {
+        let anchorID: UUID
+        if let existing = albumSelectionFixedAnchorID {
+          anchorID = existing
+        } else if let first = highlightedAlbumIDs.first {
+          anchorID = first
+          albumSelectionFixedAnchorID = anchorID
+        } else {
+          highlightedAlbumIDs = [targetID]
+          albumSelectionFixedAnchorID = targetID
+          albumSelectionCursorID = targetID
+          scrollToAlbumID = targetID
+          break handleHomeEndKey
+        }
+
+        guard let anchorIdx = albums.firstIndex(where: { $0.id == anchorID }) else {
+          break handleHomeEndKey
+        }
+
+        albumSelectionCursorID = targetID
+        let lo = min(anchorIdx, targetIdx)
+        let hi = max(anchorIdx, targetIdx)
+        highlightedAlbumIDs = Set(albums[lo ... hi].map(\.id))
+        expandedAlbumID = nil
+      } else {
+        highlightedAlbumIDs = [targetID]
+        albumSelectionFixedAnchorID = targetID
+        albumSelectionCursorID = targetID
+      }
+      scrollToAlbumID = targetID
+      return .handled
+    }
+
+    if press.isAlbumExpansionAssignmentKey {
+      if highlightedAlbumIDs.count == 1 {
+        withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) {
+          expandedAlbumID = highlightedAlbumIDs.first
+        }
+        return .handled
+      }
+      return .ignored
+    }
+
+    return .ignored
+  }
+
+  /// Phase 146: Expanded album keyboard navigation in horizontal grid mode.
+  /// Only supports up/down movement (single-column track list, no artwork).
+  private func handleHGridExpandedKeyPress(
+    _ press: KeyPress, album: Album, albums: [Album]
+  )
+    -> KeyPress.Result {
+    guard let mainVM else { return .ignored }
+    let sorted = album.tracks
+    guard !sorted.isEmpty else {
+      if press.key == .escape || (press.modifiers.contains(.command) && press.key == .upArrow) {
+        withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) { expandedAlbumID = nil }
+        return .handled
+      }
+      return .ignored
+    }
+
+    // Phase 148: Option+Arrow: unconditionally navigate to adjacent album.
+    if press.modifiers.contains(.option), press.isArrowKey {
+      return navigateAlbumFromHGridExpanded(press, albums: albums)
+    }
+
+    // Escape or Cmd+Up: collapse
+    if press.key == .escape
+      || (press.modifiers.contains(.command) && press.key == .upArrow) {
+      withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) { expandedAlbumID = nil }
+      return .handled
+    }
+
+    // Enter / Space / Cmd+Down: play selected or collapse
+    if press.isAlbumExpansionAssignmentKey {
+      let selectedSorted = sorted.filter { mainVM.selectedTrackIDs.contains($0.id) }
+      if !selectedSorted.isEmpty {
+        Task { await mainVM.player.setQueue(selectedSorted, startingAt: 0) }
+        return .handled
+      }
+      withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) { expandedAlbumID = nil }
+      return .handled
+    }
+
+    // Arrow keys: only up/down for single-column navigation.
+    // Left/right navigate to adjacent albums.
+    if press.isArrowKey {
+      if mainVM.selectedTrackIDs.isEmpty {
+        switch press.key {
+        case .downArrow:
+          if let first = sorted.first {
+            mainVM.selectedTrackIDs = [first.id]
+            // Phase 153: Trigger scroll to first track.
+            expandedTrackScrollTargetID = first.id
+          }
+          return .handled
+        case .upArrow:
+          withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) { expandedAlbumID = nil }
+          return .handled
+        case .leftArrow, .rightArrow:
+          return navigateAlbumFromHGridExpanded(press, albums: albums)
+        default:
+          return .ignored
+        }
+      }
+
+      guard let anchorID = mainVM.selectedTrackIDs.first(where: { _ in true })
+      else { return .handled }
+
+      let isShift = press.modifiers.contains(.shift)
+      let cursorID = mainVM.trackSelectionCursorID ?? anchorID
+      guard let cursorIdx = sorted.firstIndex(where: { $0.id == cursorID })
+      else { return .handled }
+
+      switch press.key {
+      case .upArrow:
+        let newIdx = max(cursorIdx - 1, 0)
+        if isShift {
+          if mainVM.trackSelectionAnchorID == nil {
+            mainVM.trackSelectionAnchorID = cursorID
+          }
+          guard let anchorIDForRange = mainVM.trackSelectionAnchorID,
+                let anchorIdxForRange = sorted.firstIndex(where: { $0.id == anchorIDForRange })
+          else { return .handled }
+          let range = min(anchorIdxForRange, newIdx) ... max(anchorIdxForRange, newIdx)
+          mainVM.selectedTrackIDs = Set(sorted[range].map(\.id))
+          mainVM.trackSelectionCursorID = sorted[newIdx].id
+        } else {
+          mainVM.selectedTrackIDs = [sorted[newIdx].id]
+          mainVM.trackSelectionAnchorID = sorted[newIdx].id
+          mainVM.trackSelectionCursorID = sorted[newIdx].id
+        }
+        // Phase 153: Trigger scroll to new cursor position.
+        expandedTrackScrollTargetID = sorted[newIdx].id
+        return .handled
+      case .downArrow:
+        let newIdx = min(cursorIdx + 1, sorted.count - 1)
+        if isShift {
+          if mainVM.trackSelectionAnchorID == nil {
+            mainVM.trackSelectionAnchorID = cursorID
+          }
+          guard let anchorIDForRange = mainVM.trackSelectionAnchorID,
+                let anchorIdxForRange = sorted.firstIndex(where: { $0.id == anchorIDForRange })
+          else { return .handled }
+          let range = min(anchorIdxForRange, newIdx) ... max(anchorIdxForRange, newIdx)
+          mainVM.selectedTrackIDs = Set(sorted[range].map(\.id))
+          mainVM.trackSelectionCursorID = sorted[newIdx].id
+        } else {
+          mainVM.selectedTrackIDs = [sorted[newIdx].id]
+          mainVM.trackSelectionAnchorID = sorted[newIdx].id
+          mainVM.trackSelectionCursorID = sorted[newIdx].id
+        }
+        // Phase 153: Trigger scroll to new cursor position.
+        expandedTrackScrollTargetID = sorted[newIdx].id
+        return .handled
+      case .leftArrow, .rightArrow:
+        return navigateAlbumFromHGridExpanded(press, albums: albums)
+      default:
+        return .handled
+      }
+    }
+
+    // Phase 153: PgUp/PgDn navigation within expanded HGrid track list.
+    if press.isPageKey {
+      let pageDelta = hGridExpandedTrackPageSize
+      guard pageDelta > 0 else { return .ignored }
+      let isShift = press.modifiers.contains(.shift)
+
+      // If no track selected, select first or last track depending on direction.
+      if mainVM.selectedTrackIDs.isEmpty {
+        let targetIdx = press.key == .pageDown
+          ? min(pageDelta - 1, sorted.count - 1)
+          : 0
+        let targetID = sorted[targetIdx].id
+        mainVM.selectedTrackIDs = [targetID]
+        mainVM.trackSelectionAnchorID = targetID
+        mainVM.trackSelectionCursorID = targetID
+        expandedTrackScrollTargetID = targetID
+        return .handled
+      }
+
+      guard let anchorID = mainVM.selectedTrackIDs.first(where: { _ in true }) else {
+        return .handled
+      }
+      let cursorID = mainVM.trackSelectionCursorID ?? anchorID
+      guard let cursorIdx = sorted.firstIndex(where: { $0.id == cursorID }) else {
+        return .handled
+      }
+
+      let newIdx = press.key == .pageDown
+        ? min(cursorIdx + pageDelta, sorted.count - 1)
+        : max(cursorIdx - pageDelta, 0)
+
+      if isShift {
+        if mainVM.trackSelectionAnchorID == nil {
+          mainVM.trackSelectionAnchorID = cursorID
+        }
+        guard let anchorIDForRange = mainVM.trackSelectionAnchorID,
+              let anchorIdxForRange = sorted.firstIndex(where: { $0.id == anchorIDForRange })
+        else { return .handled }
+        let range = min(anchorIdxForRange, newIdx) ... max(anchorIdxForRange, newIdx)
+        mainVM.selectedTrackIDs = Set(sorted[range].map(\.id))
+        mainVM.trackSelectionCursorID = sorted[newIdx].id
+      } else {
+        mainVM.selectedTrackIDs = [sorted[newIdx].id]
+        mainVM.trackSelectionAnchorID = sorted[newIdx].id
+        mainVM.trackSelectionCursorID = sorted[newIdx].id
+      }
+      expandedTrackScrollTargetID = sorted[newIdx].id
+      return .handled
+    }
+
+    // Phase 153: Home/End navigation within expanded HGrid track list.
+    handleHomeEndKey: if press.key == .home || press.key == .end {
+      let isShift = press.modifiers.contains(.shift)
+      let targetIdx = press.key == .home ? 0 : sorted.count - 1
+      let targetID = sorted[targetIdx].id
+
+      if isShift {
+        // Range selection from anchor to Home/End target.
+        if mainVM.selectedTrackIDs.isEmpty {
+          mainVM.selectedTrackIDs = [targetID]
+          mainVM.trackSelectionAnchorID = targetID
+          mainVM.trackSelectionCursorID = targetID
+          expandedTrackScrollTargetID = targetID
+          break handleHomeEndKey
+        }
+        let cursorID = mainVM.trackSelectionCursorID ?? mainVM.selectedTrackIDs.first!
+        if mainVM.trackSelectionAnchorID == nil {
+          mainVM.trackSelectionAnchorID = cursorID
+        }
+        guard let anchorIDForRange = mainVM.trackSelectionAnchorID,
+              let anchorIdxForRange = sorted.firstIndex(where: { $0.id == anchorIDForRange })
+        else { break handleHomeEndKey }
+        let range = min(anchorIdxForRange, targetIdx) ... max(anchorIdxForRange, targetIdx)
+        mainVM.selectedTrackIDs = Set(sorted[range].map(\.id))
+        mainVM.trackSelectionCursorID = targetID
+      } else {
+        mainVM.selectedTrackIDs = [targetID]
+        mainVM.trackSelectionAnchorID = targetID
+        mainVM.trackSelectionCursorID = targetID
+      }
+      expandedTrackScrollTargetID = targetID
+      return .handled
+    }
+
+    return .ignored
+  }
+
+  /// Phase 146: Navigate to adjacent album from within expanded HGrid view.
+  /// Phase 148: Handle all four arrow directions for the HGrid rotated model:
+  /// Up/Down = ±1 (same column), Left/Right = ±rowCount (cross columns).
+  private func navigateAlbumFromHGridExpanded(
+    _ press: KeyPress, albums: [Album]
+  )
+    -> KeyPress.Result {
+    guard mainVM != nil,
+          let hID = highlightedAlbumIDs.first ?? expandedAlbumID,
+          let idx = albums.firstIndex(where: { $0.id == hID }) else {
+      return .ignored
+    }
+    let newIdx: Int
+    switch press.key {
+    case .rightArrow:
+      newIdx = min(idx + hGridRowCount, albums.count - 1)
+    case .leftArrow:
+      newIdx = max(idx - hGridRowCount, 0)
+    case .downArrow:
+      newIdx = min(idx + 1, albums.count - 1)
+    case .upArrow:
+      newIdx = max(idx - 1, 0)
+    default:
+      return .ignored
+    }
+    guard newIdx != idx else { return .handled }
+    let newAlbumID = albums[newIdx].id
+    withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) {
+      highlightedAlbumIDs = [newAlbumID]
+      expandedAlbumID = newAlbumID
+    }
+    return .handled
   }
 }
 

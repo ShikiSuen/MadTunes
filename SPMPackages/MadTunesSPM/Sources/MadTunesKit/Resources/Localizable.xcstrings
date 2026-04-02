@@ -15372,6 +15372,82 @@
         }
       }
     },
+    "i18n:Toolbar.ViewHGrid" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albumraster (Horizontal)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Album Grid (Horizontal)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuadrícula de álbumes (Horizontal)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grille d'albums (Horizontal)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Griglia album (Orizzontale)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アルバムグリッド（横）"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앨범 그리드 (가로)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grade de álbuns (Horizontal)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сетка альбомов (Горизонтальная)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albüm Izgarası (Yatay)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专辑网格（横向）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "專輯網格（橫向）"
+          }
+        }
+      }
+    },
     "i18n:Toolbar.ViewTable" : {
       "localizations" : {
         "de" : {
@@ -15453,73 +15529,73 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gitteransicht"
+            "value" : "Albumraster (Vertikal)"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Grid View"
+            "value" : "Album Grid (Vertical)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vista de cuadrícula"
+            "value" : "Cuadrícula de álbumes (Vertical)"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vue en grille"
+            "value" : "Grille d'albums (Vertical)"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vista griglia"
+            "value" : "Griglia album (Verticale)"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "グリッド表示"
+            "value" : "アルバムグリッド（縦）"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그리드 보기"
+            "value" : "앨범 그리드 (세로)"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Visualização em Grade"
+            "value" : "Grade de álbuns (Vertical)"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вид сетки"
+            "value" : "Сетка альбомов (Вертикальная)"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izgara Görünümü"
+            "value" : "Albüm Izgarası (Dikey)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "网格视图"
+            "value" : "专辑网格（纵向）"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "網格檢視"
+            "value" : "專輯網格（縱向）"
           }
         }
       }

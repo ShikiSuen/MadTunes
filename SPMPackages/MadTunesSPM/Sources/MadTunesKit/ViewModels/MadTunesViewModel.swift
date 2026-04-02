@@ -8,9 +8,11 @@ import UniformTypeIdentifiers
 // MARK: - DesktopContentLayout
 
 /// Phase 145: Layout mode for the desktop main content area.
+/// Phase 146: Added `.asAlbumHGrid` for horizontal album grid.
 enum DesktopContentLayout: Int {
   case asTableView = 0
   case asAlbumVGrid = 1
+  case asAlbumHGrid = 2
 }
 
 // MARK: - MadTunesViewModel

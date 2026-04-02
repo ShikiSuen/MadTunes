@@ -23,7 +23,7 @@ struct GlobalControlMenuCommands: Commands {
         switch vm.desktopContentLayout {
         case .asTableView:
           commandsOfControlForAlbumTableView
-        case .asAlbumVGrid:
+        case .asAlbumHGrid, .asAlbumVGrid:
           commandsOfControlForAlbumGridView
         }
         // Phase 98: Performance mode toggle (Intel Mac safeAreaInset expansion).

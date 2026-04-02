@@ -145,10 +145,24 @@ struct MadTunesMainView: View {
           // Phase 41: view mode toggle should come first
           ToolbarItem(placement: .primaryAction) {
             Picker(selection: $vm.desktopContentLayout) {
-              Label(String(localized: "i18n:Toolbar.ViewVGrid", bundle: #bundle), systemImage: "square.grid.2x2")
-                .tag(DesktopContentLayout.asAlbumVGrid)
-              Label(String(localized: "i18n:Toolbar.ViewTable", bundle: #bundle), systemImage: "tablecells")
-                .tag(DesktopContentLayout.asTableView)
+              Label {
+                Text("i18n:Toolbar.ViewHGrid", bundle: #bundle)
+              } icon: {
+                Image(systemName: "inset.filled.topleading.bottomleading.trailinghalf.rectangle")
+              }
+              .tag(DesktopContentLayout.asAlbumHGrid)
+              Label {
+                Text("i18n:Toolbar.ViewVGrid", bundle: #bundle)
+              } icon: {
+                Image(systemName: "inset.filled.topleft.topright.bottomhalf.rectangle")
+              }
+              .tag(DesktopContentLayout.asAlbumVGrid)
+              Label {
+                Text("i18n:Toolbar.ViewTable", bundle: #bundle)
+              } icon: {
+                Image(systemName: "tablecells")
+              }
+              .tag(DesktopContentLayout.asTableView)
             } label: {
               Text(String(localized: "i18n:Toolbar.ToggleViewLayout", bundle: #bundle))
             }
@@ -161,7 +175,7 @@ struct MadTunesMainView: View {
           ToolbarItem(placement: .primaryAction) {
             if !vm.library.tracks.isEmpty {
               switch vm.desktopContentLayout {
-              case .asAlbumVGrid:
+              case .asAlbumHGrid, .asAlbumVGrid:
                 Menu {
                   Picker(
                     String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
@@ -272,6 +286,11 @@ struct MadTunesMainView: View {
             .focusable()
             .focused($isContentFocused)
             .focusEffectDisabled()
+        case .asAlbumHGrid:
+          AlbumHGrid.HorizontalAlbumGridView()
+            .focusable()
+            .focused($isContentFocused)
+            .focusEffectDisabled()
         }
       }
       .searchable(
@@ -292,6 +311,8 @@ struct MadTunesMainView: View {
           return vm.tableVM.handleKeyPress(press)
         case .asAlbumVGrid:
           return vm.gridVM.handleKeyPress(press, albums: displayAlbums)
+        case .asAlbumHGrid:
+          return vm.gridVM.handleHGridKeyPress(press, albums: displayAlbums)
         }
       }
       // Phase 96: highlightedAlbumIDs change still needs focus management (UI-only).

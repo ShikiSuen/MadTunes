@@ -67,7 +67,7 @@ public struct MadTunesScene: Scene {
         }
         GlobalControlMenuCommands()
         CommandGroup(before: .toolbar) {
-          if !vm.library.isImporting, vm.desktopContentLayout == .asAlbumVGrid {
+          if !vm.library.isImporting, vm.desktopContentLayout != .asTableView {
             Menu {
               Picker(
                 String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
