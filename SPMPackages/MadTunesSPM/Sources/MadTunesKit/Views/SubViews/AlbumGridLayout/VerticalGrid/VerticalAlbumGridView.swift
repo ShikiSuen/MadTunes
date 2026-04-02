@@ -220,18 +220,11 @@ extension AlbumVGrid {
             // 相關的實作已經套用到上文了，施加對象是 albumRow 與 VerticallyExpandedAlbumView 副本。
           }
           .scrollContentBackground(.hidden)
-          // Phase 96: expandedAlbumID scroll (data scheduling moved to ViewModel).
-          // Phase 98: In Intel Mac mode, skip auto-scroll to VerticallyExpandedAlbumView;
-          // scrolling to AlbumGridItemView is handled in the safeAreaInset onChange.
           .onChange(of: gridVM.expandedAlbumID) { _, newValue in
-            guard let newValue else { return }
-            gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: newValue)
-            guard !gridVM.legacyHardwareMode else { return }
-            gridVM.proxyScrollDebouncer.debounceOnMain {
-              withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-                proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
-              }
-            }
+            respondToExpandedAlbumIDChanges(id: newValue, proxy: proxy)
+          }
+          .onAppear {
+            respondToExpandedAlbumIDChanges(proxy: proxy)
           }
           .onChange(of: canvasWidth) { oldWidth, newWidth in
             guard oldWidth != newWidth, let expandedID = gridVM.expandedAlbumID else { return }
@@ -246,10 +239,11 @@ extension AlbumVGrid {
           .onChange(of: gridVM.scrollToAlbumID) { _, newValue in
             guard let albumID = newValue else { return }
             gridVM.scrollToAlbumID = nil
+            let allAlbums = gridVM.currentAlbumsDisplayed
             if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
-              gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: albumID)
+              gridVM.scheduleDisplayedAlbumsUpdate(to: allAlbums, ensureVisibleAlbumID: albumID)
             }
-            let rows = albums.chunked(into: columnCount)
+            let rows = allAlbums.chunked(into: columnCount)
             guard let rowIndex = rows.firstIndex(
               where: { $0.contains { $0.id == albumID } }
             ) else { return }
@@ -467,6 +461,23 @@ extension AlbumVGrid {
 
     // Phase 49: Only assign expandedAlbumID if the value is different.
     // Prevents redundant layout animations when the value hasn't changed.
+
+    private func respondToExpandedAlbumIDChanges(id newValue: UUID? = nil, proxy: ScrollViewProxy) {
+      // Phase 96: expandedAlbumID scroll (data scheduling moved to ViewModel).
+      // Phase 98: In Intel Mac mode, skip auto-scroll to VerticallyExpandedAlbumView;
+      // scrolling to AlbumGridItemView is handled in the safeAreaInset onChange.
+      guard let newValue = newValue ?? vm.gridVM.expandedAlbumID else { return }
+      gridVM.scheduleDisplayedAlbumsUpdate(
+        to: gridVM.currentAlbumsDisplayed,
+        ensureVisibleAlbumID: newValue
+      )
+      guard !gridVM.legacyHardwareMode else { return }
+      gridVM.proxyScrollDebouncer.debounceOnMain {
+        withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
+          proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
+        }
+      }
+    }
   }
 } // extension AlbumVGrid
 

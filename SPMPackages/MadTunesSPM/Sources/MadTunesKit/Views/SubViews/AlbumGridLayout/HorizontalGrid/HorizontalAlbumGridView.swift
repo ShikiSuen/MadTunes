@@ -199,22 +199,19 @@ extension AlbumHGrid {
         }
         .scrollContentBackground(.hidden)
         .onChange(of: gridVM.expandedAlbumID) { _, newValue in
-          guard let newValue else { return }
-          gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: newValue)
-          gridVM.proxyScrollDebouncer.debounceOnMain {
-            withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-              // 使用者電腦顯示器往往都是寬的，所以這裡需要 anchor: .center 便於接下來的操作。
-              proxy.scrollTo("expanded_\(newValue)", anchor: .center)
-            }
-          }
+          respondToExpandedAlbumIDChanges(id: newValue, proxy: proxy)
+        }
+        .onAppear {
+          respondToExpandedAlbumIDChanges(proxy: proxy)
         }
         .onChange(of: gridVM.scrollToAlbumID) { _, newValue in
           guard let albumID = newValue else { return }
           gridVM.scrollToAlbumID = nil
+          let allAlbums = gridVM.currentAlbumsDisplayed
           if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
-            gridVM.scheduleDisplayedAlbumsUpdate(to: albums, ensureVisibleAlbumID: albumID)
+            gridVM.scheduleDisplayedAlbumsUpdate(to: allAlbums, ensureVisibleAlbumID: albumID)
           }
-          let columns = albums.chunked(into: rowCount)
+          let columns = allAlbums.chunked(into: rowCount)
           guard let colIndex = columns.firstIndex(
             where: { $0.contains { $0.id == albumID } }
           ) else { return }
@@ -407,6 +404,20 @@ extension AlbumHGrid {
           gridVM.showNewPlaylistAlert = true
         }
       )
+    }
+
+    private func respondToExpandedAlbumIDChanges(id newValue: UUID? = nil, proxy: ScrollViewProxy) {
+      guard let newValue = newValue ?? vm.gridVM.expandedAlbumID else { return }
+      gridVM.scheduleDisplayedAlbumsUpdate(
+        to: gridVM.currentAlbumsDisplayed,
+        ensureVisibleAlbumID: newValue
+      )
+      gridVM.proxyScrollDebouncer.debounceOnMain {
+        withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
+          // 使用者電腦顯示器往往都是寬的，所以這裡需要 anchor: .center 便於接下來的操作。
+          proxy.scrollTo("expanded_\(newValue)", anchor: .center)
+        }
+      }
     }
   }
 } // extension AlbumHGrid

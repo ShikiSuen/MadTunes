@@ -583,12 +583,18 @@ final class MadTunesViewModel {
         let newValue = self.desktopContentLayout
         let oldValue = self._previousDesktopContentLayout
         self._previousDesktopContentLayout = newValue
-        if oldValue != nil, oldValue != newValue {
+        if let oldValue, oldValue != newValue {
           self.tableVM.isEditModeActive = false
+          let hvGridCases: Set<DesktopContentLayout> = [.asAlbumHGrid, .asAlbumVGrid]
+          let oldNewValueSet: Set<DesktopContentLayout> = [oldValue, newValue]
           if newValue == .asTableView {
             self.gridVM.expandedAlbumID = nil
             self.gridVM.highlightedAlbumIDs.removeAll()
             self.selectedTrackIDs.removeAll()
+          } else if oldNewValueSet == hvGridCases,
+                    let expandedID = self.gridVM.expandedAlbumID {
+            // Ensure the destination album-grid layout scrolls to the persisted expanded album.
+            self.gridVM.scrollToAlbumID = expandedID
           }
         }
         self.observeDesktopContentLayoutChange()
