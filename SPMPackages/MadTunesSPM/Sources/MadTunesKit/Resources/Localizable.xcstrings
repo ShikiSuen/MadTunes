@@ -6024,73 +6024,73 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wiedergabe/Pause umschalten (wenn eingeklappt)"
+            "value" : "Album erweitern (wenn eingeklappt)"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Toggle play/pause (when collapsed)"
+            "value" : "Expand album (when collapsed)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alternar reproducción/pausa (cuando está colapsado)"
+            "value" : "Expandir álbum (cuando está colapsado)"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Basculer lecture/pause (quand réduit)"
+            "value" : "Étendre l'album (quand réduit)"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Attiva/disattiva riproduzione/pausa (quando compresso)"
+            "value" : "Espandi album (quando compresso)"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "再生/一時停止を切り替え（未展開時）"
+            "value" : "アルバムを展開（未展開時）"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "재생/일시정지 전환 (접혔을 때)"
+            "value" : "앨범 확장 (접혔을 때)"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alternar reprodução/pausa (quando recolhido)"
+            "value" : "Expandir álbum (quando recolhido)"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Переключить воспроизведение/паузу (когда свернуто)"
+            "value" : "Развернуть альбом (когда свернуто)"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oynat/duraklat arasında geçiş (daraltılmışken)"
+            "value" : "Albümü genişlet (daraltılmışken)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "切换播放/暂停（未展开时）"
+            "value" : "展开专辑（未展开时）"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "切換播放/暫停（未展開時）"
+            "value" : "展開專輯（未展開時）"
           }
         }
       }
@@ -6322,83 +6322,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "切換展開的專輯\n(↑↓ 同欄內; ←→ 跨欄)"
-          }
-        }
-      }
-    },
-    "i18n:HotKeyHint.Record.VGridView.OptionArrowSwitchAlbum" : {
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erweitertes Album wechseln\n(←→ gleiche Zeile; ↑↓ andere Zeilen)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Switch expanded album\n(←→ same row; ↑↓ cross rows)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cambiar álbum expandido\n(←→ misma fila; ↑↓ entre filas)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Changer l'album étendu\n(←→ même ligne ; ↑↓ entre lignes)"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cambia album espanso\n(←→ stessa riga; ↑↓ tra righe)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "展開中のアルバムを切り替え\n(←→ 同じ行内; ↑↓ 行間移動)"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "확장된 앨범 전환\n(←→ 같은 행; ↑↓ 행 간 이동)"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alternar álbum expandido\n(←→ mesma linha; ↑↓ entre linhas)"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Переключить развёрнутый альбом\n(←→ тот же ряд; ↑↓ между рядами)"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Genişletilmiş albümü değiştir\n(←→ aynı satır; ↑↓ satırlar arası)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "切换展开的专辑\n(←→ 同行内; ↑↓ 跨行)"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "切換展開的專輯\n(←→ 同列內; ↑↓ 跨列)"
           }
         }
       }
@@ -7169,6 +7092,83 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "切換播放/暫停"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.VGridView.OptionArrowSwitchAlbum" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erweitertes Album wechseln\n(←→ gleiche Zeile; ↑↓ andere Zeilen)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Switch expanded album\n(←→ same row; ↑↓ cross rows)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar álbum expandido\n(←→ misma fila; ↑↓ entre filas)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changer l'album étendu\n(←→ même ligne ; ↑↓ entre lignes)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia album espanso\n(←→ stessa riga; ↑↓ tra righe)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展開中のアルバムを切り替え\n(←→ 同じ行内; ↑↓ 行間移動)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확장된 앨범 전환\n(←→ 같은 행; ↑↓ 행 간 이동)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alternar álbum expandido\n(←→ mesma linha; ↑↓ entre linhas)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переключить развёрнутый альбом\n(←→ тот же ряд; ↑↓ между рядами)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Genişletilmiş albümü değiştir\n(←→ aynı satır; ↑↓ satırlar arası)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切换展开的专辑\n(←→ 同行内; ↑↓ 跨行)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切換展開的專輯\n(←→ 同列內; ↑↓ 跨列)"
           }
         }
       }

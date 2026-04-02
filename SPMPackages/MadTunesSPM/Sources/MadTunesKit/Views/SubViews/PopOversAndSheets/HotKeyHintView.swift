@@ -612,9 +612,11 @@ extension HotKeyHintView {
           defaultValue: "Expand album (when collapsed)",
           bundle: #bundle
         )
+        // Space assignment accepts modifiers; collapsed-state behavior remains
+        // album expansion rather than play/pause.
         shiftSpaceHint = String(
           localized: "i18n:HotKeyHint.Record.GridView.ShiftSpaceNotExpanded",
-          defaultValue: "Toggle play/pause (when collapsed)",
+          defaultValue: "Expand album (when collapsed)",
           bundle: #bundle
         )
       }
