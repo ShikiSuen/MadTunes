@@ -116,6 +116,20 @@ struct ColumnBrowserView: View {
   @State private var columnAnchors: [String: String] = [:]
   #endif
 
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+  private var overallContrast: CGFloat {
+    guard OS.liquidGlassThemeSuspected else { return 1 }
+    return colorScheme == .dark && !reduceTransparency ? 1.5 : 1
+  }
+
+  private var overallBlendMode: BlendMode {
+    if reduceTransparency || !OS.liquidGlassThemeSuspected {
+      return .normal
+    }
+    return colorScheme == .dark ? .plusLighter : .plusDarker
+  }
+
   // MARK: - Filter column (platform-adaptive)
 
   @ViewBuilder
@@ -198,8 +212,8 @@ struct ColumnBrowserView: View {
     }
     .tableColumnHeaders(.hidden)
     .tableStyle(.inset)
-    .contrast(colorScheme == .dark ? 1.5 : 1)
-    .blendMode(colorScheme == .dark ? .plusLighter : .plusDarker)
+    .contrast(overallContrast)
+    .blendMode(overallBlendMode)
     .modifier(TableSelectionHandler(
       selection: selection,
       allItems: items,
