@@ -69,7 +69,7 @@ final class AppKitScrollWheelRedirectorView: NSView {
   private func handleLocalScrollWheel(_ event: NSEvent) -> NSEvent? {
     guard let sv = targetScrollView, let hostWindow = window else { return event }
     guard event.window === hostWindow else { return event }
-    guard eventHasNoModifierFlags(event) else { return event }
+    guard eventAllowsRedirect(event) else { return event }
 
     let loc = event.locationInWindow
     guard let hitView = hostWindow.contentView?.hitTest(loc) else { return event }
@@ -82,8 +82,9 @@ final class AppKitScrollWheelRedirectorView: NSView {
     let dy = event.scrollingDeltaY
     guard dy != 0 else { return event }
 
-    // Phase 151: Amplify scroll amount to match Shift+Wheel behavior.
-    let amplifiedDy = dy * 10.0
+    // Precise (trackpad) deltas need moderate amplification to match native
+    // Shift+Wheel feel; non-precise (scroll wheel) line-based deltas need more.
+    let amplifiedDy = event.hasPreciseScrollingDeltas ? (dy * 10.0) : (dy * 16.0)
 
     let clip = sv.contentView
     let contentWidth = sv.documentView?.frame.width ?? clip.documentRect.width
@@ -97,9 +98,8 @@ final class AppKitScrollWheelRedirectorView: NSView {
     return nil
   }
 
-  private func eventHasNoModifierFlags(_ event: NSEvent) -> Bool {
+  private func eventAllowsRedirect(_ event: NSEvent) -> Bool {
     let relevantFlags = event.modifierFlags.intersection([
-      .shift,
       .control,
       .option,
       .command,
@@ -180,7 +180,9 @@ final class ScrollWheelRedirectorView: UIView {
 
   deinit {
     if let gr = installedGR, let sv = targetScrollView {
-      sv.removeGestureRecognizer(gr)
+      Task { @MainActor in
+        sv.removeGestureRecognizer(gr)
+      }
     }
   }
 
@@ -234,7 +236,8 @@ final class ScrollWheelRedirectorView: UIView {
 
     // Phase 151: Suppress if modifier key pressed mid-gesture
     // or cursor moved over a child scroll view.
-    guard ModifierKeyMonitor.shared.currentModifiers.isEmpty else { return }
+    let modifiers = ModifierKeyMonitor.shared.currentModifiers
+    guard modifiers.subtracting([.shift, .capsLock]).isEmpty else { return }
     let loc = gr.location(in: sv)
     if let hit = sv.hitTest(loc, with: nil), hasChildScrollView(hit, below: sv) {
       return
@@ -259,8 +262,9 @@ final class ScrollWheelRedirectorView: UIView {
 // MARK: - UIGestureRecognizerDelegate
 
 extension ScrollWheelRedirectorView: UIGestureRecognizerDelegate {
-  func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-    guard ModifierKeyMonitor.shared.currentModifiers.isEmpty else { return false }
+  override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+    let modifiers = ModifierKeyMonitor.shared.currentModifiers
+    guard modifiers.subtracting([.shift, .capsLock]).isEmpty else { return false }
     guard let sv = gestureRecognizer.view as? UIScrollView else { return false }
     let loc = gestureRecognizer.location(in: sv)
     if let hit = sv.hitTest(loc, with: nil), hasChildScrollView(hit, below: sv) {
