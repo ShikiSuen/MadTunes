@@ -845,6 +845,11 @@ final class AlbumGridViewModel {
       return .handled
     }
 
+    // Phase 149: Option+Arrow: unconditionally navigate to adjacent album.
+    if press.modifiers.contains(.option), press.isArrowKey {
+      return navigateAlbumFromExpanded(press, albums: albums)
+    }
+
     if press.isArrowKey {
       if mainVM.selectedTrackIDs.isEmpty {
         switch press.key {
@@ -929,6 +934,8 @@ final class AlbumGridViewModel {
     return .ignored
   }
 
+  /// Phase 149: Handle all four arrow directions for the VGrid model:
+  /// Left/Right = ±1 (same row), Up/Down = ±gridColumnCount (cross rows).
   private func navigateAlbumFromExpanded(
     _ press: KeyPress, albums: [Album]
   )
@@ -944,8 +951,12 @@ final class AlbumGridViewModel {
       newIdx = min(idx + 1, albums.count - 1)
     case .leftArrow:
       newIdx = max(idx - 1, 0)
-    default:
+    case .downArrow:
+      newIdx = min(idx + gridColumnCount, albums.count - 1)
+    case .upArrow:
       newIdx = max(idx - gridColumnCount, 0)
+    default:
+      return .ignored
     }
     guard newIdx != idx else { return .handled }
     let newAlbumID = albums[newIdx].id
