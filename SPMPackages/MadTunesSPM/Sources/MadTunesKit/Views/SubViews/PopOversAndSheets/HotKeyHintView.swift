@@ -369,7 +369,7 @@ extension HotKeyHintView {
           )
         }
       }
-    case .asAlbumVGrid:
+    case .asAlbumHGrid, .asAlbumVGrid:
       // ── Commands ──
       // ⌘↓: When expanded → play selected tracks; when collapsed → expand.
       HotKeyHintRecord(
@@ -462,50 +462,102 @@ extension HotKeyHintView {
           bundle: #bundle
         )
       }
-      // Phase 74: PgUp/PgDn/Home/End for grid.
+      // Phase 148/149: Option+Arrow: Switch expanded album (layout-specific descriptions).
+      if vm.desktopContentLayout == .asAlbumHGrid {
+        HotKeyHintRecord(
+          modifiers: [.option],
+          keyPress: .upArrow,
+          keyLabel: "  ←→↑↓"
+        ) {
+          String(
+            localized: "i18n:HotKeyHint.Record.HGridView.OptionArrowSwitchAlbum",
+            defaultValue: "Switch expanded album\n(↑↓ same column; ←→ cross columns)",
+            bundle: #bundle
+          )
+        }
+      } else {
+        HotKeyHintRecord(
+          modifiers: [.option],
+          keyPress: .upArrow,
+          keyLabel: "  ←→↑↓"
+        ) {
+          String(
+            localized: "i18n:HotKeyHint.Record.VGridView.OptionArrowSwitchAlbum",
+            defaultValue: "Switch expanded album\n(←→ same row; ↑↓ cross rows)",
+            bundle: #bundle
+          )
+        }
+      }
+      // Phase 74/154: PgUp/PgDn/Home/End for grid.
+      // When expanded, targets tracks; otherwise targets albums.
+      let isExpanded = vm.gridVM.expandedAlbumID != nil
       HotKeyHintRecord(
         modifiers: [],
         keyPress: .pageUp,
         keyLabel: "PgUp PgDn"
       ) {
-        String(
-          localized: "i18n:HotKeyHint.Record.GridView.PageUpDown",
-          defaultValue: "Scroll up/down by one page",
-          bundle: #bundle
-        )
+        isExpanded
+          ? String(
+            localized: "i18n:HotKeyHint.Record.GridView.PageUpDown.Expanded",
+            defaultValue: "Scroll track list by one page",
+            bundle: #bundle
+          )
+          : String(
+            localized: "i18n:HotKeyHint.Record.GridView.PageUpDown",
+            defaultValue: "Scroll up/down by one page",
+            bundle: #bundle
+          )
       }
       HotKeyHintRecord(
         modifiers: [.shift],
         keyPress: .pageUp,
         keyLabel: "PgUp PgDn"
       ) {
-        String(
-          localized: "i18n:HotKeyHint.Record.GridView.ShiftPageUpDown",
-          defaultValue: "Range select to previous/next page",
-          bundle: #bundle
-        )
+        isExpanded
+          ? String(
+            localized: "i18n:HotKeyHint.Record.GridView.ShiftPageUpDown.Expanded",
+            defaultValue: "Range select tracks to previous/next page",
+            bundle: #bundle
+          )
+          : String(
+            localized: "i18n:HotKeyHint.Record.GridView.ShiftPageUpDown",
+            defaultValue: "Range select to previous/next page",
+            bundle: #bundle
+          )
       }
       HotKeyHintRecord(
         modifiers: [],
         keyPress: .home,
         keyLabel: "Home End"
       ) {
-        String(
-          localized: "i18n:HotKeyHint.Record.GridView.HomeEnd",
-          defaultValue: "Jump to first/last album",
-          bundle: #bundle
-        )
+        isExpanded
+          ? String(
+            localized: "i18n:HotKeyHint.Record.GridView.HomeEnd.Expanded",
+            defaultValue: "Jump to first/last track",
+            bundle: #bundle
+          )
+          : String(
+            localized: "i18n:HotKeyHint.Record.GridView.HomeEnd",
+            defaultValue: "Jump to first/last album",
+            bundle: #bundle
+          )
       }
       HotKeyHintRecord(
         modifiers: [.shift],
         keyPress: .home,
         keyLabel: "Home End"
       ) {
-        String(
-          localized: "i18n:HotKeyHint.Record.GridView.ShiftHomeEnd",
-          defaultValue: "Range select to first/last album",
-          bundle: #bundle
-        )
+        isExpanded
+          ? String(
+            localized: "i18n:HotKeyHint.Record.GridView.ShiftHomeEnd.Expanded",
+            defaultValue: "Range select tracks to first/last",
+            bundle: #bundle
+          )
+          : String(
+            localized: "i18n:HotKeyHint.Record.GridView.ShiftHomeEnd",
+            defaultValue: "Range select to first/last album",
+            bundle: #bundle
+          )
       }
       // ⌘A: Select all albums (no expansion) or all tracks (in expanded album).
       HotKeyHintRecord(

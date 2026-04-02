@@ -5094,6 +5094,83 @@
         }
       }
     },
+    "i18n:HotKeyHint.Record.GridView.HomeEnd.Expanded" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum ersten/letzten Titel springen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Jump to first/last track"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saltar a la primera/última pista"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aller à la première/dernière piste"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vai alla prima/ultima traccia"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "先頭/末尾のトラックへ移動"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "첫 번째/마지막 트랙으로 이동"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pular para a primeira/última faixa"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перейти к первому/последнему треку"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İlk/son parçaya atla"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳转到首个/末个曲目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳至首個/末個曲目"
+          }
+        }
+      }
+    },
     "i18n:HotKeyHint.Record.GridView.PageUpDown" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -5167,6 +5244,83 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "向上/向下翻頁"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.PageUpDown.Expanded" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titelliste eine Seite scrollen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Scroll track list by one page"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desplazar lista de pistas una página"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Défiler la liste des pistes d'une page"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scorri l'elenco brani di una pagina"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "トラックリストを1ページ分スクロール"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "트랙 목록 한 페이지 스크롤"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rolar lista de faixas uma página"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутить список треков на страницу"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parça listesini bir sayfa kaydır"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "曲目列表翻页"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "曲目列表翻頁"
           }
         }
       }
@@ -5556,6 +5710,83 @@
         }
       }
     },
+    "i18n:HotKeyHint.Record.GridView.ShiftHomeEnd.Expanded" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereichsauswahl bis zum ersten/letzten Titel"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Range select tracks to first/last"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selección por rango de pistas hasta la primera/última"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélection par plage des pistes jusqu'à la première/dernière"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selezione per intervallo brani fino alla prima/ultima"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "先頭/末尾のトラックまで範囲選択"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "첫 번째/마지막 트랙까지 범위 선택"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seleção de intervalo de faixas até a primeira/última"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбор диапазона треков до первого/последнего"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İlk/son parçaya kadar parça aralık seçimi"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "范围选择曲目至首个/末个"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "範圍選取曲目至首個/末個"
+          }
+        }
+      }
+    },
     "i18n:HotKeyHint.Record.GridView.ShiftPageUpDown" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -5629,6 +5860,83 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "範圍選擇到上一頁/下一頁"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.GridView.ShiftPageUpDown.Expanded" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereichsauswahl der Titel bis zur vorherigen/nächsten Seite"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Range select tracks to previous/next page"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selección por rango de pistas hasta la página anterior/siguiente"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélection par plage des pistes jusqu'à la page précédente/suivante"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selezione per intervallo brani fino alla pagina precedente/successiva"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前/次のページまでトラック範囲選択"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이전/다음 페이지까지 트랙 범위 선택"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seleção de intervalo de faixas até a página anterior/próxima"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбор диапазона треков до предыдущей/следующей страницы"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Önceki/sonraki sayfaya kadar parça aralık seçimi"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "范围选择曲目到上一页/下一页"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "範圍選擇曲目到上一頁/下一頁"
           }
         }
       }
@@ -5937,6 +6245,160 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "展開專輯（未展開時）"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.HGridView.OptionArrowSwitchAlbum" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erweitertes Album wechseln\n(↑↓ gleiche Spalte; ←→ andere Spalten)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Switch expanded album\n(↑↓ same column; ←→ cross columns)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar álbum expandido\n(↑↓ misma columna; ←→ entre columnas)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changer l'album étendu\n(↑↓ même colonne ; ←→ entre colonnes)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia album espanso\n(↑↓ stessa colonna; ←→ tra colonne)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展開中のアルバムを切り替え\n(↑↓ 同じ列内; ←→ 列間移動)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확장된 앨범 전환\n(↑↓ 같은 열; ←→ 열 간 이동)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alternar álbum expandido\n(↑↓ mesma coluna; ←→ entre colunas)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переключить развёрнутый альбом\n(↑↓ тот же столбец; ←→ между столбцами)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Genişletilmiş albümü değiştir\n(↑↓ aynı sütun; ←→ sütunlar arası)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切换展开的专辑\n(↑↓ 同列内; ←→ 跨列)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切換展開的專輯\n(↑↓ 同欄內; ←→ 跨欄)"
+          }
+        }
+      }
+    },
+    "i18n:HotKeyHint.Record.VGridView.OptionArrowSwitchAlbum" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erweitertes Album wechseln\n(←→ gleiche Zeile; ↑↓ andere Zeilen)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Switch expanded album\n(←→ same row; ↑↓ cross rows)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar álbum expandido\n(←→ misma fila; ↑↓ entre filas)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changer l'album étendu\n(←→ même ligne ; ↑↓ entre lignes)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia album espanso\n(←→ stessa riga; ↑↓ tra righe)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展開中のアルバムを切り替え\n(←→ 同じ行内; ↑↓ 行間移動)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확장된 앨범 전환\n(←→ 같은 행; ↑↓ 행 간 이동)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alternar álbum expandido\n(←→ mesma linha; ↑↓ entre linhas)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переключить развёрнутый альбом\n(←→ тот же ряд; ↑↓ между рядами)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Genişletilmiş albümü değiştir\n(←→ aynı satır; ↑↓ satırlar arası)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切换展开的专辑\n(←→ 同行内; ↑↓ 跨行)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切換展開的專輯\n(←→ 同列內; ↑↓ 跨列)"
           }
         }
       }
