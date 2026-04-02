@@ -59,6 +59,15 @@ extension AlbumVGrid {
                   proxy.scrollTo(id, anchor: .top)
                 }
               }
+              // Phase 153: Legacy-mode track scroll trigger (keyboard navigation).
+              .onChange(of: gridVM.expandedTrackScrollTargetID) { _, newID in
+                guard let newID else { return }
+                withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
+                  // 此處不用強行指定 Anchor。
+                  proxy.scrollTo(newID)
+                }
+                gridVM.expandedTrackScrollTargetID = nil
+              }
             }
             .compositingGroup()
             .shadow(radius: 8)

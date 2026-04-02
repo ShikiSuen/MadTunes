@@ -138,7 +138,7 @@ final class AlbumGridViewModel {
   /// Uses a fixed estimate since expanded view height is not directly observable.
   var hGridExpandedTrackPageSize: Int {
     // Approximate expanded track list height ~300pt, row height ~28pt.
-    return 10
+    10
   }
 
   /// Albums for grid view, derived from filtered tracks.
@@ -856,6 +856,8 @@ final class AlbumGridViewModel {
         case .downArrow:
           if let first = sorted.first {
             mainVM.selectedTrackIDs = [first.id]
+            // Phase 153: Trigger scroll to first track (legacy mode only).
+            if legacyHardwareMode { expandedTrackScrollTargetID = first.id }
           }
           return .handled
         case .upArrow:
@@ -928,6 +930,99 @@ final class AlbumGridViewModel {
         mainVM.trackSelectionAnchorID = sorted[newIdx].id
         mainVM.trackSelectionCursorID = sorted[newIdx].id
       }
+      // Phase 153: Trigger scroll to new cursor position (legacy mode only).
+      if legacyHardwareMode { expandedTrackScrollTargetID = sorted[newIdx].id }
+      return .handled
+    }
+
+    // Phase 153: PgUp/PgDn navigation within expanded VGrid track list (legacy mode).
+    // Uses column-based page size (itemsPerColumn * 2) to move roughly one "page" of columns.
+    if press.isPageKey, legacyHardwareMode {
+      let maxRowsPerColumn = 7
+      let factor = mainVM.uiFactor * mainVM.uiFactor
+      let minColumnWidth: CGFloat = 300 * factor
+      let containerWidth = mainVM.screenVM.mainColumnCanvasSizeObserved.width
+      let trackListWidth = Swift.max(minColumnWidth, containerWidth - 292 * factor)
+      let maxPossibleColumns = Swift.max(1, Int(trackListWidth / minColumnWidth))
+      let desiredColumns = sorted.count > maxRowsPerColumn ? maxPossibleColumns : 1
+      let columnCount = Swift.max(1, Swift.min(sorted.count, desiredColumns))
+      let itemsPerColumn = sorted.isEmpty ? 0 : Int(ceil(Double(sorted.count) / Double(columnCount)))
+      let pageDelta = max(itemsPerColumn * 1 * 2, 1) // 2 columns worth
+      let isShift = press.modifiers.contains(.shift)
+
+      if mainVM.selectedTrackIDs.isEmpty {
+        let targetIdx = press.key == .pageDown
+          ? min(pageDelta - 1, sorted.count - 1)
+          : 0
+        let targetID = sorted[targetIdx].id
+        mainVM.selectedTrackIDs = [targetID]
+        mainVM.trackSelectionAnchorID = targetID
+        mainVM.trackSelectionCursorID = targetID
+        expandedTrackScrollTargetID = targetID
+        return .handled
+      }
+
+      guard let anchorID = mainVM.selectedTrackIDs.first(where: { _ in true }) else {
+        return .handled
+      }
+      let cursorID = mainVM.trackSelectionCursorID ?? anchorID
+      guard let cursorIdx = sorted.firstIndex(where: { $0.id == cursorID }) else {
+        return .handled
+      }
+
+      let newIdx = press.key == .pageDown
+        ? min(cursorIdx + pageDelta, sorted.count - 1)
+        : max(cursorIdx - pageDelta, 0)
+
+      if isShift {
+        if mainVM.trackSelectionAnchorID == nil {
+          mainVM.trackSelectionAnchorID = cursorID
+        }
+        guard let anchorIDForRange = mainVM.trackSelectionAnchorID,
+              let anchorIdxForRange = sorted.firstIndex(where: { $0.id == anchorIDForRange })
+        else { return .handled }
+        let range = min(anchorIdxForRange, newIdx) ... max(anchorIdxForRange, newIdx)
+        mainVM.selectedTrackIDs = Set(sorted[range].map(\.id))
+        mainVM.trackSelectionCursorID = sorted[newIdx].id
+      } else {
+        mainVM.selectedTrackIDs = [sorted[newIdx].id]
+        mainVM.trackSelectionAnchorID = sorted[newIdx].id
+        mainVM.trackSelectionCursorID = sorted[newIdx].id
+      }
+      expandedTrackScrollTargetID = sorted[newIdx].id
+      return .handled
+    }
+
+    // Phase 153: Home/End navigation within expanded VGrid track list (legacy mode).
+    handleHomeEndKey: if press.key == .home || press.key == .end, legacyHardwareMode {
+      let isShift = press.modifiers.contains(.shift)
+      let targetIdx = press.key == .home ? 0 : sorted.count - 1
+      let targetID = sorted[targetIdx].id
+
+      if isShift {
+        if mainVM.selectedTrackIDs.isEmpty {
+          mainVM.selectedTrackIDs = [targetID]
+          mainVM.trackSelectionAnchorID = targetID
+          mainVM.trackSelectionCursorID = targetID
+          expandedTrackScrollTargetID = targetID
+          break handleHomeEndKey
+        }
+        let cursorID = mainVM.trackSelectionCursorID ?? mainVM.selectedTrackIDs.first!
+        if mainVM.trackSelectionAnchorID == nil {
+          mainVM.trackSelectionAnchorID = cursorID
+        }
+        guard let anchorIDForRange = mainVM.trackSelectionAnchorID,
+              let anchorIdxForRange = sorted.firstIndex(where: { $0.id == anchorIDForRange })
+        else { break handleHomeEndKey }
+        let range = min(anchorIdxForRange, targetIdx) ... max(anchorIdxForRange, targetIdx)
+        mainVM.selectedTrackIDs = Set(sorted[range].map(\.id))
+        mainVM.trackSelectionCursorID = targetID
+      } else {
+        mainVM.selectedTrackIDs = [targetID]
+        mainVM.trackSelectionAnchorID = targetID
+        mainVM.trackSelectionCursorID = targetID
+      }
+      expandedTrackScrollTargetID = targetID
       return .handled
     }
 

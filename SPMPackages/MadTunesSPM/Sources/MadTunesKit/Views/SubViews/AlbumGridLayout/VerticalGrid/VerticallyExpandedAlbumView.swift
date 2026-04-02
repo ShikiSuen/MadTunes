@@ -322,6 +322,8 @@ extension AlbumVGrid {
                   }
                   songDividerInList
                 }
+                // Phase 153: Add id for ScrollViewReader scroll-to-track (legacy mode).
+                .id(track.id)
               }
             }
             // 僅單欄時，最大欄寬 500px。
