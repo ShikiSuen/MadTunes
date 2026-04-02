@@ -491,6 +491,8 @@ final class MadTunesViewModel {
   // --- Async search/cache (Phase 57):
   // Cached filtered results produced by the debounced async search task.
   private var searchTask: Task<Void, Never>?
+  /// Phase 158: Task for auto-dismissing playback error toast.
+  private var _playbackErrorDismissTask: Task<Void, Never>?
 
   // MARK: - Phase 58: New Data Pipeline (Single-Filter)
 
@@ -571,6 +573,7 @@ final class MadTunesViewModel {
     observeCurrentTrackChange()
     observeUIModeSwitching()
     observePredicateEditorDismissal()
+    observePlaybackError()
   }
 
   /// Phase 96/145: When `desktopContentLayout` changes, persist and clean up cross-view state.
@@ -711,6 +714,26 @@ final class MadTunesViewModel {
           self.predicateEditorVM = nil
         }
         self.observePredicateEditorDismissal()
+      }
+    }
+  }
+
+  /// Phase 158: Auto-dismiss playback error toast after 3 seconds.
+  private func observePlaybackError() {
+    withObservationTracking {
+      _ = self.player.lastPlaybackError
+    } onChange: {
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        if self.player.lastPlaybackError != nil {
+          self._playbackErrorDismissTask?.cancel()
+          self._playbackErrorDismissTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            self?.player.lastPlaybackError = nil
+          }
+        }
+        self.observePlaybackError()
       }
     }
   }

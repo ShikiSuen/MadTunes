@@ -22,6 +22,8 @@ public protocol MusicLibraryProviding: AnyObject {
   var artworkLoadingKeys: Set<String> { get }
   var importProgress: ImportProgress { get }
   var favoritesPlaylist: Playlist { get }
+  /// Phase 158: Sandbox bookmark health report.
+  var sandboxHealthReport: SandboxHealthReport? { get }
 
   // MARK: - Import
 

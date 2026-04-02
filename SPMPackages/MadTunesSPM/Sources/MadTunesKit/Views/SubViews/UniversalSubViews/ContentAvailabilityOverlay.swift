@@ -95,6 +95,36 @@ struct ContentAvailabilityOverlay: View {
             }
           }
           .compositingGroup()
+      } else if displayAlbums.isEmpty, vm.library.sandboxHealthReport?.severity == .critical {
+        // Phase 158: Critical sandbox failure — all source bookmarks lost.
+        Gradient.colorMeshGradient
+          .ignoresSafeArea()
+          .overlay {
+            ContentUnavailableView {
+              Label(
+                String(localized: "i18n:SandboxHealth.CriticalTitle", bundle: #bundle),
+                systemImage: "exclamationmark.triangle.fill"
+              )
+            } description: {
+              Text(String(localized: "i18n:SandboxHealth.CriticalDescription", bundle: #bundle))
+            } actions: {
+              switch OS.isAppKit {
+              case true:
+                Button(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle)) {
+                  vm.isFolderImporterPresented = true
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+              case false:
+                Button(String(localized: "i18n:Import.ImportFolder", bundle: #bundle)) {
+                  vm.isFolderImporterPresented = true
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+              }
+            }
+          }
+          .compositingGroup()
       } else if displayAlbums.isEmpty {
         Gradient.colorMeshGradient
           .ignoresSafeArea()
@@ -151,6 +181,7 @@ struct ContentAvailabilityOverlay: View {
     .animation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode), value: vm.isSearching)
     .animation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode), value: vm.library.isImporting)
     .animation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode), value: hasActiveFilters)
+    .animation(.interactiveSpring.nerf(vm.gridVM.legacyHardwareMode), value: vm.library.sandboxHealthReport?.severity)
   }
 
   // MARK: Private

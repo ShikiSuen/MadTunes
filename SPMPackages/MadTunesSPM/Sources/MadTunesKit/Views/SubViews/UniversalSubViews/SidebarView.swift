@@ -42,80 +42,89 @@ struct SidebarView: View {
       Section {
         // Phase 117: All user playlists (dynamic + static + folder) in one list with drag-reorder.
         ForEach(userPlaylists) { playlist in
-          Label(playlist.name, systemImage: playlistIcon(for: playlist))
-            .tag(playlist.id)
-            .contextMenu {
-              Section {
-                if playlist.kind == .dynamicList {
-                  Button {
-                    mainVM.openPredicateEditor(for: playlist)
-                  } label: {
-                    Label(
-                      String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
-                      systemImage: "slider.horizontal.3"
-                    )
-                  }
-                  // Phase 135: Data source submenu for dynamic playlists.
-                  DataSourceMenu(playlist: playlist, library: library)
-                }
-                if playlist.kind == .folderList {
-                  Button {
-                    Task {
-                      await library.rescanFolderPlaylist(id: playlist.id)
-                    }
-                  } label: {
-                    Label(
-                      String(localized: "i18n:Sidebar.RescanFolder", bundle: #bundle),
-                      systemImage: "arrow.clockwise"
-                    )
-                  }
-
-                  #if os(macOS) && !targetEnvironment(macCatalyst)
-                  Divider()
-                  Button {
-                    openFolderInFinder(for: playlist.id)
-                  } label: {
-                    Label(
-                      String(localized: "i18n:ContextMenu.ShowInFinder", bundle: #bundle),
-                      systemImage: "folder"
-                    )
-                  }
-                  .disabled(library.folderURL(forFolderPlaylistID: playlist.id) == nil)
-                  #endif
-                }
-                Button {
-                  alertText = playlist.name
-                  alertKind = .rename(playlist.id)
-                } label: {
-                  Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
-                }
-                if playlist.kind != .folderList {
-                  Button {
-                    library.duplicatePlaylist(id: playlist.id)
-                  } label: {
-                    Label(
-                      String(localized: "i18n:Sidebar.DuplicatePlaylist", bundle: #bundle),
-                      systemImage: "doc.on.doc"
-                    )
-                  }
-                }
-              } header: {
-                Text(playlist.kind.localizedDescription)
-              }
-              Divider()
-              Button(role: .destructive) {
-                if selectedPlaylistID == playlist.id {
-                  selectedPlaylistID = library.playlists.first?.id
-                }
-                if playlist.kind == .folderList {
-                  library.removeFolderPlaylist(id: playlist.id)
-                } else {
-                  library.removePlaylist(id: playlist.id)
-                }
-              } label: {
-                Label(String(localized: "i18n:Common.Delete", bundle: #bundle), systemImage: "trash")
-              }
+          HStack {
+            Label(playlist.name, systemImage: playlistIcon(for: playlist))
+            // Phase 158: Show warning icon for failed folder playlists.
+            if playlist.kind == .folderList,
+               library.sandboxHealthReport?.failedFolderPlaylistIDs.contains(playlist.id) == true {
+              Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.yellow)
+                .font(.caption2)
             }
+          }
+          .tag(playlist.id)
+          .contextMenu {
+            Section {
+              if playlist.kind == .dynamicList {
+                Button {
+                  mainVM.openPredicateEditor(for: playlist)
+                } label: {
+                  Label(
+                    String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),
+                    systemImage: "slider.horizontal.3"
+                  )
+                }
+                // Phase 135: Data source submenu for dynamic playlists.
+                DataSourceMenu(playlist: playlist, library: library)
+              }
+              if playlist.kind == .folderList {
+                Button {
+                  Task {
+                    await library.rescanFolderPlaylist(id: playlist.id)
+                  }
+                } label: {
+                  Label(
+                    String(localized: "i18n:Sidebar.RescanFolder", bundle: #bundle),
+                    systemImage: "arrow.clockwise"
+                  )
+                }
+
+                #if os(macOS) && !targetEnvironment(macCatalyst)
+                Divider()
+                Button {
+                  openFolderInFinder(for: playlist.id)
+                } label: {
+                  Label(
+                    String(localized: "i18n:ContextMenu.ShowInFinder", bundle: #bundle),
+                    systemImage: "folder"
+                  )
+                }
+                .disabled(library.folderURL(forFolderPlaylistID: playlist.id) == nil)
+                #endif
+              }
+              Button {
+                alertText = playlist.name
+                alertKind = .rename(playlist.id)
+              } label: {
+                Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
+              }
+              if playlist.kind != .folderList {
+                Button {
+                  library.duplicatePlaylist(id: playlist.id)
+                } label: {
+                  Label(
+                    String(localized: "i18n:Sidebar.DuplicatePlaylist", bundle: #bundle),
+                    systemImage: "doc.on.doc"
+                  )
+                }
+              }
+            } header: {
+              Text(playlist.kind.localizedDescription)
+            }
+            Divider()
+            Button(role: .destructive) {
+              if selectedPlaylistID == playlist.id {
+                selectedPlaylistID = library.playlists.first?.id
+              }
+              if playlist.kind == .folderList {
+                library.removeFolderPlaylist(id: playlist.id)
+              } else {
+                library.removePlaylist(id: playlist.id)
+              }
+            } label: {
+              Label(String(localized: "i18n:Common.Delete", bundle: #bundle), systemImage: "trash")
+            }
+          }
         }
         .onDelete { indexSet in
           let playlists = userPlaylists

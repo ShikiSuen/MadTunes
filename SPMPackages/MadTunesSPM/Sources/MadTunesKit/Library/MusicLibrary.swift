@@ -73,6 +73,9 @@ public final class MusicLibrary {
   public private(set) var importProgress = ImportProgress()
   public private(set) var hasLoadedPersistence = false
 
+  /// Phase 158: Sandbox bookmark health report, populated after loadPersistedData.
+  public var sandboxHealthReport: SandboxHealthReport?
+
   /// Mutation token for observers.  Clients may track `library.$changeID` or
   /// use `withObservationTracking` to get callbacks when any noteworthy
   /// library update occurs (e.g. removal of tracks).
@@ -226,13 +229,25 @@ public final class MusicLibrary {
     let context = ModelContext(container)
 
     // Step 1: Restore security-scoped access from source bookmarks.
+    var report = SandboxHealthReport()
     let sourceDescriptor = FetchDescriptor<PersistedSourceBookmark>()
     if let sourceBookmarks = try? context.fetch(sourceDescriptor) {
+      report.totalSourceBookmarks = sourceBookmarks.count
       for sb in sourceBookmarks {
-        if let resolved = Self.resolveBookmark(sb.bookmarkData) {
+        let (resolved, isStale) = Self.resolveBookmark(sb.bookmarkData)
+        if let resolved {
           if resolved.startAccessingSecurityScopedResource() {
             activeSecurityScopedURLs.append(resolved)
+          } else {
+            report.failedSourceBookmarks += 1
           }
+          // Phase 158: Auto-refresh stale bookmark.
+          if isStale, let refreshed = Self.createBookmark(for: resolved) {
+            sb.bookmarkData = refreshed
+            try? context.save()
+          }
+        } else {
+          report.failedSourceBookmarks += 1
         }
       }
     }
@@ -287,7 +302,10 @@ public final class MusicLibrary {
 
     // Phase 129: Await folder playlist rescans so their tracks are available
     // for artwork cleanup (prevents incorrect purging of folder-exclusive artwork).
-    await loadFolderPlaylistMetadataAsync()
+    await loadFolderPlaylistMetadataAsync(report: &report)
+
+    // Phase 158: Publish health report.
+    sandboxHealthReport = report.hasAnyFailure ? report : nil
 
     // Phase 129: Clean up orphaned artwork caches.
     await cleanupOrphanedArtworkCaches()
@@ -365,9 +383,9 @@ public final class MusicLibrary {
 
     // Phase 80: resolve bookmark in sandbox environments.
     if !FileManager.default.isReadableFile(atPath: trackURL.path),
-       let bookmark = sampleTrackBookmark,
-       let resolved = Self.resolveBookmark(bookmark) {
-      if resolved.startAccessingSecurityScopedResource() {
+       let bookmark = sampleTrackBookmark {
+      let (resolved, _) = Self.resolveBookmark(bookmark)
+      if let resolved, resolved.startAccessingSecurityScopedResource() {
         activeSecurityScopedURLs.append(resolved)
         trackURL = resolved
       }
@@ -385,9 +403,9 @@ public final class MusicLibrary {
         guard candidateKey == key, candidate.fileURL != trackURL else { continue }
         var candidateURL = candidate.fileURL
         if !FileManager.default.isReadableFile(atPath: candidateURL.path),
-           let bm = candidate.bookmarkData,
-           let resolved = Self.resolveBookmark(bm) {
-          if resolved.startAccessingSecurityScopedResource() {
+           let bm = candidate.bookmarkData {
+          let (resolved, _) = Self.resolveBookmark(bm)
+          if let resolved, resolved.startAccessingSecurityScopedResource() {
             activeSecurityScopedURLs.append(resolved)
             candidateURL = resolved
           }
@@ -960,7 +978,8 @@ public final class MusicLibrary {
     }
   }
 
-  private nonisolated static func resolveBookmark(_ data: Data) -> URL? {
+  /// Phase 158: Returns (resolved URL, isStale) tuple.
+  private nonisolated static func resolveBookmark(_ data: Data) -> (URL?, Bool) {
     #if os(macOS) && !targetEnvironment(macCatalyst)
     return resolveBookmark(data, options: .withSecurityScope)
     #elseif targetEnvironment(macCatalyst)
@@ -973,11 +992,12 @@ public final class MusicLibrary {
       [],
     ]
     for options in candidateOptions {
-      if let resolved = resolveBookmark(data, options: options) {
-        return resolved
+      let (resolved, isStale) = resolveBookmark(data, options: options)
+      if resolved != nil {
+        return (resolved, isStale)
       }
     }
-    return nil
+    return (nil, false)
     #else
     return resolveBookmark(data, options: [])
     #endif
@@ -1020,18 +1040,20 @@ public final class MusicLibrary {
     #endif
   }
 
+  /// Phase 158: Returns (resolved URL, isStale) tuple.
   private nonisolated static func resolveBookmark(
     _ data: Data,
     options: URL.BookmarkResolutionOptions
   )
-    -> URL? {
+    -> (URL?, Bool) {
     var stale = false
-    return try? URL(
+    let url = try? URL(
       resolvingBookmarkData: data,
       options: options,
       relativeTo: nil,
       bookmarkDataIsStale: &stale
     )
+    return (url, stale)
   }
 
   private nonisolated static func normalizedFolderPath(_ url: URL) -> String {
@@ -1163,9 +1185,9 @@ public final class MusicLibrary {
     let metadata = metadata ?? loadFolderPlaylistMetadata(for: playlistID)
 
     if let bookmarkData = metadata?.folderBookmarkData,
-       !bookmarkData.isEmpty,
-       let resolvedURL = Self.resolveBookmark(bookmarkData) {
-      return resolvedURL
+       !bookmarkData.isEmpty {
+      let (resolvedURL, _) = Self.resolveBookmark(bookmarkData)
+      if let resolvedURL { return resolvedURL }
     }
 
     if let folderURL = metadata?.folderURL {
@@ -1513,11 +1535,13 @@ public final class MusicLibrary {
 
   /// Phase 129: Load folder playlist metadata from SwiftData and await rescans.
   /// Awaiting rescans ensures folderPlaylistTracks is populated before artwork cleanup.
-  private func loadFolderPlaylistMetadataAsync() async {
+  private func loadFolderPlaylistMetadataAsync(report: inout SandboxHealthReport) async {
     guard let container = _modelContainer else { return }
     let context = ModelContext(container)
     let descriptor = FetchDescriptor<PersistedFolderPlaylistMetadata>()
     guard let allMetadata = try? context.fetch(descriptor) else { return }
+
+    report.totalFolderPlaylists = allMetadata.count
 
     for metadata in allMetadata {
       guard let playlist = playlists.first(where: { $0.id == metadata.playlistID }),
@@ -1531,20 +1555,38 @@ public final class MusicLibrary {
 
       // Restore security-scoped access.
       let folderURL: URL?
-      if !metadata.folderBookmarkData.isEmpty,
-         let resolved = Self.resolveBookmark(metadata.folderBookmarkData) {
-        folderURL = resolved
+      if !metadata.folderBookmarkData.isEmpty {
+        let (resolved, isStale) = Self.resolveBookmark(metadata.folderBookmarkData)
+        if let resolved {
+          folderURL = resolved
+          // Phase 158: Auto-refresh stale bookmark.
+          if isStale, let refreshed = Self.createBookmark(for: resolved) {
+            metadata.folderBookmarkData = refreshed
+            try? context.save()
+          }
+        } else {
+          folderURL = nil
+        }
       } else if let url = metadata.folderURL {
         folderURL = url
       } else {
         folderURL = nil
       }
 
-      guard let folderURL else { continue }
+      guard let folderURL else {
+        // Phase 158: Track folder playlist failure.
+        report.failedFolderPlaylists += 1
+        report.failedFolderPlaylistIDs.insert(metadata.playlistID)
+        continue
+      }
 
       // Start accessing security-scoped resource.
       if folderURL.startAccessingSecurityScopedResource() {
         activeSecurityScopedURLs.append(folderURL)
+      } else {
+        // Phase 158: Security scope access denied.
+        report.failedFolderPlaylists += 1
+        report.failedFolderPlaylistIDs.insert(metadata.playlistID)
       }
 
       // Await rescan to ensure tracks are loaded before artwork cleanup.

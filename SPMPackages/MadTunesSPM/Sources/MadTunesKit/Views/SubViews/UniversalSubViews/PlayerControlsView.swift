@@ -62,6 +62,20 @@ struct PlayerControlsView: View {
       }
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
     }
+    .overlay(alignment: .top) {
+      // Phase 158: Playback error toast.
+      if let error = player.lastPlaybackError {
+        Text(error.localizedMessage)
+          .font(.caption)
+          .foregroundStyle(.white)
+          .padding(.horizontal, 12)
+          .padding(.vertical, 6)
+          .background(.red.opacity(0.85), in: .capsule)
+          .transition(.move(edge: .top).combined(with: .opacity))
+          .animation(.easeInOut(duration: 0.3), value: player.lastPlaybackError == nil)
+          .padding(.top, 4)
+      }
+    }
   }
 
   @ViewBuilder var coreComponent: some View {

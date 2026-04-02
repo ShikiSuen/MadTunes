@@ -26,6 +26,9 @@ final class MockMusicLibrary: MusicLibraryProviding {
   var artworkLoadingKeys: Set<String> = []
   var importProgress = ImportProgress()
 
+  /// Phase 158: Sandbox health report (always nil in tests).
+  var sandboxHealthReport: SandboxHealthReport?
+
   var favoritesPlaylist: Playlist {
     playlists.first(where: { $0.name == "♥ Favorites" }) ?? playlists[1]
   }

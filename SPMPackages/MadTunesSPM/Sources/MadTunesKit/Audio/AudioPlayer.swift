@@ -88,6 +88,8 @@ public final class AudioPlayer {
   public private(set) var queue: [Track] = []
   public private(set) var currentIndex: Int = 0
   public private(set) var loopBehavior: PlayLoopBehavior = .sequential
+  /// Phase 158: Structured playback error for UI display.
+  public var lastPlaybackError: PlaybackError?
 
   // Phase 127: Audio output device routing (macOS only).
   #if os(macOS)
@@ -173,11 +175,13 @@ public final class AudioPlayer {
           playbackURL = resolved
         } else {
           print("[AudioPlayer] ERROR: startAccessingSecurityScopedResource failed for: \(resolved.path)")
+          lastPlaybackError = .securityScopeAccessDenied(title: track.title)
           Self.playErrorBeep()
           return
         }
       } else {
         print("[AudioPlayer] ERROR: File not readable and bookmark resolution failed for: \(playbackURL.path)")
+        lastPlaybackError = .bookmarkResolutionFailed(title: track.title)
         Self.playErrorBeep()
         return
       }
@@ -522,6 +526,7 @@ public final class AudioPlayer {
           self.updateNowPlayingInfo()
         case .failed:
           print("[AudioPlayer] itemStatusObservation AVPlayerGeneration Status Failure.")
+          self.lastPlaybackError = .avPlayerFailed(title: self.currentTrack?.title ?? "?")
           Self.playErrorBeep()
           self.isPlaying = false
         default:

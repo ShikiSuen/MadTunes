@@ -181,9 +181,18 @@ struct WPPlaylistsSection: View {
         .frame(width: 28)
 
       VStack(alignment: .leading, spacing: 2) {
-        Text(verbatim: playlist.name)
-          .font(.system(size: 17, weight: .semibold))
-          .foregroundStyle(.white)
+        HStack(spacing: 4) {
+          Text(verbatim: playlist.name)
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(.white)
+          // Phase 158: Show warning icon for failed folder playlists.
+          if playlist.kind == .folderList,
+             vm.library.sandboxHealthReport?.failedFolderPlaylistIDs.contains(playlist.id) == true {
+            Image(systemName: "exclamationmark.triangle.fill")
+              .foregroundStyle(.yellow)
+              .font(.caption2)
+          }
+        }
         Text("i18n:Unit:Track:\(trackCount)", bundle: #bundle)
           .font(.system(size: 13))
           .foregroundStyle(.white.opacity(0.5))
