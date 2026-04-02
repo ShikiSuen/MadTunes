@@ -29,19 +29,22 @@ extension AlbumHGrid {
     // MARK: Internal
 
     var body: some View {
-      VStack(alignment: .leading, spacing: 0) {
-        header
+      VStack(alignment: .leading, spacing: 12 * vm.uiFactor) {
+        albumTitleInfoBar
+          .padding(8 * vm.uiFactor)
+          .background(Color.primary.colorInvert().brightness(0.1).opacity(0.8))
+          .clipShape(RoundedRectangle(cornerRadius: 4 * vm.uiFactor))
         ScrollViewReader { proxy in
           ScrollView(.vertical) {
             VStack(spacing: 0) {
+              let trackCount = album.tracks.count
               ForEach(Array(album.tracks.enumerated()), id: \.element.id) { offset, track in
                 VStack(spacing: 0) {
-                  if offset == 0 {
-                    songDividerInList
-                  }
+                  // 該 Divider 不再需要了，因為第一個 Track 就在頂端。
+                  // if offset == 0 { songDividerInList }
                   TrackRow(
                     track: track,
-                    hideArtist: album.allTrackArtistsSameAsAlbumArtist,
+                    hideArtist: album.allTrackArtistsSameAsAlbumArtist && trackCount > 15,
                     showDiscNumber: album.showDiscNumber,
                     isPlaying: track.id == currentTrackID,
                     isSelected: selectedTrackIDs.contains(track.id)
@@ -90,7 +93,9 @@ extension AlbumHGrid {
                       }
                     )
                   }
-                  songDividerInList
+                  if offset != trackCount - 1 {
+                    songDividerInList
+                  }
                 }
                 .id(track.id) // Phase 153: Enable ScrollViewReader targeting.
               }
@@ -109,8 +114,6 @@ extension AlbumHGrid {
             }
           }
         }
-        songCountAndLengthView
-          .padding(.top, 8 * vm.uiFactor)
       }
       .padding(12 * vm.uiFactor)
       .frame(maxHeight: .infinity, alignment: .top)
@@ -191,40 +194,60 @@ extension AlbumHGrid {
 
     // MARK: - Subviews
 
-    private var header: some View {
-      HStack {
-        VStack(alignment: .leading, spacing: 2) {
-          Text(album.title)
-            .font(.headline)
-            .fontWeight(.bold)
-            .lineLimit(2)
-          Text(album.artist)
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-        }
-        Spacer()
-        // Play-all badge
-        Button {
-          let sorted = album.tracks
-          if let first = sorted.first {
-            vm.gridVM.onTrackDoubleClicked(first, albumTracks: sorted)
-          }
-        } label: {
-          Image(systemName: "play.circle.fill")
-            .font(.title2)
-            .symbolRenderingMode(.hierarchical)
-        }
-        .buttonStyle(.plain)
+    private var albumTitleInfoBar: some View {
+      VStack {
+        HStack {
+          LazyAlbumArtworkView(album: album)
+            .frame(width: 72 * vm.uiFactor)
+            .onTapGesture(count: 2) {
+              // Phase 38: Double-click to play album
+              let sorted = album.tracks
+              if let first = sorted.first {
+                vm.gridVM.onTrackDoubleClicked(first, albumTracks: sorted)
+              }
+            }
+          VStack(alignment: .leading, spacing: 2 * vm.uiFactor) {
+            VStack(alignment: .leading, spacing: 2 * vm.uiFactor) {
+              Text(album.title)
+                .font(.headline)
+                .fontWeight(.bold)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+              Text(album.artist)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            HStack {
+              songCountAndLengthView
+                .frame(maxWidth: .infinity)
+              // Play-all badge
+              Button {
+                let sorted = album.tracks
+                if let first = sorted.first {
+                  vm.gridVM.onTrackDoubleClicked(first, albumTracks: sorted)
+                }
+              } label: {
+                Image(systemName: "play.circle.fill")
+                  .font(.title2)
+                  .symbolRenderingMode(.hierarchical)
+              }
+              .buttonStyle(.plain)
 
-        Button(action: onClose) {
-          Image(systemName: "xmark.circle.fill")
-            .font(.title2)
-            .symbolRenderingMode(.hierarchical)
+              Button(action: onClose) {
+                Image(systemName: "xmark.circle.fill")
+                  .font(.title2)
+                  .symbolRenderingMode(.hierarchical)
+              }
+              .buttonStyle(.plain)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+          }
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
-        .buttonStyle(.plain)
+        .frame(height: 72 * vm.uiFactor)
       }
-      .padding(.bottom, 8 * vm.uiFactor)
     }
 
     @ViewBuilder private var songCountAndLengthView: some View {
