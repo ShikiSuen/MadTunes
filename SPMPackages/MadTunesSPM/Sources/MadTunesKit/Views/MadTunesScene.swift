@@ -67,26 +67,47 @@ public struct MadTunesScene: Scene {
         }
         GlobalControlMenuCommands()
         CommandGroup(before: .toolbar) {
+          Picker(selection: $vm.desktopContentLayout) {
+            Label {
+              Text("i18n:Toolbar.ViewHGrid", bundle: #bundle)
+            } icon: {
+              Image(systemName: "inset.filled.topleading.bottomleading.trailinghalf.rectangle")
+            }
+            .tag(DesktopContentLayout.asAlbumHGrid)
+            Label {
+              Text("i18n:Toolbar.ViewVGrid", bundle: #bundle)
+            } icon: {
+              Image(systemName: "inset.filled.topleft.topright.bottomhalf.rectangle")
+            }
+            .tag(DesktopContentLayout.asAlbumVGrid)
+            Label {
+              Text("i18n:Toolbar.ViewTable", bundle: #bundle)
+            } icon: {
+              Image(systemName: "tablecells")
+            }
+            .tag(DesktopContentLayout.asTableView)
+          } label: {
+            Label {
+              Text("i18n:Toolbar.ToggleViewLayout", bundle: #bundle)
+            } icon: {
+              Image(systemName: "uiwindow.split.2x1")
+            }
+          }
+          .pickerStyle(.menu)
           if !vm.library.isImporting, vm.desktopContentLayout != .asTableView {
-            Menu {
-              Picker(
-                String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
-                selection: $vm.gridVM.albumSortOrder
-              ) {
-                ForEach(AlbumSortOrder.allCases, id: \.self) { order in
-                  Text(order.localizedName).tag(order)
-                }
+            Picker(selection: $vm.gridVM.albumSortOrder) {
+              ForEach(AlbumSortOrder.allCases, id: \.self) { order in
+                Text(order.localizedName).tag(order)
               }
-              .pickerStyle(.inline)
             } label: {
               Label(
                 String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
                 systemImage: "arrow.up.arrow.down"
               )
-              .tint(.primary)
             }
-            Divider()
+            .pickerStyle(.menu)
           }
+          Divider()
         }
       }
       .windowResizability(.contentSize)
