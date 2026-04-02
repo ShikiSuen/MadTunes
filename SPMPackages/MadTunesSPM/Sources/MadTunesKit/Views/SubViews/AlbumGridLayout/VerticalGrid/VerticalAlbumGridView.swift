@@ -175,6 +175,7 @@ extension AlbumVGrid {
             LazyVStack(alignment: .leading, spacing: spacing) {
               ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 albumRow(row, columnCount: columnCount)
+                  .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
                   .drawingGroup()
 
                 // Expanded detail for the expanded album (if it belongs to this row).

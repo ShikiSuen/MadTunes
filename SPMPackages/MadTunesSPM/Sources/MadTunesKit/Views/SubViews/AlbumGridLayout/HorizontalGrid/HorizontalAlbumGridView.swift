@@ -143,9 +143,10 @@ extension AlbumHGrid {
       ScrollViewReader { proxy in
         ScrollView(.horizontal) {
           let columns = gridVM.displayedAlbums.chunked(into: rowCount)
-          LazyHStack(alignment: .top, spacing: spacing) {
+          LazyHStack(alignment: .top, spacing: spacing - 6 * vm.uiFactor) {
             ForEach(Array(columns.enumerated()), id: \.offset) { colIdx, column in
               albumColumn(column, rowCount: rowCount)
+                .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
                 .drawingGroup()
                 .id(colIdx)
 

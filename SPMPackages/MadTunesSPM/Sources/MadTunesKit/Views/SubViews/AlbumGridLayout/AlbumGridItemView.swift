@@ -39,7 +39,11 @@ struct AlbumGridItemView: View {
             .compositingGroup()
             .aspectRatio(1, contentMode: .fit)
             .clipShape(.rect)
-            .shadow(radius: isExpanded ? 6 : 3, y: 2)
+            .shadow(
+              color: Color(.sRGBLinear, white: 0, opacity: 0.33),
+              radius: 3,
+              y: 2
+            )
             .overlay(alignment: .topLeading) {
               if isMultipleSelection, !isExpanded {
                 MultiSelectionBadge()
