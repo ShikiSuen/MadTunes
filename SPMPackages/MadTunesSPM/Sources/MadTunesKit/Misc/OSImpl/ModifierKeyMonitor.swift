@@ -76,8 +76,7 @@ final class ModifierKeyMonitor {
       update(modifier: .control, isPressed: isPressed)
     case .leftAlt, .rightAlt: // GameController 中 Option 键通常对应 Alt
       update(modifier: .option, isPressed: isPressed)
-    case .capsLock:
-      update(modifier: .capsLock, isPressed: isPressed)
+    // Note: CapsLock is intentionally excluded to avoid false positives.
     default:
       break
     }
