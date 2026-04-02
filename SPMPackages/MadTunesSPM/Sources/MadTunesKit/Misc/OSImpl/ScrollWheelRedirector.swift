@@ -70,6 +70,9 @@ final class AppKitScrollWheelRedirectorView: NSView {
     guard let sv = targetScrollView, let hostWindow = window else { return event }
     guard event.window === hostWindow else { return event }
     guard eventAllowsRedirect(event) else { return event }
+    // Phase 157: Skip trackpad / Magic Mouse (precise deltas) entirely —
+    // users can already two-finger-swipe horizontally for native scrolling.
+    guard !event.hasPreciseScrollingDeltas else { return event }
 
     let loc = event.locationInWindow
     guard let hitView = hostWindow.contentView?.hitTest(loc) else { return event }
@@ -82,9 +85,7 @@ final class AppKitScrollWheelRedirectorView: NSView {
     let dy = event.scrollingDeltaY
     guard dy != 0 else { return event }
 
-    // Precise (trackpad) deltas need moderate amplification to match native
-    // Shift+Wheel feel; non-precise (scroll wheel) line-based deltas need more.
-    let amplifiedDy = event.hasPreciseScrollingDeltas ? (dy * 10.0) : (dy * 16.0)
+    let amplifiedDy = dy * 16.0
 
     let clip = sv.contentView
     let contentWidth = sv.documentView?.frame.width ?? clip.documentRect.width
@@ -220,7 +221,9 @@ final class ScrollWheelRedirectorView: UIView {
 
     targetScrollView = scrollView
     let gr = ScrollWheelRedirectGR(target: self, action: #selector(scrollWheelPanned(_:)))
-    gr.allowedScrollTypesMask = [.continuous, .discrete]
+    // Phase 157: Only handle discrete (mouse scroll wheel); skip continuous
+    // (trackpad / Magic Mouse) to preserve native gesture behaviour.
+    gr.allowedScrollTypesMask = [.discrete]
     gr.cancelsTouchesInView = false
     gr.delaysTouchesEnded = false
     gr.delegate = self
