@@ -88,10 +88,12 @@ final class AppKitScrollWheelRedirectorView: NSView {
     let amplifiedDy = dy * 16.0
 
     let clip = sv.contentView
+    let insets = sv.contentInsets
     let contentWidth = sv.documentView?.frame.width ?? clip.documentRect.width
-    let maxX = max(0, contentWidth - clip.bounds.width)
+    let minX = -insets.left
+    let maxX = max(minX, contentWidth - clip.bounds.width + insets.right)
     var newX = clip.bounds.origin.x - amplifiedDy
-    newX = min(max(0, newX), maxX)
+    newX = min(max(minX, newX), maxX)
 
     guard newX != clip.bounds.origin.x else { return event }
     clip.setBoundsOrigin(NSPoint(x: newX, y: clip.bounds.origin.y))
@@ -246,10 +248,12 @@ final class ScrollWheelRedirectorView: UIView {
       return
     }
 
+    let insets = sv.adjustedContentInset
+    let minX = -insets.left
+    let maxX = max(minX, sv.contentSize.width - sv.bounds.width + insets.right)
     var x = sv.contentOffset.x - dy
-    let maxX = max(0, sv.contentSize.width - sv.bounds.width)
-    x = max(0, min(maxX, x))
-    sv.contentOffset.x = x
+    x = max(minX, min(maxX, x))
+    sv.setContentOffset(CGPoint(x: x, y: sv.contentOffset.y), animated: false)
   }
 
   private func ancestorScrollView() -> UIScrollView? {
