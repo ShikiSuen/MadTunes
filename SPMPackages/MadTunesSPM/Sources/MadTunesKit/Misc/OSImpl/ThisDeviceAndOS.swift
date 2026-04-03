@@ -25,6 +25,10 @@ public enum ThisDevice {}
 // MARK: - Intel Processor Detection
 
 extension ThisDevice {
+  public static let uiFactor: CGFloat = {
+    OS.isAppKit ? 1 : 1.3
+  }()
+
   /// Detects whether the current Mac is running on an Intel processor.
   /// On non-macOS/macCatalyst platforms, this always returns `false`.
   public static let isIntelProcessor: Bool = {

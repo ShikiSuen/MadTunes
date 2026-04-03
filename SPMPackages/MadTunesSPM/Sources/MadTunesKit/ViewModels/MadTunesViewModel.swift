@@ -55,8 +55,6 @@ final class MadTunesViewModel {
 
   static let shared = MadTunesViewModel()
 
-  let uiFactor: CGFloat = OS.isAppKit ? 1 : 1.3
-
   let modifierKeyMonitor = ModifierKeyMonitor.shared
 
   var library = MusicLibrary()
@@ -115,6 +113,8 @@ final class MadTunesViewModel {
     get { access(keyPath: \.desktopContentLayout); return _desktopContentLayout }
     set { withMutation(keyPath: \.desktopContentLayout) { _desktopContentLayout = newValue } }
   }
+
+  var uiFactor: CGFloat { ThisDevice.uiFactor }
 
   // Phase 63: SwiftUI-tracked modifier key state, replacing NSEvent.modifierFlags.
 
