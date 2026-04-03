@@ -162,7 +162,6 @@ extension AlbumHGrid {
                 // inside the outer horizontal LazyHStack.
                 .frame(maxHeight: .infinity)
                 .id("expanded_\(expandedAlbum.id)")
-                .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .leading)))
                 .onAppear { gridVM.expandedAlbumWasInView = true }
                 .onDisappear { gridVM.expandedAlbumWasInView = false }
                 .shadow(

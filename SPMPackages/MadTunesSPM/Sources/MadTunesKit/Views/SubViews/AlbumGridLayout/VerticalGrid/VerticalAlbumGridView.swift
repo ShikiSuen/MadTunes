@@ -198,7 +198,6 @@ extension AlbumVGrid {
                   )
                   .drawingGroup()
                   .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
-                  .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
                   .onAppear { gridVM.expandedAlbumWasInView = true }
                   .onDisappear { gridVM.expandedAlbumWasInView = false }
                   .shadow(
