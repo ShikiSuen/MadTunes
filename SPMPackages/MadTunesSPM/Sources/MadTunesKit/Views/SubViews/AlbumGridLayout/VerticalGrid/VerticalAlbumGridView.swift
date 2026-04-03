@@ -50,7 +50,12 @@ extension AlbumVGrid {
               .background {
                 Rectangle()
                   .fill(.ultraThickMaterial)
+                  .overlay {
+                    ReusableAlbumExpansionBackground(album: expandedAlbum)
+                      .id(expandedAlbum.id) // <- Required.
+                  }
                   .ignoresSafeArea(.all)
+                  .allowsHitTesting(false)
               }
               .onChange(of: gridVM.expandedAlbumID) { _, newVal in
                 guard newVal != nil else { return }
@@ -126,6 +131,8 @@ extension AlbumVGrid {
 
     // MARK: Private
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @State private var vm: MadTunesViewModel = .shared
     @State private var screenVM: ScreenVM = .shared
 
@@ -194,6 +201,10 @@ extension AlbumVGrid {
                   .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
                   .onAppear { gridVM.expandedAlbumWasInView = true }
                   .onDisappear { gridVM.expandedAlbumWasInView = false }
+                  .shadow(
+                    color: Color(.sRGBLinear, white: 0, opacity: 0.33),
+                    radius: 3 * ThisDevice.uiFactor
+                  )
                 }
               }
             }

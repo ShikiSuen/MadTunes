@@ -98,10 +98,14 @@ extension AlbumVGrid {
         }
       }
       .padding(16 * vm.uiFactor)
-      .background(
-        RoundedRectangle(cornerRadius: 12)
-          .fill(showBackground ? Color.secondary.opacity(0.1) : Color.clear)
-      )
+      .background {
+        if showBackground {
+          ReusableAlbumExpansionBackground(album: album)
+            .allowsHitTesting(false)
+        }
+      }
+      .clipShape(RoundedRectangle(cornerRadius: 12 * vm.uiFactor))
+      .clipped()
       .padding(.horizontal, 4 * vm.uiFactor)
       // Phase 111: Write frame directly to ViewModel instead of
       // ExpandedAlbumFramePreferenceKey to avoid preference propagation overhead.
@@ -154,6 +158,8 @@ extension AlbumVGrid {
     }
 
     // MARK: Private
+
+    @Environment(\.colorScheme) private var colorScheme
 
     @Binding private var selectedTrackIDs: Set<UUID>
 

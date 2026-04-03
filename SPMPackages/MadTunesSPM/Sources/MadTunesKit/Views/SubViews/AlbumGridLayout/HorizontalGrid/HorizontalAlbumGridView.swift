@@ -165,6 +165,10 @@ extension AlbumHGrid {
                 .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .leading)))
                 .onAppear { gridVM.expandedAlbumWasInView = true }
                 .onDisappear { gridVM.expandedAlbumWasInView = false }
+                .shadow(
+                  color: Color(.sRGBLinear, white: 0, opacity: 0.33),
+                  radius: 3 * ThisDevice.uiFactor
+                )
               }
             }
           }

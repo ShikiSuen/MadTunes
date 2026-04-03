@@ -119,9 +119,11 @@ extension AlbumHGrid {
       .frame(maxHeight: .infinity, alignment: .top)
       .frame(width: 400 * vm.uiFactor)
       .background {
-        RoundedRectangle(cornerRadius: 12)
-          .fill(Color.secondary.opacity(0.1))
+        ReusableAlbumExpansionBackground(album: album)
+          .allowsHitTesting(false)
       }
+      .clipShape(RoundedRectangle(cornerRadius: 12 * vm.uiFactor))
+      .clipped()
       .padding(.vertical, 4 * vm.uiFactor)
       .sheet(isPresented: $isTrackInfoPresented) {
         if tracksForTrackInfo.count == 1, let track = tracksForTrackInfo.first {
@@ -167,6 +169,8 @@ extension AlbumHGrid {
     }
 
     // MARK: Private
+
+    @Environment(\.colorScheme) private var colorScheme
 
     @Binding private var selectedTrackIDs: Set<UUID>
 
