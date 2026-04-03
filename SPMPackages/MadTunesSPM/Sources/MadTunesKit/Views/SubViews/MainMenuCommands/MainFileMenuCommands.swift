@@ -40,6 +40,16 @@ struct MainFileMenuCommands: Commands {
       }
       // Phase 160: New Playlist submenu in File menu.
       Divider()
+      // Phase 164: Reapprove Sandbox Privileges.
+      Button {
+        vm.isReapproveSandboxDialogPresented = true
+      } label: {
+        Label(
+          String(localized: "i18n:Import.ReapproveSandboxPrivileges", bundle: #bundle),
+          systemImage: "lock.open"
+        )
+      }
+      Divider()
       Menu {
         Button {
           vm.playlistCreationAlertText = ""

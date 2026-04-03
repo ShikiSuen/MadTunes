@@ -213,6 +213,10 @@ final class MockMusicLibrary: MusicLibraryProviding {
     }
   }
 
+  func reapproveSandboxPrivileges(folderURL _: URL) -> SandboxReapprovalReport {
+    .init()
+  }
+
   func tracks(for playlist: Playlist) -> [Track] {
     let trackMap = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
     return playlist.trackIDs.compactMap { trackMap[$0] }

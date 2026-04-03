@@ -218,6 +218,71 @@ public final class MusicLibrary {
     return allProcessedTrackIDs
   }
 
+  // MARK: - Reapprove Sandbox Privileges (Phase 164)
+
+  /// Phase 164: Let the user re-grant sandbox access to a folder, then refresh
+  /// stale bookmarks for any library tracks or folder-playlist folders whose
+  /// paths fall under the selected folder.
+  @discardableResult
+  public func reapproveSandboxPrivileges(folderURL: URL) -> SandboxReapprovalReport {
+    let accessGranted = folderURL.startAccessingSecurityScopedResource()
+    if accessGranted {
+      activeSecurityScopedURLs.append(folderURL)
+    }
+    // Persist a source bookmark so the access survives app relaunch.
+    persistSourceBookmark(for: folderURL)
+
+    let folderPath = Self.normalizedFolderPath(folderURL)
+    // Ensure trailing "/" for safe prefix matching (avoids /Rock matching /Rockabilly).
+    let folderPrefix = folderPath.hasSuffix("/") ? folderPath : folderPath + "/"
+    var report = SandboxReapprovalReport()
+
+    // Refresh per-file bookmarks for library tracks under the selected folder.
+    for i in tracks.indices {
+      let trackPath = tracks[i].fileURL.standardizedFileURL.resolvingSymlinksInPath().path
+      guard trackPath.hasPrefix(folderPrefix) else { continue }
+      report.checkedTrackCount += 1
+      if let newBookmark = Self.createBookmark(for: tracks[i].fileURL) {
+        tracks[i].bookmarkData = newBookmark
+        report.refreshedTrackCount += 1
+      }
+    }
+
+    // Refresh folder-playlist folder bookmarks under the selected folder.
+    for i in playlists.indices where playlists[i].kind == .folderList {
+      guard let fpURL = playlists[i].folderURL else { continue }
+      let fpPath = Self.normalizedFolderPath(fpURL)
+      guard fpPath.hasPrefix(folderPrefix) || fpPath == folderPath else { continue }
+      report.checkedFolderPlaylistCount += 1
+      if let newBookmark = Self.createBookmark(for: fpURL) {
+        playlists[i].folderBookmarkData = newBookmark
+        // Also update the persisted metadata.
+        persistFolderPlaylistMetadata(
+          playlistID: playlists[i].id,
+          folderURL: fpURL,
+          bookmarkData: newBookmark,
+          trackIDs: folderPlaylistTracks[playlists[i].id]?.map(\.id) ?? []
+        )
+        report.refreshedFolderPlaylistCount += 1
+      }
+    }
+
+    // Persist updated track bookmarks to SwiftData.
+    if report.refreshedTrackCount > 0 {
+      persistAllTracks()
+    }
+
+    // Clear any previous health report since the user just reapproved access.
+    sandboxHealthReport = nil
+
+    print(
+      "[MusicLibrary] Reapproved sandbox: \(report.refreshedTrackCount) track(s), "
+        + "\(report.refreshedFolderPlaylistCount) folder playlist(s) under \(folderPath)."
+    )
+
+    return report
+  }
+
   // MARK: - Persistence
 
   /// Load persisted tracks from SwiftData. Call once at launch.

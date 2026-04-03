@@ -2044,6 +2044,82 @@
         }
       }
     },
+    "i18n:Common.Proceed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortfahren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proceed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuer"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Procedi"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "続ける"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계속"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Devam Et"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "繼續"
+          }
+        }
+      }
+    },
     "i18n:Common.Remove" : {
       "localizations" : {
         "de" : {
@@ -7549,6 +7625,234 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "匯入音樂"
+          }
+        }
+      }
+    },
+    "i18n:Import.ReapproveSandboxPrivileges" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sandbox-Berechtigungen erneut genehmigen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reapprove Sandbox Privileges"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a aprobar permisos de sandbox"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réapprouver les privilèges sandbox"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Riapprova i privilegi sandbox"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サンドボックス権限を再承認"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "샌드박스 권한 재승인"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reaprovar privilégios de sandbox"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переутвердить права Sandbox"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sandbox Ayrıcalıklarını Yeniden Onayla"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新授权沙盒权限"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新授權沙箱存取權限"
+          }
+        }
+      }
+    },
+    "i18n:Import.ReapproveSandboxPrivileges.Explanation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wählen Sie einen Ordner aus, um MadTunes erneut Zugriff zu gewähren. Die App gleicht dessen Inhalt mit der gesamten Bibliothek und allen Ordner-Playlists ab und erneuert dabei abgelaufene Lesezeichen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a folder to re-grant MadTunes access to it. The app will intersect its contents with your library and all folder playlists, then renew any expired bookmarks found within."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selecciona una carpeta para volver a conceder acceso a MadTunes. La app cruzará su contenido con tu biblioteca y todas las listas de carpetas, y renovará los marcadores caducados que encuentre."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélectionnez un dossier pour accorder à nouveau l'accès à MadTunes. L'app croisera son contenu avec votre bibliothèque et toutes les playlists de dossiers, puis renouvellera les signets expirés trouvés."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seleziona una cartella per concedere nuovamente l'accesso a MadTunes. L'app confronterà il suo contenuto con la libreria e tutte le playlist di cartelle, rinnovando i segnalibri scaduti trovati."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フォルダを選択して MadTunes にアクセスを再許可します。アプリはその内容をライブラリおよびすべてのフォルダプレイリストと照合し、期限切れのブックマークを更新します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "폴더를 선택하여 MadTunes에 접근 권한을 다시 부여하세요. 앱이 해당 폴더의 내용을 라이브러리 및 모든 폴더 재생 목록과 대조하여 만료된 북마크를 갱신합니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selecione uma pasta para conceder novamente o acesso ao MadTunes. O app cruzará seu conteúdo com sua biblioteca e todas as playlists de pasta, renovando os favoritos expirados encontrados."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите папку для повторного предоставления доступа MadTunes. Приложение сопоставит её содержимое с библиотекой и всеми плейлистами папок, обновив просроченные закладки."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MadTunes'a yeniden erişim vermek için bir klasör seçin. Uygulama, içeriğini kitaplığınız ve tüm klasör oynatma listeleriyle karşılaştırarak süresi dolmuş yer imlerini yenileyecek."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择一个文件夹以重新授予 MadTunes 访问权限。应用将把该文件夹的内容与资料库及所有文件夹播放列表取交集，并更新其中已失效的书签。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇一個資料夾以重新授予 MadTunes 存取權限。App 會將其內容與資料庫及所有資料夾播放清單取交集，並更新其中已失效的書籤。"
+          }
+        }
+      }
+    },
+    "i18n:Import.ReapproveSandboxPrivileges.Report %lld %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld Lesezeichen überprüft, %2$lld erneuert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld bookmark(s) checked, %2$lld renewed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld marcador(es) verificado(s), %2$lld renovado(s)."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld signet(s) vérifié(s), %2$lld renouvelé(s)."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld segnalibro/i controllato/i, %2$lld rinnovato/i."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld 件のブックマークを確認し、%2$lld 件を更新しました。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "북마크 %1$lld개 확인, %2$lld개 갱신됨."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld favorito(s) verificado(s), %2$lld renovado(s)."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверено закладок: %1$lld, обновлено: %2$lld."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld yer imi kontrol edildi, %2$lld yenilendi."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已检查 %1$lld 个书签，已更新 %2$lld 个。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已檢查 %1$lld 個書籤，已更新 %2$lld 個。"
           }
         }
       }

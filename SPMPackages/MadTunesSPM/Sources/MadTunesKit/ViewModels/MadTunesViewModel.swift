@@ -76,6 +76,12 @@ final class MadTunesViewModel {
   var isFileImporterPresented = false // Only for non-AppKit targets.
   var isFolderImporterPresented = false // Also used on macOS AppKit as File Importer.
   var isImporterForFolderPlaylistPresented = false
+  /// Phase 164: Reapprove sandbox confirmation dialog.
+  var isReapproveSandboxDialogPresented = false
+  /// Phase 164: Reapprove sandbox FileImporter.
+  var isReapproveSandboxImporterPresented = false
+  /// Phase 164: Report shown after reapprove completes.
+  var sandboxReapprovalReport: SandboxReapprovalReport?
   /// Phase 160: Shared alert state for creating playlists.
   var playlistCreationAlertKind: PlaylistCreationAlertKind?
   var playlistCreationAlertText = ""

@@ -110,6 +110,16 @@ struct DesktopMainView: View {
                     systemImage: "folder.fill"
                   )
                 }
+                // Phase 164: Reapprove Sandbox Privileges.
+                Divider()
+                Button {
+                  vm.isReapproveSandboxDialogPresented = true
+                } label: {
+                  Label(
+                    String(localized: "i18n:Import.ReapproveSandboxPrivileges", bundle: #bundle),
+                    systemImage: "lock.open"
+                  )
+                }
               } label: {
                 Label(String(localized: "i18n:Import.ImportMusic", bundle: #bundle), systemImage: "folder")
               }

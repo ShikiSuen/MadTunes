@@ -34,6 +34,19 @@ public struct SandboxHealthReport: Sendable {
   }
 }
 
+// MARK: - SandboxReapprovalReport
+
+/// Phase 164: Result of a reapprove-sandbox-privileges operation.
+public struct SandboxReapprovalReport: Sendable {
+  public var checkedTrackCount: Int = 0
+  public var refreshedTrackCount: Int = 0
+  public var checkedFolderPlaylistCount: Int = 0
+  public var refreshedFolderPlaylistCount: Int = 0
+
+  public var totalChecked: Int { checkedTrackCount + checkedFolderPlaylistCount }
+  public var totalRefreshed: Int { refreshedTrackCount + refreshedFolderPlaylistCount }
+}
+
 // MARK: - PlaybackError
 
 /// Phase 158: Structured playback error for UI display.

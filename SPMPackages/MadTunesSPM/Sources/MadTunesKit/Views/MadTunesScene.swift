@@ -175,6 +175,51 @@ struct MainSceneView: View {
               break
             }
           }
+        // Phase 164: Reapprove Sandbox Privileges — confirmation dialog.
+        Color.clear
+          .confirmationDialog(
+            String(localized: "i18n:Import.ReapproveSandboxPrivileges", bundle: #bundle),
+            isPresented: $bindableVM.isReapproveSandboxDialogPresented,
+            titleVisibility: .visible
+          ) {
+            Button(String(localized: "i18n:Common.Proceed", bundle: #bundle)) {
+              vm.isReapproveSandboxImporterPresented = true
+            }
+            Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
+          } message: {
+            Text("i18n:Import.ReapproveSandboxPrivileges.Explanation", bundle: #bundle)
+          }
+        // Phase 164: Reapprove Sandbox Privileges — folder picker.
+        Color.clear
+          .fileImporter(
+            isPresented: $bindableVM.isReapproveSandboxImporterPresented,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+          ) { result in
+            if case let .success(urls) = result, let folderURL = urls.first {
+              vm.sandboxReapprovalReport = vm.library.reapproveSandboxPrivileges(folderURL: folderURL)
+            }
+          }
+        // Phase 164: Reapprove Sandbox Privileges — result report alert.
+        Color.clear
+          .alert(
+            String(localized: "i18n:Import.ReapproveSandboxPrivileges", bundle: #bundle),
+            isPresented: Binding(
+              get: { vm.sandboxReapprovalReport != nil },
+              set: { if !$0 { vm.sandboxReapprovalReport = nil } }
+            )
+          ) {
+            Button(String(localized: "i18n:Common.Done", bundle: #bundle)) {
+              vm.sandboxReapprovalReport = nil
+            }
+          } message: {
+            if let report = vm.sandboxReapprovalReport {
+              Text(
+                "i18n:Import.ReapproveSandboxPrivileges.Report \(report.totalChecked) \(report.totalRefreshed)",
+                bundle: #bundle
+              )
+            }
+          }
       }
       .environment(\.colorScheme, importerColorScheme)
     }

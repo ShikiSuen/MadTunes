@@ -92,6 +92,9 @@ public protocol MusicLibraryProviding: AnyObject {
   /// Phase 135: Get all folder playlists available as data sources.
   func folderPlaylistsAsDataSources() -> [Playlist]
   func removeTracks(ids: Set<UUID>)
+  /// Phase 164: Re-grant sandbox access to a folder and refresh stale bookmarks.
+  @discardableResult
+  func reapproveSandboxPrivileges(folderURL: URL) -> SandboxReapprovalReport
   func tracks(for playlist: Playlist) -> [Track]
   func albums(for playlist: Playlist) -> [Album]
 
