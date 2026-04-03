@@ -48,7 +48,7 @@ struct DesktopMainView: View {
       contentArea(albums: albums)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
-          Color.primary.opacity(0.05)
+          Color(white: colorScheme == .dark ? 0.15 : 0.95)
             .ignoresSafeArea(.all)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
