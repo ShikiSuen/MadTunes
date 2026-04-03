@@ -6,4 +6,6 @@
 // `HorizontalAlbumGridView` and `HorizontallyExpandedAlbumView` are defined
 // as extensions in their respective files.
 // `AlbumGridItemView` is shared with AlbumVGrid and remains at AlbumGridLayout/ level.
-enum AlbumHGrid {}
+enum AlbumHGrid {
+  typealias TrackRow = TrackRow4ExpandedAlbum
+}

@@ -6,4 +6,6 @@
 // `VerticalAlbumGridView` and `VerticallyExpandedAlbumView` are defined
 // as extensions in their respective files.
 // `AlbumGridItemView` is intentionally excluded — it will be reused elsewhere.
-enum AlbumVGrid {}
+enum AlbumVGrid {
+  typealias TrackRow = TrackRow4ExpandedAlbum
+}
