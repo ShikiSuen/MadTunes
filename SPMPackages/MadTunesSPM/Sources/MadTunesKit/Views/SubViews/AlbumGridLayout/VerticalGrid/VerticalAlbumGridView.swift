@@ -75,7 +75,7 @@ extension AlbumVGrid {
               }
             }
             .compositingGroup()
-            .shadow(radius: 8)
+            .shadow(radius: 8 * vm.uiFactor)
             .padding(.horizontal)
             .frame(
               width: vm.screenVM.mainColumnCanvasSizeObserved.width,

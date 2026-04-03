@@ -36,8 +36,8 @@ struct PlayingQueueView: View {
           .font(.caption)
           .foregroundStyle(.secondary)
       }
-      .padding(.horizontal, 20)
-      .padding(.vertical, 8)
+      .padding(.horizontal, 20 * vm.uiFactor)
+      .padding(.vertical, 8 * vm.uiFactor)
 
       Divider()
 
@@ -47,7 +47,7 @@ struct PlayingQueueView: View {
         } description: {
           Text(String(localized: "i18n:Queue.EmptyDescription", bundle: #bundle))
         }
-        .frame(minHeight: 200)
+        .frame(minHeight: 200 * vm.uiFactor)
       } else {
         List(selection: $highlightedIndex) {
           ForEach(Array(player.queue.enumerated()), id: \.offset) { index, track in
@@ -101,7 +101,7 @@ struct PlayingQueueView: View {
         }
       }
     }
-    .frame(width: 460, height: dynamicHeight)
+    .frame(width: 460 * vm.uiFactor, height: dynamicHeight)
   }
 
   // MARK: Private
@@ -116,7 +116,7 @@ struct PlayingQueueView: View {
 
   private var dynamicHeight: CGFloat? {
     guard !player.queue.isEmpty else { return nil }
-    return min(CGFloat(player.queue.count) * 56 + 60, 460)
+    return min(CGFloat(player.queue.count) * 56 * vm.uiFactor + 60 * vm.uiFactor, 460 * vm.uiFactor)
   }
 
   private func rowBackground(for index: Int) -> some View {
@@ -251,16 +251,16 @@ struct PlayingQueueRow: View {
   let onMoveDown: () -> Void
 
   var body: some View {
-    HStack(spacing: 10) {
+    HStack(spacing: 10 * ThisDevice.uiFactor) {
       ArtworkView(image: artworkData, alwaysGlossy: true)
-        .frame(width: 36, height: 36)
+        .frame(width: 36 * ThisDevice.uiFactor, height: 36 * ThisDevice.uiFactor)
 
-      VStack(alignment: .leading, spacing: 1) {
+      VStack(alignment: .leading, spacing: 1 * ThisDevice.uiFactor) {
         Text(track.title)
           .font(.callout)
           .fontWeight(isCurrent ? .semibold : .regular)
           .lineLimit(1)
-        HStack(spacing: 4) {
+        HStack(spacing: 4 * ThisDevice.uiFactor) {
           Text(track.artist)
           Text(verbatim: "·")
           Text(track.albumTitle)
@@ -276,13 +276,13 @@ struct PlayingQueueRow: View {
         .font(.caption.monospacedDigit())
         .foregroundStyle(.secondary)
 
-      HStack(spacing: 4) {
+      HStack(spacing: 4 * ThisDevice.uiFactor) {
         Button {
           onMoveUp()
         } label: {
           Image(systemName: "arrow.up")
             .font(.caption2)
-            .frame(width: 20, height: 20)
+            .frame(width: 20 * ThisDevice.uiFactor, height: 20 * ThisDevice.uiFactor)
         }
         .buttonStyle(.plain)
         .help(String(localized: "i18n:Queue.MoveUp", bundle: #bundle))
@@ -294,7 +294,7 @@ struct PlayingQueueRow: View {
         } label: {
           Image(systemName: "arrow.down")
             .font(.caption2)
-            .frame(width: 20, height: 20)
+            .frame(width: 20 * ThisDevice.uiFactor, height: 20 * ThisDevice.uiFactor)
         }
         .buttonStyle(.plain)
         .help(String(localized: "i18n:Queue.MoveDown", bundle: #bundle))
@@ -306,13 +306,13 @@ struct PlayingQueueRow: View {
         } label: {
           Image(systemName: "xmark.circle.fill")
             .font(.caption2)
-            .frame(width: 20, height: 20)
+            .frame(width: 20 * ThisDevice.uiFactor, height: 20 * ThisDevice.uiFactor)
             .foregroundStyle(.red.opacity(0.6))
         }
         .buttonStyle(.plain)
         .help(String(localized: "i18n:Queue.RemoveFromQueue", bundle: #bundle))
       }
     }
-    .padding(.vertical, 2)
+    .padding(.vertical, 2 * ThisDevice.uiFactor)
   }
 }

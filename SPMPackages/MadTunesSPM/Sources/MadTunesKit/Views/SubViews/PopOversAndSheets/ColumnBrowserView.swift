@@ -37,8 +37,8 @@ struct ColumnBrowserView: View {
           .controlSize(.mini)
         }
       }
-      .padding(.horizontal, 20)
-      .frame(height: 28)
+      .padding(.horizontal, 20 * vm.uiFactor)
+      .frame(height: 28 * vm.uiFactor)
       let view1 = filterColumnTable(
         title: String(localized: "i18n:ColumnBrowser.Genres", bundle: #bundle),
         allLabel: String(localized: "i18n:ColumnBrowser.AllGenres", bundle: #bundle),
@@ -159,8 +159,8 @@ struct ColumnBrowserView: View {
         .buttonStyle(.borderedProminent)
         #endif
       }
-      .padding(.horizontal, 8)
-      .padding(.vertical, OS.type == .macOS ? 6 : 8)
+      .padding(.horizontal, 8 * vm.uiFactor)
+      .padding(.vertical, OS.type == .macOS ? 6 * vm.uiFactor : 8 * vm.uiFactor)
       .frame(maxWidth: .infinity, alignment: .leading)
       .background {
         Rectangle()
@@ -253,7 +253,7 @@ struct ColumnBrowserView: View {
           )
         }
       }
-      .padding(.vertical, 8)
+      .padding(.vertical, 8 * vm.uiFactor)
     }
     .frame(maxHeight: .infinity, alignment: .top)
     .frame(
@@ -388,11 +388,11 @@ private struct ColumnBrowserRow: View {
       .lineLimit(1)
       .truncationMode(.tail)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(.horizontal, 12)
-      .padding(.vertical, OS.type == .macOS ? 6 : 8)
+      .padding(.horizontal, 12 * ThisDevice.uiFactor)
+      .padding(.vertical, OS.type == .macOS ? 6 * ThisDevice.uiFactor : 8 * ThisDevice.uiFactor)
       .background(background)
-      .clipShape(RoundedRectangle(cornerRadius: 8))
-      .padding(.horizontal, 8)
+      .clipShape(RoundedRectangle(cornerRadius: 8 * ThisDevice.uiFactor))
+      .padding(.horizontal, 8 * ThisDevice.uiFactor)
       .contentShape(.rect)
       .onTapGesture {
         onTap()

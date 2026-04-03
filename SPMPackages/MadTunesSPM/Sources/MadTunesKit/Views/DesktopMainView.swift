@@ -72,7 +72,7 @@ struct DesktopMainView: View {
             PlayerControlsView(player: vm.player, artworkData: vm.currentTrackArtworkData)
               .fixedSize()
               .frame(maxWidth: .infinity)
-              .padding([.horizontal, .bottom], 12)
+              .padding([.horizontal, .bottom], 12 * vm.uiFactor)
           }
           .fixedSize(horizontal: false, vertical: true)
         }

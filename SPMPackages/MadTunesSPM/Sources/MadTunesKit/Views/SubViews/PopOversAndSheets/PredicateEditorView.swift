@@ -32,7 +32,10 @@ struct PredicateEditorView: View {
             .background(.ultraThinMaterial)
         }
     }
-    .frame(minWidth: horizontalSizeClass == .compact ? nil : 720, minHeight: 300)
+    .frame(
+      minWidth: horizontalSizeClass == .compact ? nil : 720 * ThisDevice.uiFactor,
+      minHeight: 300 * ThisDevice.uiFactor
+    )
   }
 
   // MARK: Private
@@ -191,7 +194,7 @@ private struct PredicateGroupView: View {
 
   @ViewBuilder
   private func groupCard(node: Binding<PredicateEditorViewModel.PredicateNode>) -> some View {
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .leading, spacing: 8 * ThisDevice.uiFactor) {
       LabeledContent {
         HStack {
           Picker(
@@ -222,14 +225,14 @@ private struct PredicateGroupView: View {
         PredicateGroupView(nodes: node.children, depth: depth + 1)
       )
     }
-    .padding(12)
+    .padding(12 * ThisDevice.uiFactor)
     .background(Color.primary.opacity(0.04))
-    .clipShape(RoundedRectangle(cornerRadius: 12))
+    .clipShape(RoundedRectangle(cornerRadius: 12 * ThisDevice.uiFactor))
     .overlay {
-      RoundedRectangle(cornerRadius: 12)
+      RoundedRectangle(cornerRadius: 12 * ThisDevice.uiFactor)
         .strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 1)
     }
-    .padding(.vertical, 2)
+    .padding(.vertical, 2 * ThisDevice.uiFactor)
   }
 }
 
@@ -273,9 +276,9 @@ private struct PredicateLeafRowView: View {
           .frame(maxWidth: .infinity)
         deleteButton
       }
-      .padding(.vertical, 4)
+      .padding(.vertical, 4 * ThisDevice.uiFactor)
     } else {
-      VStack(alignment: .leading, spacing: 6) {
+      VStack(alignment: .leading, spacing: 6 * ThisDevice.uiFactor) {
         HStack {
           fieldPicker
           comparatorPicker

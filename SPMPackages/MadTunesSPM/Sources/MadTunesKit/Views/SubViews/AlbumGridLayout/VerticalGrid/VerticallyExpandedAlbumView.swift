@@ -42,7 +42,7 @@ extension AlbumVGrid {
     // MARK: Internal
 
     var body: some View {
-      HStack(alignment: .top, spacing: 20) {
+      HStack(alignment: .top, spacing: 20 * vm.uiFactor) {
         // Track listing
         VStack(alignment: .leading, spacing: 0) {
           header
@@ -204,7 +204,7 @@ extension AlbumVGrid {
 
     private var header: some View {
       HStack {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 2 * vm.uiFactor) {
           Text(album.title)
             .font(.title2)
             .fontWeight(.bold)

@@ -133,7 +133,11 @@ struct TrackInfoView: View {
         }
       }
     }
-    .frame(minWidth: 380, idealWidth: 420, minHeight: 400)
+    .frame(
+      minWidth: 380 * ThisDevice.uiFactor,
+      idealWidth: 420 * ThisDevice.uiFactor,
+      minHeight: 400 * ThisDevice.uiFactor
+    )
   }
 
   // MARK: Private
@@ -227,7 +231,11 @@ struct MultiTrackInfoView: View {
         }
       }
     }
-    .frame(minWidth: 380, idealWidth: 420, minHeight: 300)
+    .frame(
+      minWidth: 380 * ThisDevice.uiFactor,
+      idealWidth: 420 * ThisDevice.uiFactor,
+      minHeight: 300 * ThisDevice.uiFactor
+    )
   }
 
   // MARK: Private

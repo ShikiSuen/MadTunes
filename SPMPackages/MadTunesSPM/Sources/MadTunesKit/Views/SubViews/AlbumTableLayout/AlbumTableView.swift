@@ -276,12 +276,12 @@ struct AlbumTableView: View {
         columnHeaderButton(column)
           .frame(
             width: isLast ? nil : tableVM.columnWidth(for: column),
-            height: 28,
+            height: 28 * vm.uiFactor,
             alignment: .leading
           )
         if !isLast {
           columnDivider(after: column)
-            .frame(height: 28)
+            .frame(height: 28 * vm.uiFactor)
         }
       }
     }
@@ -323,14 +323,14 @@ struct AlbumTableView: View {
   // Phase 45: Column header button with speaker icon for playing indicator
   private func columnHeaderButton(_ column: TableColumnType) -> some View {
     if column == .playingIndicator {
-      HStack(spacing: 4) {
+      HStack(spacing: 4 * vm.uiFactor) {
         // Phase 45: Playing indicator column uses speaker icon
         Image(systemName: "speaker.wave.2.fill")
           .font(.system(size: 11))
           .foregroundStyle(.secondary)
         Spacer(minLength: 0)
       }
-      .padding(.horizontal, 6)
+      .padding(.horizontal, 6 * vm.uiFactor)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
       .background(Color.clear)
       .contentShape(.rect)
@@ -338,13 +338,13 @@ struct AlbumTableView: View {
       Button(action: {
         vm.tableVM.setTableSort(column: column)
       }) {
-        HStack(spacing: 4) {
+        HStack(spacing: 4 * vm.uiFactor) {
           Text(column.localizedName + (vm.tableVM.sortIndicator(for: column) ?? ""))
             .font(.system(size: 11, weight: .medium))
             .lineLimit(1)
           Spacer(minLength: 0)
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 6 * vm.uiFactor)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(Color.clear)
         .contentShape(.rect)
@@ -362,7 +362,7 @@ struct AlbumTableView: View {
       .overlay(
         Rectangle()
           .fill(Color.clear)
-          .frame(width: 5)
+          .frame(width: 5 * vm.uiFactor)
           .contentShape(.rect)
       )
       .gesture(
@@ -558,11 +558,11 @@ private struct TableTrackRowView: View {
     // Phase 109: Fixed height to short-circuit NSTableView's automatic
     // row height calculation (was ~25% of CPU in constraint solving).
     rowContent
-      .frame(height: 20)
+      .frame(height: 20 * ThisDevice.uiFactor)
     #else
     // List mode: visibility-gated rendering with Phase 88 pattern.
     Color.clear
-      .frame(height: 20)
+      .frame(height: 20 * ThisDevice.uiFactor)
       .overlay(alignment: .leading) {
         if isVisible {
           rowContent
@@ -600,7 +600,7 @@ private struct TableTrackRowView: View {
         cellContent(for: column)
           .font(.callout)
           .lineLimit(1)
-          .padding(.horizontal, 6)
+          .padding(.horizontal, 6 * ThisDevice.uiFactor)
           .frame(width: colWidth, alignment: .leading)
         if !isTrailingColumn {
           Spacer().frame(width: 1)
@@ -617,10 +617,10 @@ private struct TableTrackRowView: View {
       if track.id == currentTrackID {
         Image(systemName: "speaker.wave.2.fill")
           .font(.caption)
-          .frame(width: 16)
+          .frame(width: 16 * ThisDevice.uiFactor)
       } else {
         Color.clear
-          .frame(width: 16)
+          .frame(width: 16 * ThisDevice.uiFactor)
       }
     case .name:
       Text(verbatim: track.title)

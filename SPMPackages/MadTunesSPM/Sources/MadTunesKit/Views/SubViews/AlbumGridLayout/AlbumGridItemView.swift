@@ -30,7 +30,7 @@ struct AlbumGridItemView: View {
 
   var body: some View {
     let showSelectedStatus = isSelected && !isExpanded
-    VStack(alignment: .leading, spacing: isExpanded ? 6 : 0) {
+    VStack(alignment: .leading, spacing: isExpanded ? 6 * ThisDevice.uiFactor : 0) {
       Rectangle()
         .fill(Color.clear)
         .aspectRatio(1, contentMode: .fit)
@@ -41,8 +41,8 @@ struct AlbumGridItemView: View {
             .clipShape(.rect)
             .shadow(
               color: Color(.sRGBLinear, white: 0, opacity: 0.33),
-              radius: 3,
-              y: 2
+              radius: 3 * ThisDevice.uiFactor,
+              y: 2 * ThisDevice.uiFactor
             )
             .overlay(alignment: .topLeading) {
               if isMultipleSelection, !isExpanded {
@@ -53,7 +53,7 @@ struct AlbumGridItemView: View {
             .scaleEffect(isExpanded ? 1 : 0.92, anchor: .center)
         }
 
-      VStack(alignment: .leading, spacing: 3) {
+      VStack(alignment: .leading, spacing: 3 * ThisDevice.uiFactor) {
         Text(album.title)
           .frame(maxWidth: .infinity, alignment: .leading)
           .font(isExpanded ? .headline : .subheadline)
@@ -68,8 +68,8 @@ struct AlbumGridItemView: View {
             .lineLimit(1)
         }
       }
-      .padding(.horizontal, isExpanded ? 4 : 8)
-      .padding(.bottom, 4)
+      .padding(.horizontal, isExpanded ? 4 * ThisDevice.uiFactor : 8 * ThisDevice.uiFactor)
+      .padding(.bottom, 4 * ThisDevice.uiFactor)
     }
     .animation(.interactiveSpring.nerf(legacyHardwareMode), value: isExpanded)
     .background {
@@ -116,7 +116,7 @@ struct AlbumGridItemView: View {
             startPoint: .top,
             endPoint: .bottom
           ),
-          lineWidth: 3.5
+          lineWidth: 3.5 * ThisDevice.uiFactor
         )
         .allowsHitTesting(false)
     } else {
@@ -155,15 +155,15 @@ private struct MultiSelectionBadge: View {
       Image(systemName: "checkmark.diamond.fill")
         .font(.system(size: 11, weight: .bold))
         .foregroundStyle(.white)
-        .offset(x: 3, y: 3)
+        .offset(x: 3 * ThisDevice.uiFactor, y: 3 * ThisDevice.uiFactor)
         .contentShape(.circle)
-        .frame(width: size - 4, height: size - 4, alignment: .topLeading)
+        .frame(width: size - 4 * ThisDevice.uiFactor, height: size - 4 * ThisDevice.uiFactor, alignment: .topLeading)
     }
   }
 
   // MARK: Private
 
-  private let size: CGFloat = 36
+  private let size: CGFloat = 36 * ThisDevice.uiFactor
 }
 
 // MARK: - Triangle

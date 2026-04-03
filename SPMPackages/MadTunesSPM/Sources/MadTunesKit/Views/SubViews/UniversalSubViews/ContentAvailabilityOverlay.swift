@@ -23,13 +23,13 @@ struct ContentAvailabilityOverlay: View {
   var body: some View {
     Group {
       if vm.library.isImporting {
-        VStack(spacing: 8) {
+        VStack(spacing: 8 * vm.uiFactor) {
           let progress = vm.library.importProgress
           let hasFileImporting = progress.totalCount > 0
           let finished = progress.finishedCount
           let total = progress.totalCount
           let percent = total > 0 ? finished * 100 / total : 0
-          WinUI3ProgressRing(size: 64, lineWidth: 7)
+          WinUI3ProgressRing(size: 64 * vm.uiFactor, lineWidth: 7 * vm.uiFactor)
             .tint(.primary)
             .overlay {
               if hasFileImporting {
@@ -66,13 +66,13 @@ struct ContentAvailabilityOverlay: View {
           .ignoresSafeArea()
           .overlay {
             ContentUnavailableView {
-              WinUI3ProgressRing(size: 96, lineWidth: 7)
+              WinUI3ProgressRing(size: 96 * vm.uiFactor, lineWidth: 7 * vm.uiFactor)
                 .tint(.primary)
                 .overlay {
                   Image(systemName: "internaldrive")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 48)
+                    .frame(width: 48 * vm.uiFactor)
                     .foregroundStyle(.secondary)
                 }
             }
@@ -83,13 +83,13 @@ struct ContentAvailabilityOverlay: View {
           .ignoresSafeArea()
           .overlay {
             ContentUnavailableView {
-              WinUI3ProgressRing(size: 96, lineWidth: 7)
+              WinUI3ProgressRing(size: 96 * vm.uiFactor, lineWidth: 7 * vm.uiFactor)
                 .tint(.primary)
                 .overlay {
                   Image(systemName: "waveform.badge.magnifyingglass")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 48)
+                    .frame(width: 48 * vm.uiFactor)
                     .foregroundStyle(.secondary)
                 }
             }

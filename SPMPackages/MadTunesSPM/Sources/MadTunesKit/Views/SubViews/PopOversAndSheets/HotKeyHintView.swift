@@ -114,15 +114,15 @@ struct HotKeyHintView: View {
       .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
         ScrollView {
           popoverContent
-            .padding(12)
-            .frame(minWidth: 260)
+            .padding(12 * vm.uiFactor)
+            .frame(minWidth: 260 * vm.uiFactor)
         }
       }
     #endif
   }
 
   @ViewBuilder var popoverContent: some View {
-    VStack(spacing: 4) {
+    VStack(spacing: 4 * vm.uiFactor) {
       let hintsEnumerated = Array(prepareHotKeyHints().enumerated())
       let countOfHints = hintsEnumerated.count
       ForEach(hintsEnumerated, id: \.offset) { offset, hintRecord in
@@ -133,7 +133,7 @@ struct HotKeyHintView: View {
         }
       }
     }
-    .frame(maxWidth: 440)
+    .frame(maxWidth: 440 * vm.uiFactor)
   }
 
   // MARK: Private
@@ -155,7 +155,7 @@ struct HotKeyHintView: View {
       .frame(maxWidth: .infinity, alignment: .trailing)
     } label: {
       Text(verbatim: record.keyCombinationString)
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 8 * vm.uiFactor)
         .background(.secondary.opacity(0.2))
         .clipShape(Capsule())
         .font(.subheadline)

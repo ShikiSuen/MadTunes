@@ -22,11 +22,11 @@ struct PlayerControlsView: View {
     Group {
       if sansBezel {
         coreComponent
-          .padding(.horizontal, 24)
+          .padding(.horizontal, 24 * vm.uiFactor)
       } else {
         coreComponent
-          .padding(.horizontal, 32)
-          .padding(.vertical, 8)
+          .padding(.horizontal, 32 * vm.uiFactor)
+          .padding(.vertical, 8 * vm.uiFactor)
           .modifier(GlassEffectModifier())
       }
     }
@@ -68,18 +68,18 @@ struct PlayerControlsView: View {
         Text(error.localizedMessage)
           .font(.caption)
           .foregroundStyle(.white)
-          .padding(.horizontal, 12)
-          .padding(.vertical, 6)
+          .padding(.horizontal, 12 * vm.uiFactor)
+          .padding(.vertical, 6 * vm.uiFactor)
           .background(.red.opacity(0.85), in: .capsule)
           .transition(.move(edge: .top).combined(with: .opacity))
           .animation(.easeInOut(duration: 0.3), value: player.lastPlaybackError == nil)
-          .padding(.top, 4)
+          .padding(.top, 4 * vm.uiFactor)
       }
     }
   }
 
   @ViewBuilder var coreComponent: some View {
-    HStack(spacing: 16) {
+    HStack(spacing: 16 * vm.uiFactor) {
       let artWorkViewHeight: Double = (sansBezel ? 28 : 40) * vm.uiFactor
       ArtworkView(image: artworkData, alwaysGlossy: true)
         .background {
@@ -148,8 +148,12 @@ struct PlayerControlsView: View {
           }
         }
       VStack(spacing: 0) {
-        let mainControlSpacing = 3 * pow(vm.uiFactor, 4)
-        EqualSideLayout(centerMode: .fitContent, spacing: mainControlSpacing, verticalAlignment: .center) {
+        let mainControlSpacing = 3 * vm.uiFactor
+        EqualSideLayout(
+          centerMode: .fitContent,
+          spacing: mainControlSpacing,
+          verticalAlignment: .center
+        ) {
           Color.clear
             .overlay {
               GeometryReader { proxy in
@@ -203,7 +207,11 @@ struct PlayerControlsView: View {
             }
           }
         }
-        EqualSideLayout(centerMode: .fillAvailable, spacing: 6, verticalAlignment: .center) {
+        EqualSideLayout(
+          centerMode: .fillAvailable,
+          spacing: 6 * vm.uiFactor,
+          verticalAlignment: .center
+        ) {
           Button {
             showRemainingTime.toggle()
           } label: {
@@ -242,7 +250,7 @@ struct PlayerControlsView: View {
       .frame(width: panelFrameWidth)
     }
     .fixedSize(horizontal: false, vertical: true)
-    .frame(minHeight: 40, alignment: .center)
+    .frame(minHeight: 40 * vm.uiFactor, alignment: .center)
   }
 
   // MARK: Private
@@ -316,10 +324,10 @@ struct PlayerControlsView: View {
   // MARK: - Subviews
 
   @ViewBuilder private var nowPlayingInfo: some View {
-    HStack(spacing: 10) {
+    HStack(spacing: 10 * vm.uiFactor) {
       if let track = player.currentTrack {
         let accumulated = "\(track.title)\n\n→ \(track.artist)"
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: 1 * vm.uiFactor) {
           Text(track.title)
             .font(.callout)
             .fontWeight(.medium)
@@ -346,25 +354,25 @@ struct PlayerControlsView: View {
       Button { Task { await player.previous() } } label: {
         Image(systemName: "backward.fill")
           .font(.title3)
-          .frame(width: 32 * vm.uiFactor, height: 32)
+          .frame(width: 32 * vm.uiFactor, height: 32 * vm.uiFactor)
           .contentShape(.rect)
       }
       Button { Task { await player.togglePlayPause() } } label: {
         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
           .font(.title)
-          .frame(width: 32 * vm.uiFactor, height: 32)
+          .frame(width: 32 * vm.uiFactor, height: 32 * vm.uiFactor)
           .contentShape(.rect)
       }
       Button { Task { await player.next() } } label: {
         Image(systemName: "forward.fill")
           .font(.title3)
-          .frame(width: 32 * vm.uiFactor, height: 32)
+          .frame(width: 32 * vm.uiFactor, height: 32 * vm.uiFactor)
           .contentShape(.rect)
       }
     }
     .buttonStyle(.plain)
     .buttonBorderShape(.circle)
-    .frame(maxHeight: sansBezel ? 15 : 35)
+    .frame(maxHeight: (sansBezel ? 15 : 35) * vm.uiFactor)
   }
 
   @ViewBuilder private var playLoopBehaviorButton: some View {
@@ -380,7 +388,7 @@ struct PlayerControlsView: View {
     } label: {
       Image(systemName: loopBehaviorIcon)
         .font(.callout)
-        .frame(width: 28, height: 28)
+        .frame(width: 28 * vm.uiFactor, height: 28 * vm.uiFactor)
         .contentShape(.rect)
         .foregroundStyle(isActive ? Color.madTunesAccent : .secondary)
     }
@@ -400,7 +408,7 @@ struct PlayerControlsView: View {
     } label: {
       Image(systemName: iconName)
         .font(.callout)
-        .frame(width: 28, height: 28)
+        .frame(width: 28 * vm.uiFactor, height: 28 * vm.uiFactor)
         .contentShape(.rect)
         .foregroundStyle(iconColor)
     }
@@ -416,7 +424,7 @@ struct PlayerControlsView: View {
     } label: {
       Image(systemName: "list.bullet")
         .font(.callout)
-        .frame(width: 28, height: 28)
+        .frame(width: 28 * vm.uiFactor, height: 28 * vm.uiFactor)
         .contentShape(.rect)
         .foregroundStyle(isQueuePopoverPresented ? Color.madTunesAccent : .secondary)
     }
@@ -428,7 +436,7 @@ struct PlayerControlsView: View {
   }
 
   @ViewBuilder private var volumeControls: some View {
-    HStack(spacing: 2) {
+    HStack(spacing: 2 * vm.uiFactor) {
       // Phase 127: Volume icon doubles as audio output device picker on macOS.
       #if os(macOS)
       Menu {
@@ -436,7 +444,7 @@ struct PlayerControlsView: View {
       } label: {
         Image(systemName: volumeIcon)
           .font(.caption)
-          .frame(width: 28 * vm.uiFactor, height: 28)
+          .frame(width: 28 * vm.uiFactor, height: 28 * vm.uiFactor)
       }
       .menuStyle(.borderlessButton)
       .menuIndicator(.hidden)
@@ -447,11 +455,11 @@ struct PlayerControlsView: View {
           : Color.madTunesAccent
       )
       .fixedSize()
-      .frame(width: 28 * vm.uiFactor, height: 28, alignment: .leading)
+      .frame(width: 28 * vm.uiFactor, height: 28 * vm.uiFactor, alignment: .leading)
       #else
       Image(systemName: volumeIcon)
         .font(.caption)
-        .frame(width: 28 * vm.uiFactor, height: 28, alignment: .leading)
+        .frame(width: 28 * vm.uiFactor, height: 28 * vm.uiFactor, alignment: .leading)
       #endif
       Slider(value: Bindable(player).volume, in: 0 ... 1)
         .frame(width: 60 * vm.uiFactor)
@@ -547,8 +555,8 @@ struct ProgressScrubber: View {
           .fill(Color.madTunesAccent)
           .frame(width: geometry.size.width * clampedFraction)
       }
-      .frame(height: isDragging ? 6 : 3, alignment: .center)
-      .contentShape(Rectangle().size(width: geometry.size.width, height: 12))
+      .frame(height: (isDragging ? 6 : 3) * ThisDevice.uiFactor, alignment: .center)
+      .contentShape(Rectangle().size(width: geometry.size.width, height: 12 * ThisDevice.uiFactor))
       .clipShape(.capsule)
       .gesture(
         DragGesture(minimumDistance: 0)
@@ -566,7 +574,7 @@ struct ProgressScrubber: View {
             }
           }
       )
-      .frame(height: 8, alignment: .center)
+      .frame(height: 8 * ThisDevice.uiFactor, alignment: .center)
     }
   }
 
@@ -787,7 +795,7 @@ private struct GlassEffectModifier: ViewModifier {
           }
           .clipShape(.capsule)
           .glassEffect(.regular, in: .capsule)
-          .shadow(radius: 2)
+          .shadow(radius: 2 * ThisDevice.uiFactor)
       } else {
         content
           .background {
@@ -795,7 +803,7 @@ private struct GlassEffectModifier: ViewModifier {
           }
           .background(.ultraThinMaterial)
           .clipShape(.capsule)
-          .shadow(radius: 2)
+          .shadow(radius: 2 * ThisDevice.uiFactor)
       }
     }
   }
