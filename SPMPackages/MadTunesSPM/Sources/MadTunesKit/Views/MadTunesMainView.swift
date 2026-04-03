@@ -81,10 +81,16 @@ struct MadTunesMainView: View {
             if !vm.library.isImporting {
               switch OS.isAppKit {
               case true:
-                Button {
-                  vm.isFolderImporterPresented = true
+                Menu {
+                  Button {
+                    vm.isFolderImporterPresented = true
+                  } label: {
+                    Label(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle), systemImage: "folder")
+                      .tint(.primary)
+                  }
+                  .tint(.primary)
                 } label: {
-                  Label(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle), systemImage: "folder")
+                  Label(String(localized: "i18n:Import.ImportMusic", bundle: #bundle), systemImage: "folder")
                     .tint(.primary)
                 }
                 .tint(.primary)
@@ -101,7 +107,7 @@ struct MadTunesMainView: View {
                     Label(String(localized: "i18n:Import.ImportFolder", bundle: #bundle), systemImage: "folder")
                   }
                 } label: {
-                  Label(String(localized: "i18n:Import.ImportMusic", bundle: #bundle), systemImage: "plus")
+                  Label(String(localized: "i18n:Import.ImportMusic", bundle: #bundle), systemImage: "folder")
                     .tint(.primary)
                 }
                 .tint(.primary)
