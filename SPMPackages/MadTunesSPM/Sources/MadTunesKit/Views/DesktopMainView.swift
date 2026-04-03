@@ -4,9 +4,9 @@
 
 import SwiftUI
 
-// MARK: - MadTunesMainView
+// MARK: - DesktopMainView
 
-struct MadTunesMainView: View {
+struct DesktopMainView: View {
   // MARK: Lifecycle
 
   init() {}

@@ -8,7 +8,7 @@ import SwiftUI
 
 /// Phase 63: All keyboard shortcuts surfaced via CommandMenu so that
 /// tools like KeyClu / CheatSheet can discover them from MainMenu.
-struct GlobalControlMenuCommands: Commands {
+struct MainControlMenuCommands: Commands {
   // MARK: Internal
 
   @CommandsBuilder @MainActor var body: some Commands {
@@ -25,24 +25,6 @@ struct GlobalControlMenuCommands: Commands {
           commandsOfControlForAlbumTableView
         case .asAlbumHGrid, .asAlbumVGrid:
           commandsOfControlForAlbumGridView
-        }
-        // Phase 98: Performance mode toggle (Intel Mac safeAreaInset expansion).
-        Section {
-          Toggle(
-            isOn: Binding(
-              get: { vm.gridVM.legacyHardwareMode },
-              set: { vm.gridVM.legacyHardwareMode = $0 }
-            )
-          ) {
-            Label(
-              String(
-                localized: "i18n:Menu.LegacyMacPerformanceMode",
-                defaultValue: "Performance Mode",
-                bundle: #bundle
-              ),
-              systemImage: "pc"
-            )
-          }
         }
       }
       // Phase 121: Block all hotkeys while predicate editor is presented.

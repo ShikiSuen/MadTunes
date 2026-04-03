@@ -28,123 +28,9 @@ public struct MadTunesScene: Scene {
   public var body: some Scene {
     coreScene
       .commands {
-        CommandGroup(replacing: .newItem) {
-          switch OS.isAppKit {
-          case true:
-            Button {
-              vm.isFolderImporterPresented = true
-            } label: {
-              Label(
-                String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle),
-                systemImage: "folder"
-              )
-            }
-            .keyboardShortcut("o")
-          case false:
-            // 此處不設定熱鍵。熱鍵全權交給 `MadTunesAppDelegate` 處理。
-            // 另外，此處也不需要系統判斷，不然 iPadOS 會出現兩個「開啟單個檔案」的命令。
-            // 總之，這裡只需要這個 CMD+Shift+O 的命令就行。
-            Button {
-              vm.isFolderImporterPresented = true
-            } label: {
-              Label(
-                String(localized: "i18n:Import.ImportFolder", bundle: #bundle),
-                systemImage: "folder"
-              )
-            }
-            .keyboardShortcut("o", modifiers: [.command, .shift])
-          }
-          // Phase 160: New Playlist submenu in File menu.
-          Divider()
-          Menu {
-            Button {
-              vm.playlistCreationAlertText = ""
-              vm.playlistCreationAlertKind = .staticPlaylist
-            } label: {
-              Label(
-                String(localized: "i18n:Sidebar.NewStaticPlaylist", bundle: #bundle),
-                systemImage: "music.note.list"
-              )
-            }
-            Button {
-              vm.playlistCreationAlertText = ""
-              vm.playlistCreationAlertKind = .dynamicPlaylist
-            } label: {
-              Label(
-                String(localized: "i18n:Sidebar.NewDynamicPlaylist", bundle: #bundle),
-                systemImage: "gearshape.2"
-              )
-            }
-            Divider()
-            Button {
-              vm.isImporterForFolderPlaylistPresented = true
-            } label: {
-              Label(
-                String(localized: "i18n:Sidebar.NewFolderPlaylist", bundle: #bundle),
-                systemImage: "folder.fill"
-              )
-            }
-          } label: {
-            Label(
-              String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle),
-              systemImage: "plus"
-            )
-          }
-          #if DEBUG
-          Divider()
-          Menu {
-            if !vm.library.isImporting {
-              debugButtonDeletingEntireDB
-            }
-          } label: {
-            Label("# DEBUG".description, systemImage: "pc")
-          }
-          #endif
-        }
-        GlobalControlMenuCommands()
-        CommandGroup(before: .toolbar) {
-          Picker(selection: $vm.desktopContentLayout) {
-            Label {
-              Text("i18n:Toolbar.ViewHGrid", bundle: #bundle)
-            } icon: {
-              Image(systemName: "inset.filled.topleading.bottomleading.trailinghalf.rectangle")
-            }
-            .tag(DesktopContentLayout.asAlbumHGrid)
-            Label {
-              Text("i18n:Toolbar.ViewVGrid", bundle: #bundle)
-            } icon: {
-              Image(systemName: "inset.filled.topleft.topright.bottomhalf.rectangle")
-            }
-            .tag(DesktopContentLayout.asAlbumVGrid)
-            Label {
-              Text("i18n:Toolbar.ViewTable", bundle: #bundle)
-            } icon: {
-              Image(systemName: "tablecells")
-            }
-            .tag(DesktopContentLayout.asTableView)
-          } label: {
-            Label {
-              Text("i18n:Toolbar.ToggleViewLayout", bundle: #bundle)
-            } icon: {
-              Image(systemName: "uiwindow.split.2x1")
-            }
-          }
-          .pickerStyle(.menu)
-          if !vm.library.isImporting, vm.desktopContentLayout != .asTableView {
-            Picker(selection: $vm.gridVM.albumSortOrder) {
-              ForEach(AlbumSortOrder.allCases, id: \.self) { order in
-                Text(order.localizedName).tag(order)
-              }
-            } label: {
-              Label(
-                String(localized: "i18n:AlbumSortMethod.Label", bundle: #bundle),
-                systemImage: "arrow.up.arrow.down"
-              )
-            }
-            .pickerStyle(.menu)
-          }
-          Divider()
-        }
+        MainFileMenuCommands()
+        MainControlMenuCommands()
+        MainViewMenuCommands()
       }
       .windowResizability(.contentSize)
   }
@@ -154,16 +40,27 @@ public struct MadTunesScene: Scene {
   @SceneBuilder var coreScene: some Scene {
     #if !os(macOS)
     WindowGroup {
-      coreSceneView
+      MainSceneView()
     }
     #else
     Window("MadTunes", id: "main") {
-      coreSceneView
+      MainSceneView()
     }
     #endif
   }
 
-  @ViewBuilder var coreSceneView: some View {
+  // MARK: Private
+
+  @State private var vm = MadTunesViewModel.shared
+}
+
+// MARK: - MainSceneView
+
+/// Phase 161: Extracted from MadTunesScene.coreSceneView.
+struct MainSceneView: View {
+  // MARK: Internal
+
+  var body: some View {
     @Bindable var bindableVM = vm
     let isWPUI = WPPhoneViewModel.shouldUseWPUI(screenVM: vm.screenVM)
     let windowMinSize = getWindowMinSize(isWPUI: isWPUI)
@@ -184,7 +81,7 @@ public struct MadTunesScene: Scene {
           }
           .fontWidth(.condensed)
       } else {
-        MadTunesMainView()
+        DesktopMainView()
           // Phase 121: Predicate editor sheet at stable Scene level —
           // survives iPad WPUI↔desktop switch, preserving editing state.
           .sheet(item: $bindableVM.predicateEditorPlaylist) { _ in
@@ -306,18 +203,6 @@ public struct MadTunesScene: Scene {
       return String(localized: "i18n:Sidebar.Alert.NewDynamicPlaylistTitle", bundle: #bundle)
     case nil:
       return ""
-    }
-  }
-
-  @ViewBuilder private var debugButtonDeletingEntireDB: some View {
-    Button(role: .destructive) {
-      Task { await vm.player.stop() }
-      vm.library.clearDatabase()
-    } label: {
-      Label(
-        String(localized: "i18n:Debug.ClearDatabase", bundle: #bundle),
-        systemImage: "trash"
-      )
     }
   }
 
