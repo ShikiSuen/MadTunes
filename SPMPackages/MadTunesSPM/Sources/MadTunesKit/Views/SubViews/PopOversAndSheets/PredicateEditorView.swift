@@ -64,10 +64,12 @@ struct PredicateEditorView: View {
         dismiss()
       }
       .buttonStyle(.bordered)
+      .keyboardShortcut(.cancelAction)
       Button(String(localized: "i18n:PredicateEditor.Apply", bundle: #bundle)) {
         peVM.applyChanges()
         dismiss()
       }
+      .keyboardShortcut(.defaultAction)
       .buttonStyle(.borderedProminent)
     }
     .padding()

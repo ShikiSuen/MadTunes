@@ -59,6 +59,7 @@ struct WPPredicateEditorView: View {
               dismiss()
             }
             .tint(.white)
+            .keyboardShortcut(.cancelAction)
           }
         }
     }
@@ -113,6 +114,7 @@ struct WPPredicateEditorView: View {
         peVM.applyChanges()
         dismiss()
       }
+      .keyboardShortcut(.defaultAction)
       .font(.headline)
       .foregroundStyle(.white)
       .padding(.horizontal, 16)
