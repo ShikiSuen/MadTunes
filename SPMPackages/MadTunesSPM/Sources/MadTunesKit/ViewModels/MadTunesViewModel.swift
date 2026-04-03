@@ -15,6 +15,24 @@ enum DesktopContentLayout: Int {
   case asAlbumHGrid = 2
 }
 
+// MARK: - PlaylistCreationAlertKind
+
+/// Phase 160: Shared alert kind for creating playlists.
+/// Used by SidebarView, WPPlaylistsSection, MainMenu, and toolbar import menu.
+enum PlaylistCreationAlertKind: Identifiable {
+  case staticPlaylist
+  case dynamicPlaylist
+
+  // MARK: Internal
+
+  var id: String {
+    switch self {
+    case .staticPlaylist: return "static"
+    case .dynamicPlaylist: return "dynamic"
+    }
+  }
+}
+
 // MARK: - MadTunesViewModel
 
 @Observable
@@ -60,6 +78,9 @@ final class MadTunesViewModel {
   var isFileImporterPresented = false // Only for non-AppKit targets.
   var isFolderImporterPresented = false // Also used on macOS AppKit as File Importer.
   var isImporterForFolderPlaylistPresented = false
+  /// Phase 160: Shared alert state for creating playlists.
+  var playlistCreationAlertKind: PlaylistCreationAlertKind?
+  var playlistCreationAlertText = ""
   var isDropTargeted = false
   var screenVM = ScreenVM.shared
 
@@ -332,6 +353,21 @@ final class MadTunesViewModel {
     let tracks = filteredTracksBase
     guard !tracks.isEmpty else { return }
     Task { await player.setQueue(tracks, startingAt: 0) }
+  }
+
+  /// Phase 160: Commit the shared playlist creation alert.
+  func commitPlaylistCreation() {
+    let name = playlistCreationAlertText.trimmingCharacters(in: .whitespaces)
+    guard !name.isEmpty else { return }
+    switch playlistCreationAlertKind {
+    case .staticPlaylist:
+      library.addPlaylist(name: name)
+    case .dynamicPlaylist:
+      library.addDynamicPlaylist(name: name)
+    case nil:
+      break
+    }
+    playlistCreationAlertText = ""
   }
 
   func importURLs(_ urls: [URL]) {

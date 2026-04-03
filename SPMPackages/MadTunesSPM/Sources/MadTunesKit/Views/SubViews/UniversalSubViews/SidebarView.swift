@@ -93,8 +93,8 @@ struct SidebarView: View {
                 #endif
               }
               Button {
-                alertText = playlist.name
-                alertKind = .rename(playlist.id)
+                renameAlertText = playlist.name
+                renamePlaylistID = playlist.id
               } label: {
                 Label(String(localized: "i18n:Common.Rename", bundle: #bundle), systemImage: "pencil")
               }
@@ -154,10 +154,20 @@ struct SidebarView: View {
     }
     .listStyle(.sidebar)
     .navigationTitle("MadTunes")
-    .alert(alertTitle, isPresented: alertIsPresented) {
-      TextField(alertPlaceholder, text: $alertText)
-      Button(alertConfirmLabel) {
-        commitAlert()
+    // Phase 160: Rename-only alert (create alerts moved to Scene level via MainVM).
+    .alert(
+      String(localized: "i18n:Sidebar.Alert.RenamePlaylistTitle", bundle: #bundle),
+      isPresented: Binding(
+        get: { renamePlaylistID != nil },
+        set: { if !$0 { renamePlaylistID = nil } }
+      )
+    ) {
+      TextField(
+        String(localized: "i18n:Sidebar.Alert.NewNamePlaceholder", bundle: #bundle),
+        text: $renameAlertText
+      )
+      Button(String(localized: "i18n:Common.Rename", bundle: #bundle)) {
+        commitRename()
       }
       Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
     }
@@ -165,27 +175,11 @@ struct SidebarView: View {
 
   // MARK: Private
 
-  private enum AlertKind: Identifiable {
-    case newPlaylist
-    case newDynamicPlaylist
-    case rename(UUID)
-
-    // MARK: Internal
-
-    var id: String {
-      switch self {
-      case .newPlaylist: return "new"
-      case .newDynamicPlaylist: return "newDynamic"
-      case let .rename(id): return id.uuidString
-      }
-    }
-  }
-
   @Environment(MadTunesViewModel.self) private var mainVM
   @Binding private var selectedPlaylistID: UUID?
-  // Alert state — shared across both "New Playlist" and "Rename"
-  @State private var alertKind: AlertKind?
-  @State private var alertText = ""
+  /// Phase 160: Local rename alert state (create state is shared via MainVM).
+  @State private var renamePlaylistID: UUID?
+  @State private var renameAlertText = ""
 
   private var library: MusicLibrary
 
@@ -194,49 +188,13 @@ struct SidebarView: View {
     Array(library.playlists.dropFirst(2))
   }
 
-  // MARK: - Alert helpers
-
-  private var alertTitle: String {
-    switch alertKind {
-    case .newPlaylist: return String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle)
-    case .newDynamicPlaylist: return String(localized: "i18n:Sidebar.Alert.NewDynamicPlaylistTitle", bundle: #bundle)
-    case .rename: return String(localized: "i18n:Sidebar.Alert.RenamePlaylistTitle", bundle: #bundle)
-    case nil: return ""
-    }
-  }
-
-  private var alertPlaceholder: String {
-    switch alertKind {
-    case .newDynamicPlaylist, .newPlaylist:
-      return String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle)
-    case .rename: return String(localized: "i18n:Sidebar.Alert.NewNamePlaceholder", bundle: #bundle)
-    case nil: return ""
-    }
-  }
-
-  private var alertConfirmLabel: String {
-    switch alertKind {
-    case .newDynamicPlaylist, .newPlaylist:
-      return String(localized: "i18n:Common.Create", bundle: #bundle)
-    case .rename: return String(localized: "i18n:Common.Rename", bundle: #bundle)
-    case nil: return String(localized: "i18n:Common.OK", bundle: #bundle)
-    }
-  }
-
-  private var alertIsPresented: Binding<Bool> {
-    Binding(
-      get: { alertKind != nil },
-      set: { if !$0 { alertKind = nil } }
-    )
-  }
-
   @ViewBuilder
   private func getMenu4CreatingPlaylist(implicitTextControl: Bool = true) -> some View {
     let showDropdownButtonTitleText = !implicitTextControl || userPlaylists.isEmpty
     Menu {
       Button {
-        alertText = ""
-        alertKind = .newDynamicPlaylist
+        mainVM.playlistCreationAlertText = ""
+        mainVM.playlistCreationAlertKind = .dynamicPlaylist
       } label: {
         Label(
           String(localized: "i18n:Sidebar.NewDynamicPlaylist", bundle: #bundle),
@@ -245,8 +203,8 @@ struct SidebarView: View {
       }
 
       Button {
-        alertText = ""
-        alertKind = .newPlaylist
+        mainVM.playlistCreationAlertText = ""
+        mainVM.playlistCreationAlertKind = .staticPlaylist
       } label: {
         Label(
           String(localized: "i18n:Sidebar.NewStaticPlaylist", bundle: #bundle),
@@ -295,18 +253,13 @@ struct SidebarView: View {
   }
   #endif
 
-  private func commitAlert() {
-    let name = alertText.trimmingCharacters(in: .whitespaces)
+  /// Phase 160: Commit the rename-only alert.
+  private func commitRename() {
+    guard let id = renamePlaylistID else { return }
+    let name = renameAlertText.trimmingCharacters(in: .whitespaces)
     guard !name.isEmpty else { return }
-    switch alertKind {
-    case .newPlaylist:
-      library.addPlaylist(name: name)
-    case .newDynamicPlaylist:
-      library.addDynamicPlaylist(name: name)
-    case let .rename(id):
-      library.renamePlaylist(id: id, newName: name)
-    case nil:
-      break
-    }
+    library.renamePlaylist(id: id, newName: name)
+    renamePlaylistID = nil
+    renameAlertText = ""
   }
 }

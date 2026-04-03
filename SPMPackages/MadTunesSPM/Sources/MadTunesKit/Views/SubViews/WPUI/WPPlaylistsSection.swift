@@ -124,9 +124,8 @@ struct WPPlaylistsSection: View {
   @ViewBuilder private var newPlaylistMenu: some View {
     Menu {
       Button {
-        phoneVM.createPlaylistName = ""
-        phoneVM.createPlaylistIsDynamic = false
-        phoneVM.isCreatePlaylistAlertPresented = true
+        vm.playlistCreationAlertText = ""
+        vm.playlistCreationAlertKind = .staticPlaylist
       } label: {
         Label(
           String(localized: "i18n:Sidebar.NewStaticPlaylist", bundle: #bundle),
@@ -134,9 +133,8 @@ struct WPPlaylistsSection: View {
         )
       }
       Button {
-        phoneVM.createPlaylistName = ""
-        phoneVM.createPlaylistIsDynamic = true
-        phoneVM.isCreatePlaylistAlertPresented = true
+        vm.playlistCreationAlertText = ""
+        vm.playlistCreationAlertKind = .dynamicPlaylist
       } label: {
         Label(
           String(localized: "i18n:Sidebar.NewDynamicPlaylist", bundle: #bundle),

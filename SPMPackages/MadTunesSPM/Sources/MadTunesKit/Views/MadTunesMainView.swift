@@ -89,6 +89,18 @@ struct MadTunesMainView: View {
                       .tint(.primary)
                   }
                   .tint(.primary)
+                  // Phase 160: New Folder Playlist shortcut in import menu.
+                  Divider()
+                  Button {
+                    vm.isImporterForFolderPlaylistPresented = true
+                  } label: {
+                    Label(
+                      String(localized: "i18n:Sidebar.NewFolderPlaylist", bundle: #bundle),
+                      systemImage: "folder.fill"
+                    )
+                    .tint(.primary)
+                  }
+                  .tint(.primary)
                 } label: {
                   Label(String(localized: "i18n:Import.ImportMusic", bundle: #bundle), systemImage: "folder")
                     .tint(.primary)
@@ -105,6 +117,16 @@ struct MadTunesMainView: View {
                     vm.isFolderImporterPresented = true
                   } label: {
                     Label(String(localized: "i18n:Import.ImportFolder", bundle: #bundle), systemImage: "folder")
+                  }
+                  // Phase 160: New Folder Playlist shortcut in import menu.
+                  Divider()
+                  Button {
+                    vm.isImporterForFolderPlaylistPresented = true
+                  } label: {
+                    Label(
+                      String(localized: "i18n:Sidebar.NewFolderPlaylist", bundle: #bundle),
+                      systemImage: "folder.fill"
+                    )
                   }
                 } label: {
                   Label(String(localized: "i18n:Import.ImportMusic", bundle: #bundle), systemImage: "folder")

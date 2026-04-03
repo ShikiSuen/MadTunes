@@ -185,12 +185,6 @@ final class WPPhoneViewModel {
   var renamePlaylistID: UUID?
   var renamePlaylistName = ""
 
-  /// Standalone playlist creation (from Playlists section + button).
-  var isCreatePlaylistAlertPresented = false
-  var createPlaylistName = ""
-  /// Whether the standalone create alert should create a dynamic playlist.
-  var createPlaylistIsDynamic = false
-
   var currentSection: PanoramaSection {
     get { access(keyPath: \.currentSection); return _currentSection }
     set { withMutation(keyPath: \.currentSection) { _currentSection = newValue } }
@@ -296,22 +290,6 @@ final class WPPhoneViewModel {
       mainVM.library.addTracks(trackIDsForNewPlaylist, toPlaylist: newPlaylist.id)
     }
     trackIDsForNewPlaylist = []
-  }
-
-  /// Phase 78: Create a new empty playlist from the Playlists section.
-  func commitCreatePlaylist() {
-    guard let mainVM else { return }
-    let name = createPlaylistName.trimmingCharacters(in: .whitespaces)
-    guard !name.isEmpty else { return }
-    let existingNames = Set(mainVM.library.playlists.dropFirst(2).map(\.name))
-    guard !existingNames.contains(name) else { return }
-    if createPlaylistIsDynamic {
-      mainVM.library.addDynamicPlaylist(name: name)
-    } else {
-      mainVM.library.addPlaylist(name: name)
-    }
-    createPlaylistName = ""
-    createPlaylistIsDynamic = false
   }
 
   /// Phase 78: Rename an existing playlist.

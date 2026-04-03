@@ -188,20 +188,6 @@ struct WPMainView: View {
       WPAccentColorPicker()
         .environment(phoneVM)
     }
-    // Phase 78: Create playlist alert (from Playlists section + button).
-    .alert(
-      String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),
-      isPresented: $phoneVM.isCreatePlaylistAlertPresented
-    ) {
-      TextField(
-        String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle),
-        text: $phoneVM.createPlaylistName
-      )
-      Button(String(localized: "i18n:Common.Create", bundle: #bundle)) {
-        phoneVM.commitCreatePlaylist()
-      }
-      Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
-    }
     // Phase 78: Rename playlist alert.
     .alert(
       String(localized: "i18n:Sidebar.Alert.RenamePlaylistTitle", bundle: #bundle),

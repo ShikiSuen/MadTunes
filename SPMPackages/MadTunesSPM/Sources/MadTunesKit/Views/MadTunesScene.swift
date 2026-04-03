@@ -54,6 +54,42 @@ public struct MadTunesScene: Scene {
             }
             .keyboardShortcut("o", modifiers: [.command, .shift])
           }
+          // Phase 160: New Playlist submenu in File menu.
+          Divider()
+          Menu {
+            Button {
+              vm.playlistCreationAlertText = ""
+              vm.playlistCreationAlertKind = .staticPlaylist
+            } label: {
+              Label(
+                String(localized: "i18n:Sidebar.NewStaticPlaylist", bundle: #bundle),
+                systemImage: "music.note.list"
+              )
+            }
+            Button {
+              vm.playlistCreationAlertText = ""
+              vm.playlistCreationAlertKind = .dynamicPlaylist
+            } label: {
+              Label(
+                String(localized: "i18n:Sidebar.NewDynamicPlaylist", bundle: #bundle),
+                systemImage: "gearshape.2"
+              )
+            }
+            Divider()
+            Button {
+              vm.isImporterForFolderPlaylistPresented = true
+            } label: {
+              Label(
+                String(localized: "i18n:Sidebar.NewFolderPlaylist", bundle: #bundle),
+                systemImage: "folder.fill"
+              )
+            }
+          } label: {
+            Label(
+              String(localized: "i18n:Sidebar.NewPlaylist", bundle: #bundle),
+              systemImage: "plus"
+            )
+          }
           #if DEBUG
           Divider()
           Menu {
@@ -167,6 +203,25 @@ public struct MadTunesScene: Scene {
     )
     .background {
       ZStack {
+        // Phase 160: Shared create-playlist alert at Scene level —
+        // survives iPad WPUI↔desktop switch, shared by SidebarView, WPUI, and MainMenu.
+        Color.clear
+          .alert(
+            playlistCreationAlertTitle,
+            isPresented: Binding(
+              get: { vm.playlistCreationAlertKind != nil },
+              set: { if !$0 { vm.playlistCreationAlertKind = nil } }
+            )
+          ) {
+            TextField(
+              String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle),
+              text: $bindableVM.playlistCreationAlertText
+            )
+            Button(String(localized: "i18n:Common.Create", bundle: #bundle)) {
+              vm.commitPlaylistCreation()
+            }
+            Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
+          }
         // Phase 137-1: FileImporter 不能鏈式掛在同一個 view，否則其中一個
         // 可能無法呼叫；改用兩個 Color.clear 宿主分開掛載。
         #if canImport(AppKit) && !targetEnvironment(macCatalyst)
@@ -241,6 +296,18 @@ public struct MadTunesScene: Scene {
 
   @State private var vm = MadTunesViewModel.shared
   @Environment(\.colorScheme) private var colorScheme
+
+  /// Phase 160: Alert title for the shared create-playlist alert.
+  private var playlistCreationAlertTitle: String {
+    switch vm.playlistCreationAlertKind {
+    case .staticPlaylist:
+      return String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle)
+    case .dynamicPlaylist:
+      return String(localized: "i18n:Sidebar.Alert.NewDynamicPlaylistTitle", bundle: #bundle)
+    case nil:
+      return ""
+    }
+  }
 
   @ViewBuilder private var debugButtonDeletingEntireDB: some View {
     Button(role: .destructive) {
