@@ -94,8 +94,6 @@ extension AlbumVGrid {
           .interactiveSpring(duration: 0.2).nerf(gridVM.legacyHardwareMode),
           value: gridVM.expandedAlbumID
         )
-        .frame(width: canvasWidth)
-        .animation(.none, value: canvasWidth)
         .sheet(isPresented: Bindable(gridVM).isTrackInfoPresented) {
           trackInfoSheetContent
         }
@@ -136,6 +134,10 @@ extension AlbumVGrid {
     @State private var vm: MadTunesViewModel = .shared
     @State private var screenVM: ScreenVM = .shared
 
+    /// Phase 165: Frozen column count — only updates when debounced canvasWidth changes,
+    /// preventing column count jitter from scrollbar appearance/disappearance.
+    @State private var frozenColumnCount: Int = 1
+
     private var spacing: CGFloat { 16 * vm.uiFactor }
 
     private var minItemWidth: CGFloat { 160 * vm.uiFactor }
@@ -158,7 +160,8 @@ extension AlbumVGrid {
       screenVM.mainColumnCanvasSizeObserved.width
     }
 
-    private var columnCount: Int {
+    /// Raw computed column count — use `frozenColumnCount` in layout instead.
+    private var computedColumnCount: Int {
       max(1, Int((canvasWidth - spacing) / (minItemWidth + spacing)))
     }
 
@@ -177,66 +180,21 @@ extension AlbumVGrid {
     @ViewBuilder private var mainContent: some View {
       ScrollViewReader { proxy in
         GeometryReader { viewport in
-          let rows = gridVM.displayedAlbums.chunked(into: columnCount)
+          let rows = gridVM.displayedAlbums.chunked(into: frozenColumnCount)
           ScrollView {
-            LazyVStack(alignment: .leading, spacing: spacing) {
-              ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                albumRow(row, columnCount: columnCount)
-                  .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
-                  .drawingGroup()
-
-                // Expanded detail for the expanded album (if it belongs to this row).
-                if !gridVM.legacyHardwareMode,
-                   let expandedAlbum = row.first(where: { $0.id == gridVM.expandedAlbumID }) {
-                  VerticallyExpandedAlbumView(
-                    album: expandedAlbum,
-                    showBackground: true,
-                    currentTrackID: currentTrackID,
-                    containerWidth: canvasWidth,
-                    selectedTrackIDs: Bindable(vm).selectedTrackIDs,
-                    onClose: { gridVM.expandedAlbumID = nil }
-                  )
-                  .drawingGroup()
-                  .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
-                  .onAppear { gridVM.expandedAlbumWasInView = true }
-                  .onDisappear { gridVM.expandedAlbumWasInView = false }
-                  .shadow(
-                    color: Color(.sRGBLinear, white: 0, opacity: 0.33),
-                    radius: 3 * ThisDevice.uiFactor
-                  )
-                }
-              }
-            }
-            // Phase 131: Ensure content fills viewport so bottom blank area
-            // remains inside albumGrid coordinate space for rubber-band selection.
-            .padding(spacing)
-            .frame(
-              maxWidth: .infinity,
-              minHeight: max(viewport.size.height, 0),
-              alignment: .topLeading
-            )
-            .coordinateSpace(name: "albumGrid")
-            .onPreferenceChange(AlbumFramePreferenceKey.self) { frames in
-              gridVM.albumFrames = frames
-            }
-            .background {
-              rubberBandDragLayer
-            }
-            .overlay {
-              rubberBandRectOverlay
-            }
-            // 對整個 VerticalAlbumGridView 的 drawingGroup 對 Intel Mac 負擔太大，所以拆除。
-            // 但對每個 Row 仍舊有必要施加，否則在 Apple Silicon Mac 上的 FPS 會從 full (60fps) 掉到 30fps 以下，非常噁心。
-            // 相關的實作已經套用到上文了，施加對象是 albumRow 與 VerticallyExpandedAlbumView 副本。
+            gridScrollContent(rows: rows, viewportHeight: viewport.size.height)
           }
+          .animation(.none, value: canvasWidth)
           .scrollContentBackground(.hidden)
           .onChange(of: gridVM.expandedAlbumID) { _, newValue in
             respondToExpandedAlbumIDChanges(id: newValue, proxy: proxy)
           }
           .onAppear {
+            syncFrozenColumnCount(computedColumnCount)
             respondToExpandedAlbumIDChanges(proxy: proxy)
           }
           .onChange(of: canvasWidth) { oldWidth, newWidth in
+            syncFrozenColumnCount(computedColumnCount)
             guard oldWidth != newWidth, let expandedID = gridVM.expandedAlbumID else { return }
             let wasVisible = gridVM.expandedAlbumWasInView
             guard wasVisible else { return }
@@ -253,7 +211,7 @@ extension AlbumVGrid {
             if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
               gridVM.scheduleDisplayedAlbumsUpdate(to: allAlbums, ensureVisibleAlbumID: albumID)
             }
-            let rows = allAlbums.chunked(into: columnCount)
+            let rows = allAlbums.chunked(into: frozenColumnCount)
             guard let rowIndex = rows.firstIndex(
               where: { $0.contains { $0.id == albumID } }
             ) else { return }
@@ -353,6 +311,56 @@ extension AlbumVGrid {
       }
     }
 
+    @ViewBuilder
+    private func gridScrollContent(rows: [[Album]], viewportHeight: CGFloat) -> some View {
+      LazyVStack(alignment: .leading, spacing: spacing) {
+        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+          albumRow(row, columnCount: frozenColumnCount)
+            .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
+            .drawingGroup()
+
+          // Expanded detail for the expanded album (if it belongs to this row).
+          if !gridVM.legacyHardwareMode,
+             let expandedAlbum = row.first(where: { $0.id == gridVM.expandedAlbumID }) {
+            VerticallyExpandedAlbumView(
+              album: expandedAlbum,
+              showBackground: true,
+              currentTrackID: currentTrackID,
+              containerWidth: canvasWidth,
+              selectedTrackIDs: Bindable(vm).selectedTrackIDs,
+              onClose: { gridVM.expandedAlbumID = nil }
+            )
+            .drawingGroup()
+            .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
+            .onAppear { gridVM.expandedAlbumWasInView = true }
+            .onDisappear { gridVM.expandedAlbumWasInView = false }
+            .shadow(
+              color: Color(.sRGBLinear, white: 0, opacity: 0.33),
+              radius: 3 * ThisDevice.uiFactor
+            )
+          }
+        }
+      }
+      // Phase 131: Ensure content fills viewport so bottom blank area
+      // remains inside albumGrid coordinate space for rubber-band selection.
+      .padding(spacing)
+      .frame(width: max(canvasWidth, 0), alignment: .topLeading)
+      .frame(minHeight: max(viewportHeight, 0), alignment: .topLeading)
+      .coordinateSpace(name: "albumGrid")
+      .onPreferenceChange(AlbumFramePreferenceKey.self) { frames in
+        gridVM.albumFrames = frames
+      }
+      .background {
+        rubberBandDragLayer
+      }
+      .overlay {
+        rubberBandRectOverlay
+      }
+      // 對整個 VerticalAlbumGridView 的 drawingGroup 對 Intel Mac 負擔太大，所以拆除。
+      // 但對每個 Row 仍舊有必要施加，否則在 Apple Silicon Mac 上的 FPS 會從 full (60fps) 掉到 30fps 以下，非常噁心。
+      // 相關的實作已經套用到上文了，施加對象是 albumRow 與 VerticallyExpandedAlbumView 副本。
+    }
+
     // MARK: - Row
 
     @ViewBuilder
@@ -373,6 +381,7 @@ extension AlbumVGrid {
             isMultipleSelection: isMultiSelection,
             legacyHardwareMode: gridVM.legacyHardwareMode
           )
+          .frame(maxWidth: .infinity, alignment: .topLeading)
           .background(
             GeometryReader { geo in
               Color.clear.preference(
@@ -427,17 +436,19 @@ extension AlbumVGrid {
           .contextMenu {
             albumContextMenu(for: album)
           }
-          .frame(maxWidth: .infinity)
         }
         // Invisible spacers to keep alignment when the row is not full.
         // Defensive: ensure spacerCount is never negative (edge case: columnCount may change during resize).
         let spacerCount = max(0, columnCount - row.count)
         if spacerCount > 0 {
           ForEach(0 ..< spacerCount, id: \.self) { _ in
-            Color.clear.frame(maxWidth: .infinity).aspectRatio(1, contentMode: .fit)
+            Color.clear
+              .frame(maxWidth: .infinity)
+              .aspectRatio(1, contentMode: .fit)
           }
         }
       }
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Context Menu
@@ -467,6 +478,16 @@ extension AlbumVGrid {
           gridVM.showNewPlaylistAlert = true
         }
       )
+    }
+
+    private func syncFrozenColumnCount(_ newCount: Int) {
+      let clampedCount = max(1, newCount)
+      if frozenColumnCount != clampedCount {
+        frozenColumnCount = clampedCount
+      }
+      if gridVM.vGridFrozenColumnCount != clampedCount {
+        gridVM.vGridFrozenColumnCount = clampedCount
+      }
     }
 
     // Phase 49: Only assign expandedAlbumID if the value is different.
@@ -503,6 +524,3 @@ private struct AlbumFramePreferenceKey: PreferenceKey {
     value.merge(nextValue(), uniquingKeysWith: { $1 })
   }
 }
-
-// Phase 111: ExpandedAlbumFramePreferenceKey removed — replaced with
-// .onGeometryChange in ExpandedAlbumView writing directly to ViewModel.

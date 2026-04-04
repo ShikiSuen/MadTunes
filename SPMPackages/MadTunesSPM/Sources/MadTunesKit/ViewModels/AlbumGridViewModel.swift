@@ -82,6 +82,14 @@ final class AlbumGridViewModel {
   /// Written by HorizontalAlbumGridView's onGeometryChange.
   @ObservationIgnored var hGridMeasuredHeight: CGFloat = 0
 
+  /// Phase 165: Frozen row count used by HGrid keyboard navigation.
+  /// Written by HorizontalAlbumGridView when debounced canvasHeight changes.
+  @ObservationIgnored var hGridFrozenRowCount: Int = 0
+
+  /// Phase 165: Frozen column count used by VGrid keyboard navigation.
+  /// Written by VerticalAlbumGridView when debounced canvasWidth changes.
+  @ObservationIgnored var vGridFrozenColumnCount: Int = 0
+
   // MARK: - Phase 98: Intel Mac Performance Mode
 
   /// Phase 98: Whether to use safeAreaInset-based expansion (Intel Mac performance mode).
@@ -93,7 +101,10 @@ final class AlbumGridViewModel {
 
   // MARK: - Dedicated Properties (Computed)
 
-  var gridColumnCount: Int {
+  var vGridColumnCount: Int {
+    if vGridFrozenColumnCount > 0 {
+      return vGridFrozenColumnCount
+    }
     guard let mainVM else { return 1 }
     let width = mainVM.screenVM.mainColumnCanvasSizeObserved.width
     return max(1, Int((width - gridSpacing) / (minItemWidth + gridSpacing)))
@@ -101,19 +112,22 @@ final class AlbumGridViewModel {
 
   /// Number of albums to scroll per page (PgUp/PgDown).
   /// Estimates visible rows based on screen height and item dimensions.
-  var gridPageSize: Int {
+  var vGridPageSize: Int {
     guard let mainVM else { return 10 }
     let canvasHeight = mainVM.screenVM.mainColumnCanvasSizeObserved.height
     // Approximate item height: scaled artwork (160 * 0.92) + text area (~50) + padding
     let approximateRowHeight: CGFloat = 160 + 50 + gridSpacing
     let visibleRows = max(1, Int((canvasHeight - 100) / approximateRowHeight)) // 100 for player controls
-    return visibleRows * gridColumnCount
+    return visibleRows * vGridColumnCount
   }
 
   // MARK: - Phase 146: HGrid Computed Properties
 
   /// Number of rows in horizontal grid mode.
   var hGridRowCount: Int {
+    if hGridFrozenRowCount > 0 {
+      return hGridFrozenRowCount
+    }
     let effectiveHeight: CGFloat
     if hGridMeasuredHeight > 0 {
       effectiveHeight = hGridMeasuredHeight
@@ -646,9 +660,9 @@ final class AlbumGridViewModel {
       case .leftArrow:
         newIdx = max(idx - 1, 0)
       case .downArrow:
-        newIdx = min(idx + gridColumnCount, albums.count - 1)
+        newIdx = min(idx + vGridColumnCount, albums.count - 1)
       case .upArrow:
-        newIdx = max(idx - gridColumnCount, 0)
+        newIdx = max(idx - vGridColumnCount, 0)
       default:
         break handleArrowKey
       }
@@ -699,7 +713,7 @@ final class AlbumGridViewModel {
 
     handlePageKey: if press.isPageKey {
       let isShift = press.modifiers.contains(.shift)
-      let pageDelta = gridPageSize
+      let pageDelta = vGridPageSize
       guard pageDelta > 0 else { break handlePageKey }
 
       let referenceID: UUID? = albumSelectionCursorID ?? highlightedAlbumIDs.first
@@ -1034,7 +1048,7 @@ final class AlbumGridViewModel {
   }
 
   /// Phase 149: Handle all four arrow directions for the VGrid model:
-  /// Left/Right = ±1 (same row), Up/Down = ±gridColumnCount (cross rows).
+  /// Left/Right = ±1 (same row), Up/Down = ±vGridColumnCount (cross rows).
   private func navigateAlbumFromExpanded(
     _ press: KeyPress, albums: [Album]
   )
@@ -1051,9 +1065,9 @@ final class AlbumGridViewModel {
     case .leftArrow:
       newIdx = max(idx - 1, 0)
     case .downArrow:
-      newIdx = min(idx + gridColumnCount, albums.count - 1)
+      newIdx = min(idx + vGridColumnCount, albums.count - 1)
     case .upArrow:
-      newIdx = max(idx - gridColumnCount, 0)
+      newIdx = max(idx - vGridColumnCount, 0)
     default:
       return .ignored
     }
