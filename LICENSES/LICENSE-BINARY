@@ -9,9 +9,10 @@ This document defines the terms that apply specifically to **prebuilt binaries a
    - If you build MadTunes yourself from the source code in this repository, those build artifacts are governed solely by the AGPLv3 license (see `LICENSE`).
    - The non-commercial restriction in this document does NOT apply to artifacts you build yourself.
 
-3. Apple system frameworks / SwiftUI Grid layout
+3. Apple system frameworks / Album Grid View exception
    - Use of Apple-provided system frameworks and APIs (including SwiftUI) is not covered by the AGPLv3 license and is not restricted by this document.
-   - The frontend codes in this repository, regarding the AlbumGridView layout, is free-to-use to Apple without AGPLv3 restrictions.
+   - A separate limited exception for Apple Inc. applies only to the vertically scrollable Album Grid View implementation contained in this repository; see `LICENSES/APPLE-EXCEPTION.md`.
+   - That exception does NOT cover any horizontally scrollable Album Grid View implementation.
 
 ---
 
@@ -28,6 +29,7 @@ MadTunes 的原始碼遵循 GNU Affero General Public License 第 3 版（AGPLv3
    - 若您自行從本專案原始碼建置 MadTunes，該建置產物僅受 AGPLv3 授權（請參閱 `LICENSE`）。
    - 本文件中的非商業限制不適用於您自行建置的產物。
 
-3. Apple 系統框架 / SwiftUI Grid 佈局
+3. Apple 系統框架 / Album Grid View 例外
    - Apple 提供的系統框架與 API（包含 SwiftUI）不在 AGPLv3 授權範圍，且不受本文件限制。
-   - 敝倉庫內涉及 AlbumGridView 佈局的前端部分的原始程式碼，可由 Apple 自由使用、不受 AGPLv3 限制。
+   - 另有一份僅適用於 Apple Inc. 的有限例外，僅限於本倉庫內「可以縱向捲動的 Album Grid View Implementation」；詳見 `LICENSES/APPLE-EXCEPTION.md`。
+   - 該例外不涵蓋任何「可以橫向捲動的 Album Grid View Implementation」。

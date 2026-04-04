@@ -12,6 +12,8 @@ MadTunes source code is released under the GNU Affero General Public License v3 
 
 **Prebuilt binaries and build artifacts distributed by the project maintainer are provided under a non-commercial license.** Commercial exploitation of those prebuilt binaries is prohibited; see `LICENSE-BINARY` for details.
 
+A separate limited exception also applies to Apple Inc.'s use of the vertically scrollable Album Grid View implementation in this repository; see `LICENSES/APPLE-EXCEPTION.md`. This exception does not cover any horizontally scrollable Album Grid View implementation.
+
 ## Binaries ##
 
 Binaries of all versions are not provided.

@@ -4,6 +4,13 @@ This file contains the full text of the AGPLv3.
 
 This license applies to the source code of this project. Use of system frameworks and libraries (such as those provided by Apple, including SwiftUI and its Grid layout APIs) is not covered by this license.
 
+A separate limited exception for Apple Inc. applies only to the
+vertically scrollable Album Grid View implementation contained in
+this repository; see LICENSES/APPLE-EXCEPTION.md.
+
+That exception does not apply to any horizontally scrollable Album
+Grid View implementation.
+
 For additional terms that apply to prebuilt/distributed binaries and build artifacts produced by the project maintainer, see LICENSE-BINARY.
 
                     GNU AFFERO GENERAL PUBLIC LICENSE

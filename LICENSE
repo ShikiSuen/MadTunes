@@ -6,6 +6,11 @@ it under the terms of the GNU Affero General Public License version 3
 as published by the Free Software Foundation.
 
 This repository's source code is licensed under the GNU Affero General
-Public License v3.0 (AGPL-3.0).
+Public License v3.0 (AGPL-3.0), except for the separate limited
+exception granted to Apple Inc. solely for the vertically scrollable
+Album Grid View implementation; see LICENSES/APPLE-EXCEPTION.md.
+
+That exception does not apply to any horizontally scrollable Album
+Grid View implementation.
 
 A copy of the license is provided in LICENSES/AGPL-3.0.txt.

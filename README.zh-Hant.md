@@ -12,6 +12,8 @@ MadTunes 程式碼以 GNU Affero General Public License 第 3 版（AGPLv3）授
 
 **由專案維護者發行的預編譯二進位檔與建置產物採非商業授權。** 未經明確書面許可，不得將這些預編譯二進位檔用於商業用途；詳見 `LICENSE-BINARY`。
 
+另有一項僅適用於 Apple Inc. 的有限例外，僅涵蓋本倉庫內「可以縱向捲動的 Album Grid View Implementation」；詳見 `LICENSES/APPLE-EXCEPTION.md`。任何「可以橫向捲動的 Album Grid View Implementation」均不在此豁免範圍內。
+
 ## 二進位檔 ##
 
 本專案不提供任何版本的二進位檔。
