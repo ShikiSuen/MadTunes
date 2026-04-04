@@ -7,8 +7,14 @@ import SwiftUI
 struct ReusableAlbumExpansionBackground: View {
   // MARK: Lifecycle
 
-  init(album: Album) {
+  init(album: Album?) {
     self.album = album
+    self.artworkData = nil
+  }
+
+  init(artworkData: Image?) {
+    self.artworkData = artworkData
+    self.album = nil
   }
 
   // MARK: Internal
@@ -24,10 +30,18 @@ struct ReusableAlbumExpansionBackground: View {
       endPoint: .bottom
     )
     .background {
-      LazyAlbumArtworkView(album: album)
-        .aspectRatio(contentMode: .fill)
-        .blur(radius: 24 * ThisDevice.uiFactor)
-        .opacity(0.15)
+      Group {
+        if let album {
+          LazyAlbumArtworkView(album: album)
+        } else if let artworkData {
+          ArtworkView(image: artworkData)
+        } else {
+          Gradient.colorMeshGradient
+        }
+      }
+      .aspectRatio(contentMode: .fill)
+      .blur(radius: 24 * ThisDevice.uiFactor)
+      .opacity(0.15)
     }
     .clipped()
   }
@@ -36,5 +50,6 @@ struct ReusableAlbumExpansionBackground: View {
 
   @Environment(\.colorScheme) private var colorScheme
 
-  private let album: Album
+  private let album: Album?
+  private let artworkData: Image?
 }
