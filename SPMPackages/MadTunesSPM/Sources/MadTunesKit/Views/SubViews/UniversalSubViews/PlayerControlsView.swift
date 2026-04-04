@@ -86,6 +86,7 @@ struct PlayerControlsView: View {
           ZStack {
             Color.gray
             Color.secondary.colorInvert()
+            vm.currentTrackDominantColor
           }
         }
         .frame(width: artWorkViewHeight, height: artWorkViewHeight)
