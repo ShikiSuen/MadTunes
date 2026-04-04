@@ -16,20 +16,29 @@ struct WPMainView: View {
       ZStack(alignment: .bottom) {
         // Phase 77: Panorama hub background — MeshGradient replaces plain black,
         // visible through all transparent sections including NowPlaying.
-        Gradient.colorMeshGradient
-          .overlay {
-            LinearGradient(
-              colors: [
-                .black,
-                .black.opacity(0.2),
-                .black.opacity(0),
-              ],
-              startPoint: .top,
-              endPoint: .bottom
-            )
-            .blendMode(.darken)
+        Group {
+          if let dominantColor = vm.currentTrackDominantColor {
+            dominantColor.brightness(-0.15)
+              .overlay {
+                ReusableAlbumExpansionBackground(artworkData: vm.currentTrackArtworkData)
+              }
+          } else {
+            Gradient.colorMeshGradient
+              .overlay {
+                LinearGradient(
+                  colors: [
+                    .black,
+                    .black.opacity(0.2),
+                    .black.opacity(0),
+                  ],
+                  startPoint: .top,
+                  endPoint: .bottom
+                )
+                .blendMode(.darken)
+              }
           }
-          .ignoresSafeArea()
+        }
+        .ignoresSafeArea()
 
         VStack(spacing: 0) {
           // Phase 75: Global title with parallax hint.
