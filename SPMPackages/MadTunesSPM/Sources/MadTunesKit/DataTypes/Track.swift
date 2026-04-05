@@ -102,6 +102,15 @@ extension Track: Transferable {
 }
 
 extension Array where Element == Track {
+  /// Album-local ordering: Disc → Track# → Title.
+  /// Usable outside `Album.init` when callers need album-order without constructing an Album.
+  func sortedForAlbumContents() -> [Track] {
+    sorted {
+      ($0.discNumber, $0.trackNumber, $0.title)
+        < ($1.discNumber, $1.trackNumber, $1.title)
+    }
+  }
+
   /// 多執行緒就地排序。
   /// - Parameter parallel: 是否啟用多執行緒（預設 true）。數據量 < 10,000 時自動回退單執行緒。
   /// - Returns: 排序後的自身（Fluent interface）

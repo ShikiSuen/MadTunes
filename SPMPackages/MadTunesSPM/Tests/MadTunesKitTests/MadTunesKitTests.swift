@@ -8,7 +8,7 @@ import Testing
 
 // MARK: - Test Helpers
 
-private let dummyURL = URL(fileURLWithPath: "/tmp/test.mp3")
+private let dummyURL = URL(fileURLWithPath: "tmp/test.mp3")
 
 private func makeTrack(
   title: String = "Song",
@@ -60,6 +60,16 @@ struct AlbumTests {
     let album = Album(title: "Test", artist: "Artist", tracks: [d2t1, d1t2, d1t1])
 
     #expect(album.tracks.map(\.title) == ["D1T1", "D1T2", "D2T1"])
+  }
+
+  @Test("sortedForAlbumContents matches Album.init ordering")
+  func sortedForAlbumContentsMatchesInit() {
+    let d2t1 = makeTrack(title: "D2T1", trackNumber: 1, discNumber: 2)
+    let d1t2 = makeTrack(title: "D1T2", trackNumber: 2, discNumber: 1)
+    let d1t1 = makeTrack(title: "D1T1", trackNumber: 1, discNumber: 1)
+
+    let sorted = [d2t1, d1t2, d1t1].sortedForAlbumContents()
+    #expect(sorted.map(\.title) == ["D1T1", "D1T2", "D2T1"])
   }
 
   @Test("Album.totalDuration sums track durations")
@@ -764,6 +774,102 @@ struct Phase135RegressionTests {
       sourceFolderPlaylistIDSet: [UUID()]
     )
     #expect(boundDynamic.icon4SFSymbols() == "folder.fill.badge.gearshape")
+  }
+
+  @Test("importTracksFromFolderPlaylist re-sorts library and rebuilds albums")
+  func importTracksFromFolderPlaylistRebuildsAlbums() async {
+    let library = MusicLibrary()
+    let testURLs = [
+      URL(fileURLWithPath: "tmp/phase166-existing.mp3"),
+      URL(fileURLWithPath: "tmp/phase166-d2t1.mp3"),
+      URL(fileURLWithPath: "tmp/phase166-d1t2.mp3"),
+      URL(fileURLWithPath: "tmp/phase166-d1t1.mp3"),
+    ]
+    for url in testURLs {
+      FileManager.default.createFile(atPath: url.path, contents: Data())
+    }
+    defer {
+      for url in testURLs {
+        try? FileManager.default.removeItem(at: url)
+      }
+    }
+
+    let existing = Track(
+      fileURL: testURLs[0],
+      title: "Existing",
+      artist: "Zulu",
+      albumTitle: "Zulu Album",
+      albumArtist: "Zulu",
+      trackNumber: 1,
+      discNumber: 1,
+      duration: 180,
+      genre: "Rock",
+      year: 2024
+    )
+    library.tracks = [existing]
+    library.playlists[0].trackIDs = [existing.id]
+
+    let folderPlaylist = Playlist(name: "Folder", kind: .folderList)
+    library.playlists.append(folderPlaylist)
+
+    let d2t1 = Track(
+      fileURL: testURLs[1],
+      title: "D2T1",
+      artist: "Band",
+      albumTitle: "Canon",
+      albumArtist: "Band",
+      trackNumber: 1,
+      discNumber: 2,
+      duration: 180,
+      genre: "Rock",
+      year: 2024
+    )
+    let d1t2 = Track(
+      fileURL: testURLs[2],
+      title: "D1T2",
+      artist: "Band",
+      albumTitle: "Canon",
+      albumArtist: "Band",
+      trackNumber: 2,
+      discNumber: 1,
+      duration: 180,
+      genre: "Rock",
+      year: 2024
+    )
+    let d1t1 = Track(
+      fileURL: testURLs[3],
+      title: "D1T1",
+      artist: "Band",
+      albumTitle: "Canon",
+      albumArtist: "Band",
+      trackNumber: 1,
+      discNumber: 1,
+      duration: 180,
+      genre: "Rock",
+      year: 2024
+    )
+    library.folderPlaylistTracks[folderPlaylist.id] = [d2t1, d1t2, d1t1]
+
+    library.addPlaylist(name: "Imported")
+    guard let targetPlaylist = library.playlists.last else {
+      Issue.record("Failed to create import target playlist")
+      return
+    }
+
+    await library.importTracksFromFolderPlaylist(
+      trackIDs: [d2t1.id, d1t2.id, d1t1.id],
+      fromFolderPlaylist: folderPlaylist.id,
+      toStaticPlaylist: targetPlaylist.id
+    )
+
+    // Library tracks must be in canonical order after import.
+    #expect(library.tracks.map(\.title) == ["D1T1", "D1T2", "D2T1", "Existing"])
+    // All Music trackIDs must be synced.
+    #expect(library.playlists[0].trackIDs == library.tracks.map(\.id))
+    // Albums must be rebuilt with correct track order.
+    let importedAlbum = library.albums.first(where: { $0.title == "Canon" && $0.artist == "Band" })
+    #expect(importedAlbum != nil)
+    #expect(importedAlbum?.tracks.map(\.title) == ["D1T1", "D1T2", "D2T1"])
   }
 }
 

@@ -658,6 +658,7 @@ public final class MusicLibrary {
 
     var importedTrackIDs: [UUID] = []
     let existingURLs = Set(tracks.map(\.fileURL))
+    var appendedNewTracksToLibrary = false
 
     for track in tracksToImport {
       if existingURLs.contains(track.fileURL) {
@@ -671,15 +672,29 @@ public final class MusicLibrary {
         importedTrack.bookmarkData = Self.createBookmark(for: track.fileURL)
         tracks.append(importedTrack)
         importedTrackIDs.append(importedTrack.id)
+        appendedNewTracksToLibrary = true
       }
     }
 
-    if !playlists.isEmpty {
-      playlists[0].trackIDs = tracks.map(\.id)
+    if appendedNewTracksToLibrary {
+      // Phase 166: Re-sort library tracks into canonical order and rebuild
+      // albums / All Music after materializing new tracks from a folder playlist.
+      var updatedTracks = tracks
+      updatedTracks = await updatedTracks.selfSortByDefault()
+      tracks = updatedTracks
+      if !playlists.isEmpty {
+        playlists[0].trackIDs = tracks.map(\.id)
+      }
+      organizeAlbums()
+      evaluateAllDynamicPlaylists()
     }
 
     addTracks(Set(importedTrackIDs), toPlaylist: targetPlaylistID)
-    persistAllTracks()
+
+    if appendedNewTracksToLibrary {
+      persistAllTracks()
+      persistAllPlaylists()
+    }
   }
 
   /// Phase 129: Remove a folder playlist and its cached data.

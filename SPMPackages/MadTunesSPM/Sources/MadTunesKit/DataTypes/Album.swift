@@ -19,11 +19,7 @@ public struct Album: Identifiable, Sendable {
     self.title = title
     self.artist = artist
     /// Tracks pre-sorted by (disc, track#, title). Computed once at init.
-    /// Claude Opus thinks that it is still necessary to sort here.
-    self.tracks = tracks.sorted {
-      ($0.discNumber, $0.trackNumber, $0.title)
-        < ($1.discNumber, $1.trackNumber, $1.title)
-    }
+    self.tracks = tracks.sortedForAlbumContents()
     self.allTrackIDsSet = .init(tracks.map(\.id))
     // Phase 111: Cache year at init time to avoid O(n) per-comparison during sorting.
     self.year = self.tracks.compactMap(\.year).min()
