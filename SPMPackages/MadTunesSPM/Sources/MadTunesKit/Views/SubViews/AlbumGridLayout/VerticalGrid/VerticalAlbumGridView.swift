@@ -189,7 +189,7 @@ extension AlbumVGrid {
           .onChange(of: gridVM.expandedAlbumID) { _, newValue in
             respondToExpandedAlbumIDChanges(id: newValue, proxy: proxy)
           }
-          .onAppear {
+          .task {
             syncFrozenColumnCount(computedColumnCount)
             respondToExpandedAlbumIDChanges(proxy: proxy)
           }
@@ -208,17 +208,24 @@ extension AlbumVGrid {
             guard let albumID = newValue else { return }
             gridVM.scrollToAlbumID = nil
             let allAlbums = gridVM.currentAlbumsDisplayed
-            if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
-              gridVM.scheduleDisplayedAlbumsUpdate(to: allAlbums, ensureVisibleAlbumID: albumID)
-            }
-            let rows = allAlbums.chunked(into: frozenColumnCount)
-            guard let rowIndex = rows.firstIndex(
-              where: { $0.contains { $0.id == albumID } }
-            ) else { return }
-            gridVM.proxyScrollDebouncer.debounceOnMain {
+
+            @MainActor
+            func trailingTask() {
+              let rows = allAlbums.chunked(into: frozenColumnCount)
+              guard let rowIndex = rows.firstIndex(
+                where: { $0.contains { $0.id == albumID } }
+              ) else { return }
               withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
                 proxy.scrollTo(rowIndex, anchor: gridVM.legacyHardwareMode ? .bottom : .center)
               }
+            }
+
+            if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
+              gridVM.scheduleDisplayedAlbumsUpdate(to: allAlbums, ensureVisibleAlbumID: albumID) {
+                trailingTask()
+              }
+            } else {
+              trailingTask()
             }
           }
         }
@@ -501,9 +508,8 @@ extension AlbumVGrid {
       gridVM.scheduleDisplayedAlbumsUpdate(
         to: gridVM.currentAlbumsDisplayed,
         ensureVisibleAlbumID: newValue
-      )
-      guard !gridVM.legacyHardwareMode else { return }
-      gridVM.proxyScrollDebouncer.debounceOnMain {
+      ) {
+        guard !gridVM.legacyHardwareMode else { return }
         withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
           proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
         }

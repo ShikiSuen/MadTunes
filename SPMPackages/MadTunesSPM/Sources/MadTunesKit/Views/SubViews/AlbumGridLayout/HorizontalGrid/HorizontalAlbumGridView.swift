@@ -237,24 +237,31 @@ extension AlbumHGrid {
         .onChange(of: gridVM.expandedAlbumID) { _, newValue in
           respondToExpandedAlbumIDChanges(id: newValue, proxy: proxy)
         }
-        .onAppear {
+        .task {
           respondToExpandedAlbumIDChanges(proxy: proxy)
         }
         .onChange(of: gridVM.scrollToAlbumID) { _, newValue in
           guard let albumID = newValue else { return }
           gridVM.scrollToAlbumID = nil
           let allAlbums = gridVM.currentAlbumsDisplayed
-          if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
-            gridVM.scheduleDisplayedAlbumsUpdate(to: allAlbums, ensureVisibleAlbumID: albumID)
-          }
-          let columns = allAlbums.chunked(into: rowCount)
-          guard let colIndex = columns.firstIndex(
-            where: { $0.contains { $0.id == albumID } }
-          ) else { return }
-          gridVM.proxyScrollDebouncer.debounceOnMain {
+
+          @MainActor
+          func trailingTask() {
+            let columns = allAlbums.chunked(into: rowCount)
+            guard let colIndex = columns.firstIndex(
+              where: { $0.contains { $0.id == albumID } }
+            ) else { return }
             withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
               proxy.scrollTo(colIndex, anchor: .center)
             }
+          }
+
+          if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
+            gridVM.scheduleDisplayedAlbumsUpdate(to: allAlbums, ensureVisibleAlbumID: albumID) {
+              trailingTask()
+            }
+          } else {
+            trailingTask()
           }
         }
       }
@@ -451,8 +458,7 @@ extension AlbumHGrid {
       gridVM.scheduleDisplayedAlbumsUpdate(
         to: gridVM.currentAlbumsDisplayed,
         ensureVisibleAlbumID: newValue
-      )
-      gridVM.proxyScrollDebouncer.debounceOnMain {
+      ) {
         withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
           // 使用者電腦顯示器往往都是寬的，所以這裡需要 anchor: .center 便於接下來的操作。
           proxy.scrollTo("expanded_\(newValue)", anchor: .center)

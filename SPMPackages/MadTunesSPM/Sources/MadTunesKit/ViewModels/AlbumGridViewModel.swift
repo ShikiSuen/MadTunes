@@ -229,9 +229,18 @@ final class AlbumGridViewModel {
 
   /// Coalesced/batched update (Phase 56). Progressively appends albums
   /// in batches to keep the grid responsive during large imports.
-  func scheduleDisplayedAlbumsUpdate(to newAlbums: [Album], ensureVisibleAlbumID: UUID? = nil) {
+  func scheduleDisplayedAlbumsUpdate(
+    to newAlbums: [Album],
+    ensureVisibleAlbumID: UUID? = nil,
+    extraTask: (() -> Void)? = nil
+  ) {
     displayedAlbumsUpdateTask?.cancel()
     displayedAlbumsUpdateTask = Task { @MainActor in
+      defer {
+        if !Task.isCancelled {
+          extraTask?()
+        }
+      }
       let batchSize = 30
       let largeUpdateThreshold = 2_000
 
