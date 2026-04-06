@@ -167,15 +167,21 @@ extension AlbumHGrid {
       gridVM.selectionRect
     }
 
+    private var proposedContentHeight: CGFloat {
+      CGFloat(rowCount - 1) * spacing + CGFloat(rowCount) * itemHeight
+    }
+
     // MARK: - Content Views
 
     @ViewBuilder private var mainContent: some View {
+      let proposedContentHeight = proposedContentHeight
       ScrollViewReader { proxy in
         ScrollView(.horizontal) {
           let columns = gridVM.displayedAlbums.chunked(into: rowCount)
           LazyHStack(alignment: .top, spacing: spacing - 6 * vm.uiFactor) {
             ForEach(Array(columns.enumerated()), id: \.offset) { colIdx, column in
               albumColumn(column, rowCount: rowCount)
+                .frame(height: proposedContentHeight)
                 .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
                 .drawingGroup()
                 .id(colIdx)
@@ -190,7 +196,8 @@ extension AlbumHGrid {
                 )
                 // Phase 147: Explicit height so the inner vertical ScrollView can function
                 // inside the outer horizontal LazyHStack.
-                .frame(maxHeight: .infinity)
+                .frame(height: proposedContentHeight)
+                .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
                 .id("expanded_\(expandedAlbum.id)")
                 .onAppear { gridVM.expandedAlbumWasInView = true }
                 .onDisappear { gridVM.expandedAlbumWasInView = false }
@@ -421,9 +428,6 @@ extension AlbumHGrid {
             albumContextMenu(for: album)
           }
         }
-        // Phase 148: Single spacer absorbs remaining vertical space
-        // so partial columns stay top-aligned.
-        Spacer(minLength: 0)
       }
     }
 

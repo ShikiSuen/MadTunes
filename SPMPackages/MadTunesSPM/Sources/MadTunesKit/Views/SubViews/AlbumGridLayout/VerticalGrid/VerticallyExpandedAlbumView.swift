@@ -110,7 +110,7 @@ extension AlbumVGrid {
       // Phase 111: Write frame directly to ViewModel instead of
       // ExpandedAlbumFramePreferenceKey to avoid preference propagation overhead.
       .onGeometryChange(for: CGRect.self) { geo in
-        geo.frame(in: .named("albumGrid"))
+        geo.frame(in: .named("albumVGrid"))
       } action: { frame in
         vm.gridVM.expandedAlbumFrame = frame
       }

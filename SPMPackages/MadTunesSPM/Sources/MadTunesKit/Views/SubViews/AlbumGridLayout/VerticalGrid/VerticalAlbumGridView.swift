@@ -38,7 +38,7 @@ extension AlbumVGrid {
                   onClose: { gridVM.expandedAlbumID = nil }
                 )
                 .drawingGroup()
-                .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
+                .id(id)
                 .onAppear {
                   gridVM.expandedAlbumWasInView = true
                 }
@@ -134,13 +134,17 @@ extension AlbumVGrid {
     @State private var vm: MadTunesViewModel = .shared
     @State private var screenVM: ScreenVM = .shared
 
-    /// Phase 165: Frozen column count — only updates when debounced canvasWidth changes,
+    /// Phase 165: Frozen column count — only updates when debounced scrollViewInnerCanvasWidth changes,
     /// preventing column count jitter from scrollbar appearance/disappearance.
     @State private var frozenColumnCount: Int = 1
 
-    private var spacing: CGFloat { 16 * vm.uiFactor }
+    private let scrollBarWidth: CGFloat = OS.type == .macOS
+      ? (15 * ThisDevice.uiFactor)
+      : 0
 
-    private var minItemWidth: CGFloat { 160 * vm.uiFactor }
+    private let spacing: CGFloat = 16 * ThisDevice.uiFactor
+
+    private let minItemWidth: CGFloat = 160 * ThisDevice.uiFactor
 
     private var albums: [Album] {
       // Phase 111: Use cached display buffer instead of recomputing
@@ -156,13 +160,17 @@ extension AlbumVGrid {
     // Phase 60: Sub-ViewModel reference.
     private var gridVM: AlbumGridViewModel { vm.gridVM }
 
+    private var scrollViewInnerCanvasWidth: CGFloat {
+      screenVM.mainColumnCanvasSizeObserved.width - scrollBarWidth
+    }
+
     private var canvasWidth: CGFloat {
       screenVM.mainColumnCanvasSizeObserved.width
     }
 
     /// Raw computed column count — use `frozenColumnCount` in layout instead.
     private var computedColumnCount: Int {
-      max(1, Int((canvasWidth - spacing) / (minItemWidth + spacing)))
+      max(1, Int((scrollViewInnerCanvasWidth - spacing) / (minItemWidth + spacing)))
     }
 
     /// Whether rubber-band drag selection is allowed (no expanded album).
@@ -175,6 +183,17 @@ extension AlbumVGrid {
       gridVM.selectionRect
     }
 
+    /// Phase 150: Dynamic item width based on actual inner scroll content height.
+    /// When macOS scrollbar is visible, inner content height shrinks; itemWidth
+    /// shrinks accordingly so the artwork aspect ratio stays correct.
+    private var itemWidth: CGFloat {
+      let paddings = 2 * spacing
+      let gaps = CGFloat(frozenColumnCount - 1) * spacing
+      let innerContentWidth = scrollViewInnerCanvasWidth - paddings - gaps
+      let perItemSlot = innerContentWidth / CGFloat(max(1, frozenColumnCount))
+      return max(minItemWidth, perItemSlot)
+    }
+
     // MARK: - Content Views
 
     @ViewBuilder private var mainContent: some View {
@@ -183,8 +202,11 @@ extension AlbumVGrid {
           let rows = gridVM.displayedAlbums.chunked(into: frozenColumnCount)
           ScrollView {
             gridScrollContent(rows: rows, viewportHeight: viewport.size.height)
+              .frame(width: scrollViewInnerCanvasWidth, alignment: .topLeading)
+              .frame(maxWidth: .infinity, alignment: .topLeading)
           }
-          .animation(.none, value: canvasWidth)
+          .scrollIndicators(.visible)
+          .animation(.none, value: scrollViewInnerCanvasWidth)
           .scrollContentBackground(.hidden)
           .onChange(of: gridVM.expandedAlbumID) { _, newValue in
             respondToExpandedAlbumIDChanges(id: newValue, proxy: proxy)
@@ -193,7 +215,7 @@ extension AlbumVGrid {
             syncFrozenColumnCount(computedColumnCount)
             respondToExpandedAlbumIDChanges(proxy: proxy)
           }
-          .onChange(of: canvasWidth) { oldWidth, newWidth in
+          .onChange(of: scrollViewInnerCanvasWidth) { oldWidth, newWidth in
             syncFrozenColumnCount(computedColumnCount)
             guard oldWidth != newWidth, let expandedID = gridVM.expandedAlbumID else { return }
             let wasVisible = gridVM.expandedAlbumWasInView
@@ -218,7 +240,7 @@ extension AlbumVGrid {
               withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
                 let isAlbumGridItemVisible = gridVM.albumFrames[albumID] != nil
                 if isAlbumGridItemVisible, let newValue, gridVM.expandedAlbumID == albumID, !gridVM.legacyHardwareMode {
-                  proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
+                  proxy.scrollTo("\(newValue)_\(Int(scrollViewInnerCanvasWidth))")
                 } else {
                   proxy.scrollTo(rowIndex, anchor: gridVM.legacyHardwareMode ? .bottom : .center)
                 }
@@ -233,6 +255,17 @@ extension AlbumVGrid {
               trailingTask()
             }
           }
+        }
+      }
+      .frame(width: canvasWidth, alignment: .topLeading)
+      .frame(maxWidth: .infinity, alignment: .topLeading)
+      .background(alignment: .trailing) {
+        if scrollBarWidth > 0 {
+          // 始終顯示捲動調的佔位符，以保證視覺平衡。
+          Color.primary.colorInvert().brightness(-0.4).opacity(0.3)
+            .frame(width: scrollBarWidth)
+            .clipShape(.capsule)
+            .padding(1)
         }
       }
     }
@@ -260,7 +293,7 @@ extension AlbumVGrid {
       Color.clear
         .contentShape(Rectangle())
         .gesture(
-          DragGesture(minimumDistance: 0, coordinateSpace: .named("albumGrid"))
+          DragGesture(minimumDistance: 0, coordinateSpace: .named("albumVGrid"))
             .onEnded { value in
               // only treat as a tap if the user didn't actually drag
               let dx = abs(value.translation.width)
@@ -285,7 +318,7 @@ extension AlbumVGrid {
         Color.clear
           .contentShape(Rectangle())
           .gesture(
-            DragGesture(minimumDistance: 4, coordinateSpace: .named("albumGrid"))
+            DragGesture(minimumDistance: 4, coordinateSpace: .named("albumVGrid"))
               .onChanged { value in
                 if gridVM.dragOrigin == nil {
                   gridVM.dragOrigin = value.startLocation
@@ -329,6 +362,7 @@ extension AlbumVGrid {
         ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
           albumRow(row, columnCount: frozenColumnCount)
             .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
+            .frame(width: scrollViewInnerCanvasWidth, alignment: .topLeading)
             .drawingGroup()
 
           // Expanded detail for the expanded album (if it belongs to this row).
@@ -338,12 +372,13 @@ extension AlbumVGrid {
               album: expandedAlbum,
               showBackground: true,
               currentTrackID: currentTrackID,
-              containerWidth: canvasWidth,
+              containerWidth: scrollViewInnerCanvasWidth,
               selectedTrackIDs: Bindable(vm).selectedTrackIDs,
               onClose: { gridVM.expandedAlbumID = nil }
             )
+            .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
             .drawingGroup()
-            .id("\(expandedAlbum.id)_\(Int(canvasWidth))")
+            .id("\(expandedAlbum.id)_\(Int(scrollViewInnerCanvasWidth))")
             .onAppear { gridVM.expandedAlbumWasInView = true }
             .onDisappear { gridVM.expandedAlbumWasInView = false }
             .shadow(
@@ -355,10 +390,9 @@ extension AlbumVGrid {
       }
       // Phase 131: Ensure content fills viewport so bottom blank area
       // remains inside albumGrid coordinate space for rubber-band selection.
-      .padding(spacing)
-      .frame(width: max(canvasWidth, 0), alignment: .topLeading)
+      .padding(max(0, spacing - 6 * vm.uiFactor))
       .frame(minHeight: max(viewportHeight, 0), alignment: .topLeading)
-      .coordinateSpace(name: "albumGrid")
+      .coordinateSpace(name: "albumVGrid")
       .onPreferenceChange(AlbumFramePreferenceKey.self) { frames in
         gridVM.albumFrames = frames
       }
@@ -393,12 +427,12 @@ extension AlbumVGrid {
             isMultipleSelection: isMultiSelection,
             legacyHardwareMode: gridVM.legacyHardwareMode
           )
-          .frame(maxWidth: .infinity, alignment: .topLeading)
+          .frame(width: Swift.max(0, itemWidth))
           .background(
             GeometryReader { geo in
               Color.clear.preference(
                 key: AlbumFramePreferenceKey.self,
-                value: [album.id: geo.frame(in: .named("albumGrid"))]
+                value: [album.id: geo.frame(in: .named("albumVGrid"))]
               )
             }
           )
@@ -447,16 +481,6 @@ extension AlbumVGrid {
           )
           .contextMenu {
             albumContextMenu(for: album)
-          }
-        }
-        // Invisible spacers to keep alignment when the row is not full.
-        // Defensive: ensure spacerCount is never negative (edge case: columnCount may change during resize).
-        let spacerCount = max(0, columnCount - row.count)
-        if spacerCount > 0 {
-          ForEach(0 ..< spacerCount, id: \.self) { _ in
-            Color.clear
-              .frame(maxWidth: .infinity)
-              .aspectRatio(1, contentMode: .fit)
           }
         }
       }
@@ -516,7 +540,7 @@ extension AlbumVGrid {
       ) {
         guard !gridVM.legacyHardwareMode else { return }
         withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-          proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
+          proxy.scrollTo("\(newValue)_\(Int(scrollViewInnerCanvasWidth))")
         }
       }
     }
