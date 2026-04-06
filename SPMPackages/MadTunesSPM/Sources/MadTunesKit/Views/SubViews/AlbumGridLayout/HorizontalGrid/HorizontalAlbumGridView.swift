@@ -252,7 +252,14 @@ extension AlbumHGrid {
               where: { $0.contains { $0.id == albumID } }
             ) else { return }
             withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-              proxy.scrollTo(colIndex, anchor: .center)
+              // 此處不用判定 AlbumGridItem 是否可見，因為一定可見。
+              // 為什麼一定可見呢？因為 ExpandedAlbumContent 的寬度是固定的。
+              if let newValue, gridVM.expandedAlbumID == albumID {
+                // 使用者電腦顯示器往往都是寬的，所以這裡需要 anchor: .center 便於接下來的操作。
+                proxy.scrollTo("expanded_\(newValue)", anchor: .center)
+              } else {
+                proxy.scrollTo(colIndex, anchor: .center)
+              }
             }
           }
 

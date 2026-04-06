@@ -216,7 +216,12 @@ extension AlbumVGrid {
                 where: { $0.contains { $0.id == albumID } }
               ) else { return }
               withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-                proxy.scrollTo(rowIndex, anchor: gridVM.legacyHardwareMode ? .bottom : .center)
+                let isAlbumGridItemVisible = gridVM.albumFrames[albumID] != nil
+                if isAlbumGridItemVisible, let newValue, gridVM.expandedAlbumID == albumID, !gridVM.legacyHardwareMode {
+                  proxy.scrollTo("\(newValue)_\(Int(canvasWidth))")
+                } else {
+                  proxy.scrollTo(rowIndex, anchor: gridVM.legacyHardwareMode ? .bottom : .center)
+                }
               }
             }
 
