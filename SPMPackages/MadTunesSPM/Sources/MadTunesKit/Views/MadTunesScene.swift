@@ -3,6 +3,7 @@
 // This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
 
 import SwiftUI
+import TipKit
 import UniformTypeIdentifiers
 
 // MARK: - MadTunesScene
@@ -21,6 +22,22 @@ public struct MadTunesScene: Scene {
     #if canImport(AppKit) && !targetEnvironment(macCatalyst)
     NSWindow.allowsAutomaticWindowTabbing = false
     #endif
+    if resetTipsOnNextStartup {
+      resetTipsOnNextStartup.toggle()
+      do {
+        try Tips.resetDatastore()
+      } catch {
+        print("[TIPS] \(error)")
+      }
+    }
+    do {
+      try Tips.configure([
+        .displayFrequency(.immediate),
+        .datastoreLocation(.applicationDefault),
+      ])
+    } catch {
+      print("[TIPS] \(error)")
+    }
   }
 
   // MARK: Public
@@ -31,6 +48,7 @@ public struct MadTunesScene: Scene {
         MainFileMenuCommands()
         MainControlMenuCommands()
         MainViewMenuCommands()
+        MainHelpMenuCommands()
       }
       .windowResizability(.contentSize)
   }
@@ -52,6 +70,8 @@ public struct MadTunesScene: Scene {
   // MARK: Private
 
   @State private var vm = MadTunesViewModel.shared
+
+  @AppStorage(wrappedValue: false, "MadTunes.resetTipsOnNextStartup") private var resetTipsOnNextStartup: Bool
 }
 
 // MARK: - MainSceneView

@@ -17,7 +17,14 @@ let package = Package(
   ],
   targets: [
     .target(
+      name: "MadTunesTips",
+      resources: [
+        .process("./Resources"),
+      ]
+    ),
+    .target(
       name: "MadTunesKit",
+      dependencies: ["MadTunesTips"],
       resources: [
         .process("./Resources"),
       ]
