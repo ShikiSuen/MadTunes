@@ -22,10 +22,11 @@ final class ModifierKeyMonitor {
   func setupKeyboardListener() {
     guard let keyboardInput = GCKeyboard.coalesced?.keyboardInput else { return }
 
-    // 通过监听具体按键的按下 (pressed) 和 抬起 (!pressed) 来手动更新状态
+    // GCPhysicalInputProfile.handlerQueue defaults to DispatchQueue.main,
+    // so keyChangedHandler already fires on the main thread.
+    // Use assumeIsolated to update state synchronously (no async hop).
     keyboardInput.keyChangedHandler = { _, _, keyCode, pressed in
-      // keyCode 是枚举，能避开符号可见性问题
-      Task.detached { @MainActor in
+      MainActor.assumeIsolated {
         ModifierKeyMonitor.shared.handleKeyChange(keyCode: keyCode, isPressed: pressed)
       }
     }
@@ -41,7 +42,7 @@ final class ModifierKeyMonitor {
       object: nil,
       queue: .main
     ) { _ in
-      Task.detached { @MainActor in
+      MainActor.assumeIsolated {
         ModifierKeyMonitor.shared.setupKeyboardListener()
       }
     }
@@ -53,8 +54,9 @@ final class ModifierKeyMonitor {
       object: nil,
       queue: .main
     ) { _ in
-      Task.detached { @MainActor in
+      MainActor.assumeIsolated {
         ModifierKeyMonitor.shared.currentModifiers = []
+        ModifierKeyMonitor.shared.shiftCount = 0
       }
     }
   }
