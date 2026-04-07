@@ -17,6 +17,8 @@ struct MainEntry {
 // MARK: - MadTunesApp
 
 struct MadTunesApp: App {
+  // MARK: Internal
+
   // Phase 71: UIKit app delegate to customize the File menu (remove system Open/Open Recent).
   #if canImport(UIKit)
   @UIApplicationDelegateAdaptor(MadTunesAppDelegate.self) var delegate
@@ -26,6 +28,10 @@ struct MadTunesApp: App {
   #endif
 
   var body: some Scene {
-    MadTunesScene()
+    mainScene
   }
+
+  // MARK: Private
+
+  private let mainScene = MadTunesScene()
 }
