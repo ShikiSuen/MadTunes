@@ -25,31 +25,6 @@ extension AlbumHGrid {
           .interactiveSpring(duration: 0.2).nerf(gridVM.legacyHardwareMode),
           value: gridVM.expandedAlbumID
         )
-        .onGeometryChange(for: CGFloat.self) {
-          $0.size.height
-        } action: { newHeight in
-          if measuredHeight != newHeight {
-            measuredHeight = newHeight
-          }
-          if frozenHeight == 0 {
-            frozenHeight = newHeight
-            gridVM.hGridFrozenRowCount = rowCount(for: newHeight)
-          }
-        }
-        // Phase 165: Freeze grid row count to debounced canvasHeight
-        // to prevent expensive redraws on every frame during live window resize.
-        .onChange(of: canvasHeight) { _, newHeight in
-          Task { @MainActor in
-            await Task.yield()
-            guard canvasHeight == newHeight else { return }
-            let nextHeight = measuredHeight > 0 ? measuredHeight : newHeight
-            frozenHeight = nextHeight
-            let nextContentHeight = scrollContentHeight > 0 ? scrollContentHeight : nextHeight
-            frozenScrollContentHeight = nextContentHeight
-            gridVM.hGridFrozenRowCount = rowCount(for: nextHeight)
-          }
-        }
-        .animation(.none, value: canvasHeight)
         .sheet(isPresented: Bindable(gridVM).isTrackInfoPresented) {
           trackInfoSheetContent
         }
@@ -88,49 +63,40 @@ extension AlbumHGrid {
     @State private var vm: MadTunesViewModel = .shared
     @State private var screenVM: ScreenVM = .shared
 
-    /// Phase 147: Measured available height (after SafeAreaInsets).
-    @State private var measuredHeight: CGFloat = 0
+    /// Phase 168: Frozen row count — only updates when debounced canvasHeight changes,
+    /// preventing row count jitter from scrollbar appearance/disappearance.
+    @State private var frozenRowCount: Int = 1
 
-    /// Phase 150: Measured height of the scroll content area (accounts for scrollbar).
-    @State private var scrollContentHeight: CGFloat = 0
+    private let scrollBarHeight: CGFloat = OS.type == .macOS
+      ? (15 * ThisDevice.uiFactor)
+      : 0
 
-    /// Phase 165: Frozen height — only updates when debounced canvasHeight changes,
-    /// preventing expensive redraws on every frame during live window resize.
-    @State private var frozenHeight: CGFloat = 0
+    private let spacing: CGFloat = 16 * ThisDevice.uiFactor
 
-    /// Phase 165: Frozen scroll content height — keeps item sizing tied to the
-    /// debounced canvasHeight snapshot instead of live-resize geometry updates.
-    @State private var frozenScrollContentHeight: CGFloat = 0
+    private let minItemHeight: CGFloat = 160 * ThisDevice.uiFactor
 
-    private var spacing: CGFloat { 16 * vm.uiFactor }
-
-    private var minItemHeight: CGFloat { 160 * vm.uiFactor }
-
-    private var effectiveScrollContentHeight: CGFloat {
-      let fallbackHeight = frozenHeight > 0 ? frozenHeight : canvasHeight
-      return frozenScrollContentHeight > 0 ? frozenScrollContentHeight : fallbackHeight
+    private var scrollViewInnerCanvasHeight: CGFloat {
+      canvasHeight - scrollBarHeight
     }
 
-    /// Phase 150: Dynamic item width based on actual inner scroll content height.
-    /// When macOS scrollbar is visible, inner content height shrinks; itemWidth
-    /// shrinks accordingly so the artwork aspect ratio stays correct.
+    /// Phase 168: Dynamic item width based on inner canvas height.
     private var itemWidth: CGFloat {
-      guard effectiveScrollContentHeight > 0 else { return minItemHeight }
       let paddings = 2 * spacing
-      let gaps = CGFloat(rowCount - 1) * spacing
-      let perItemSlot = (effectiveScrollContentHeight - paddings - gaps) / CGFloat(max(1, rowCount))
+      let gaps = CGFloat(frozenRowCount - 1) * spacing
+      let innerContentHeight = scrollViewInnerCanvasHeight - paddings - gaps
+      let perItemSlot = innerContentHeight / CGFloat(max(1, frozenRowCount))
       // Reserve space for text labels (title .subheadline + artist .caption + spacing + padding).
-      let textReserve: CGFloat = 36
+      let textReserve: CGFloat = 36 * ThisDevice.uiFactor
       let dynamicWidth = perItemSlot - textReserve
       return max(80, min(minItemHeight, dynamicWidth))
     }
 
-    /// Phase 150: Pre-allocated fixed height per item slot, derived from scroll content height.
+    /// Phase 168: Pre-allocated fixed height per item slot, derived from inner canvas height.
     private var itemHeight: CGFloat {
-      guard effectiveScrollContentHeight > 0 else { return minItemHeight + 36 }
       let paddings = 2 * spacing
-      let gaps = CGFloat(rowCount - 1) * spacing
-      return (effectiveScrollContentHeight - paddings - gaps) / CGFloat(max(1, rowCount))
+      let gaps = CGFloat(frozenRowCount - 1) * spacing
+      let innerContentHeight = scrollViewInnerCanvasHeight - paddings - gaps
+      return innerContentHeight / CGFloat(max(1, frozenRowCount))
     }
 
     private var albums: [Album] {
@@ -151,11 +117,9 @@ extension AlbumHGrid {
       screenVM.mainColumnCanvasSizeObserved.height
     }
 
-    /// Number of rows that fit in the visible height.
-    private var rowCount: Int {
-      // Phase 165: Use frozenHeight (only updates when debounced canvasHeight changes)
-      // instead of real-time measuredHeight to prevent expensive redraws during resize.
-      rowCount(for: frozenHeight > 0 ? frozenHeight : canvasHeight)
+    /// Raw computed row count — use `frozenRowCount` in layout instead.
+    private var computedRowCount: Int {
+      max(1, Int((scrollViewInnerCanvasHeight - spacing) / (minItemHeight + spacing)))
     }
 
     /// Whether rubber-band drag selection is allowed (no expanded album).
@@ -168,7 +132,7 @@ extension AlbumHGrid {
     }
 
     private var proposedContentHeight: CGFloat {
-      CGFloat(rowCount - 1) * spacing + CGFloat(rowCount) * itemHeight
+      CGFloat(frozenRowCount - 1) * spacing + CGFloat(frozenRowCount) * itemHeight
     }
 
     // MARK: - Content Views
@@ -177,12 +141,12 @@ extension AlbumHGrid {
       let proposedContentHeight = proposedContentHeight
       ScrollViewReader { proxy in
         ScrollView(.horizontal) {
-          let columns = gridVM.displayedAlbums.chunked(into: rowCount)
-          LazyHStack(alignment: .top, spacing: spacing - 6 * vm.uiFactor) {
+          let columns = gridVM.displayedAlbums.chunked(into: frozenRowCount)
+          LazyHStack(alignment: .top, spacing: spacing - 6 * ThisDevice.uiFactor) {
             ForEach(Array(columns.enumerated()), id: \.offset) { colIdx, column in
-              albumColumn(column, rowCount: rowCount)
+              albumColumn(column, rowCount: frozenRowCount)
                 .frame(height: proposedContentHeight)
-                .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
+                .padding(.horizontal, 6 * ThisDevice.uiFactor) // 防止邊緣陰影被切掉。
                 .drawingGroup()
                 .id(colIdx)
 
@@ -197,7 +161,7 @@ extension AlbumHGrid {
                 // Phase 147: Explicit height so the inner vertical ScrollView can function
                 // inside the outer horizontal LazyHStack.
                 .frame(height: proposedContentHeight)
-                .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
+                .padding(.horizontal, 6 * ThisDevice.uiFactor) // 防止邊緣陰影被切掉。
                 .id("expanded_\(expandedAlbum.id)")
                 .onAppear { gridVM.expandedAlbumWasInView = true }
                 .onDisappear { gridVM.expandedAlbumWasInView = false }
@@ -217,19 +181,6 @@ extension AlbumHGrid {
           .coordinateSpace(name: "albumHGrid")
           // Phase 151: Redirect unmodified vertical scroll wheel to horizontal scrolling.
           .redirectsVerticalScrollWheelToHorizontal()
-          // Phase 150: Measure the actual inner content height (accounts for scrollbar).
-          .onGeometryChange(for: CGFloat.self) {
-            $0.size.height
-          } action: { newHeight in
-            if scrollContentHeight != newHeight {
-              scrollContentHeight = newHeight
-              // Sync to ViewModel for keyboard navigation consistency.
-              gridVM.hGridMeasuredHeight = newHeight
-            }
-            if frozenScrollContentHeight == 0 {
-              frozenScrollContentHeight = newHeight
-            }
-          }
           .onPreferenceChange(AlbumFramePreferenceKey.self) { frames in
             gridVM.albumFrames = frames
           }
@@ -241,11 +192,16 @@ extension AlbumHGrid {
           }
         }
         .scrollContentBackground(.hidden)
+        .animation(.none, value: scrollViewInnerCanvasHeight)
         .onChange(of: gridVM.expandedAlbumID) { _, newValue in
           respondToExpandedAlbumIDChanges(id: newValue, proxy: proxy)
         }
         .task {
+          syncFrozenRowCount(computedRowCount)
           respondToExpandedAlbumIDChanges(proxy: proxy)
+        }
+        .onChange(of: scrollViewInnerCanvasHeight) { _, _ in
+          syncFrozenRowCount(computedRowCount)
         }
         .onChange(of: gridVM.scrollToAlbumID) { _, newValue in
           guard let albumID = newValue else { return }
@@ -254,7 +210,7 @@ extension AlbumHGrid {
 
           @MainActor
           func trailingTask() {
-            let columns = allAlbums.chunked(into: rowCount)
+            let columns = allAlbums.chunked(into: frozenRowCount)
             guard let colIndex = columns.firstIndex(
               where: { $0.contains { $0.id == albumID } }
             ) else { return }
@@ -279,6 +235,9 @@ extension AlbumHGrid {
           }
         }
       }
+      // Phase 168: Pin ScrollViewReader to debounced canvasHeight, preventing
+      // size collapse during debounce intervals.
+      .frame(height: canvasHeight, alignment: .topLeading)
     }
 
     @ViewBuilder private var trackInfoSheetContent: some View {
@@ -460,8 +419,14 @@ extension AlbumHGrid {
       )
     }
 
-    private func rowCount(for height: CGFloat) -> Int {
-      max(1, Int((height - spacing) / (minItemHeight + spacing)))
+    private func syncFrozenRowCount(_ newCount: Int) {
+      let clampedCount = max(1, newCount)
+      if frozenRowCount != clampedCount {
+        frozenRowCount = clampedCount
+      }
+      if gridVM.hGridFrozenRowCount != clampedCount {
+        gridVM.hGridFrozenRowCount = clampedCount
+      }
     }
 
     private func respondToExpandedAlbumIDChanges(id newValue: UUID? = nil, proxy: ScrollViewProxy) {

@@ -78,10 +78,6 @@ final class AlbumGridViewModel {
 
   var expandedAlbumWasInView = false
 
-  /// Phase 147: Actual available height for HGrid (after SafeAreaInsets).
-  /// Written by HorizontalAlbumGridView's onGeometryChange.
-  @ObservationIgnored var hGridMeasuredHeight: CGFloat = 0
-
   /// Phase 165: Frozen row count used by HGrid keyboard navigation.
   /// Written by HorizontalAlbumGridView when debounced canvasHeight changes.
   @ObservationIgnored var hGridFrozenRowCount: Int = 0
@@ -115,8 +111,8 @@ final class AlbumGridViewModel {
   var vGridPageSize: Int {
     guard let mainVM else { return 10 }
     let canvasHeight = mainVM.screenVM.mainColumnCanvasSizeObserved.height
-    // Approximate item height: scaled artwork (160 * 0.92) + text area (~50) + padding
-    let approximateRowHeight: CGFloat = 160 + 50 + gridSpacing
+    // Approximate item height: artwork + text area (~50 * uiFactor) + padding
+    let approximateRowHeight: CGFloat = minItemWidth + 50 * ThisDevice.uiFactor + gridSpacing
     let visibleRows = max(1, Int((canvasHeight - 100) / approximateRowHeight)) // 100 for player controls
     return visibleRows * vGridColumnCount
   }
@@ -128,22 +124,16 @@ final class AlbumGridViewModel {
     if hGridFrozenRowCount > 0 {
       return hGridFrozenRowCount
     }
-    let effectiveHeight: CGFloat
-    if hGridMeasuredHeight > 0 {
-      effectiveHeight = hGridMeasuredHeight
-    } else if let mainVM {
-      effectiveHeight = mainVM.screenVM.mainColumnCanvasSizeObserved.height
-    } else {
-      return 1
-    }
-    return max(1, Int((effectiveHeight - gridSpacing) / (minItemWidth + gridSpacing)))
+    guard let mainVM else { return 1 }
+    let height = mainVM.screenVM.mainColumnCanvasSizeObserved.height
+    return max(1, Int((height - gridSpacing) / (minItemWidth + gridSpacing)))
   }
 
   /// Number of albums to scroll per page in horizontal grid mode.
   var hGridPageSize: Int {
     guard let mainVM else { return 10 }
     let canvasWidth = mainVM.screenVM.mainColumnCanvasSizeObserved.width
-    let approximateColumnWidth: CGFloat = 160 + gridSpacing
+    let approximateColumnWidth: CGFloat = minItemWidth + gridSpacing
     let visibleColumns = max(1, Int((canvasWidth - 100) / approximateColumnWidth))
     return visibleColumns * hGridRowCount
   }
@@ -600,8 +590,8 @@ final class AlbumGridViewModel {
     "MadTunes.AlbumGridViewIntelMacCompatibility"
   ) private var _legacyHardwareMode
 
-  private let minItemWidth: CGFloat = 160
-  private let gridSpacing: CGFloat = 16
+  private let minItemWidth: CGFloat = 160 * ThisDevice.uiFactor
+  private let gridSpacing: CGFloat = 16 * ThisDevice.uiFactor
 
   /// In-flight batch update task. Cancelled on new updates.
   private var displayedAlbumsUpdateTask: Task<Void, Never>?
