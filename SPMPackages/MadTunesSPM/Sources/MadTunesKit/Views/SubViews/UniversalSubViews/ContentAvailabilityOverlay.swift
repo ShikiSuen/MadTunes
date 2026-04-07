@@ -97,6 +97,7 @@ struct ContentAvailabilityOverlay: View {
           .compositingGroup()
       } else if displayAlbums.isEmpty, vm.library.sandboxHealthReport?.severity == .critical {
         // Phase 158: Critical sandbox failure — all source bookmarks lost.
+        // Phase 172: Added ReapproveSandboxPrivileges button.
         Gradient.colorMeshGradient
           .ignoresSafeArea()
           .overlay {
@@ -108,6 +109,11 @@ struct ContentAvailabilityOverlay: View {
             } description: {
               Text(String(localized: "i18n:SandboxHealth.CriticalDescription", bundle: #bundle))
             } actions: {
+              Button(String(localized: "i18n:Import.ReapproveSandboxPrivileges", bundle: #bundle)) {
+                vm.isReapproveSandboxDialogPresented = true
+              }
+              .buttonStyle(.borderedProminent)
+              .buttonBorderShape(.capsule)
               switch OS.isAppKit {
               case true:
                 Button(String(localized: "i18n:Import.ImportFilesFolders", bundle: #bundle)) {
