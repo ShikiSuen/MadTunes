@@ -57,7 +57,7 @@ extension AlbumVGrid {
                   .ignoresSafeArea(.all)
                   .allowsHitTesting(false)
               }
-              .onChange(of: gridVM.expandedAlbumID) { _, newVal in
+              .onChange(of: gridVM.expandedAlbumID, initial: true) { _, newVal in
                 guard newVal != nil else { return }
                 withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
                   gridVM.scrollToAlbumID = expandedAlbum.id
@@ -65,7 +65,7 @@ extension AlbumVGrid {
                 }
               }
               // Phase 153: Legacy-mode track scroll trigger (keyboard navigation).
-              .onChange(of: gridVM.expandedTrackScrollTargetID) { _, newID in
+              .onChange(of: gridVM.expandedTrackScrollTargetID, initial: true) { _, newID in
                 guard let newID else { return }
                 withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
                   // 此處不用強行指定 Anchor。
@@ -183,6 +183,10 @@ extension AlbumVGrid {
       gridVM.selectionRect
     }
 
+    private var proposedContentWidth: CGFloat {
+      CGFloat(frozenColumnCount - 1) * spacing + CGFloat(frozenColumnCount) * itemWidth
+    }
+
     /// Phase 150: Dynamic item width based on actual inner scroll content height.
     /// When macOS scrollbar is visible, inner content height shrinks; itemWidth
     /// shrinks accordingly so the artwork aspect ratio stays correct.
@@ -208,14 +212,11 @@ extension AlbumVGrid {
           .scrollIndicators(.visible)
           .animation(.none, value: scrollViewInnerCanvasWidth)
           .scrollContentBackground(.hidden)
-          .onChange(of: gridVM.expandedAlbumID) { _, newValue in
+          .onChange(of: gridVM.expandedAlbumID, initial: true) { _, newValue in
+            syncFrozenColumnCount(computedColumnCount)
             respondToExpandedAlbumIDChanges(id: newValue, proxy: proxy)
           }
-          .task {
-            syncFrozenColumnCount(computedColumnCount)
-            respondToExpandedAlbumIDChanges(proxy: proxy)
-          }
-          .onChange(of: scrollViewInnerCanvasWidth) { oldWidth, newWidth in
+          .onChange(of: scrollViewInnerCanvasWidth, initial: true) { oldWidth, newWidth in
             syncFrozenColumnCount(computedColumnCount)
             guard oldWidth != newWidth, let expandedID = gridVM.expandedAlbumID else { return }
             let wasVisible = gridVM.expandedAlbumWasInView
@@ -226,7 +227,7 @@ extension AlbumVGrid {
               }
             }
           }
-          .onChange(of: gridVM.scrollToAlbumID) { _, newValue in
+          .onChange(of: gridVM.scrollToAlbumID, initial: true) { _, newValue in
             guard let albumID = newValue else { return }
             gridVM.scrollToAlbumID = nil
             let allAlbums = gridVM.currentAlbumsDisplayed
@@ -356,14 +357,18 @@ extension AlbumVGrid {
       }
     }
 
+    // MARK: - Grid Scroll Content
+
     @ViewBuilder
     private func gridScrollContent(rows: [[Album]], viewportHeight: CGFloat) -> some View {
-      LazyVStack(alignment: .leading, spacing: spacing) {
-        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+      let proposedContentWidth = proposedContentWidth
+      LazyVStack(alignment: .leading, spacing: spacing - 6 * ThisDevice.uiFactor) {
+        ForEach(Array(rows.enumerated()), id: \.offset) { rowIdx, row in
           albumRow(row, columnCount: frozenColumnCount)
+            .frame(width: proposedContentWidth)
             .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
-            .frame(width: scrollViewInnerCanvasWidth, alignment: .topLeading)
             .drawingGroup()
+            .id(rowIdx)
 
           // Expanded detail for the expanded album (if it belongs to this row).
           if !gridVM.legacyHardwareMode,
@@ -372,10 +377,11 @@ extension AlbumVGrid {
               album: expandedAlbum,
               showBackground: true,
               currentTrackID: currentTrackID,
-              containerWidth: scrollViewInnerCanvasWidth,
+              containerWidth: proposedContentWidth,
               selectedTrackIDs: Bindable(vm).selectedTrackIDs,
               onClose: { gridVM.expandedAlbumID = nil }
             )
+            .frame(width: proposedContentWidth, alignment: .topLeading)
             .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
             .drawingGroup()
             .id("\(expandedAlbum.id)_\(Int(scrollViewInnerCanvasWidth))")

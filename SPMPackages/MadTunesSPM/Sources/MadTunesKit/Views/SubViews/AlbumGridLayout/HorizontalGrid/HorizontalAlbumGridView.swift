@@ -138,106 +138,61 @@ extension AlbumHGrid {
     // MARK: - Content Views
 
     @ViewBuilder private var mainContent: some View {
-      let proposedContentHeight = proposedContentHeight
       ScrollViewReader { proxy in
-        ScrollView(.horizontal) {
+        GeometryReader { viewport in
           let columns = gridVM.displayedAlbums.chunked(into: frozenRowCount)
-          LazyHStack(alignment: .top, spacing: spacing - 6 * ThisDevice.uiFactor) {
-            ForEach(Array(columns.enumerated()), id: \.offset) { colIdx, column in
-              albumColumn(column, rowCount: frozenRowCount)
-                .frame(height: proposedContentHeight)
-                .padding(.horizontal, 6 * ThisDevice.uiFactor) // 防止邊緣陰影被切掉。
-                .drawingGroup()
-                .id(colIdx)
+          ScrollView(.horizontal) {
+            gridScrollContent(columns: columns, viewportWidth: viewport.size.width)
+              .frame(height: scrollViewInnerCanvasHeight, alignment: .topLeading)
+              .frame(maxHeight: .infinity, alignment: .topLeading)
+          }
+          .scrollIndicators(.visible)
+          .animation(.none, value: scrollViewInnerCanvasHeight)
+          .scrollContentBackground(.hidden)
+          .onChange(of: gridVM.expandedAlbumID, initial: true) { _, newValue in
+            syncFrozenRowCount(computedRowCount)
+            respondToExpandedAlbumIDChanges(id: newValue, proxy: proxy)
+          }
+          .onChange(of: scrollViewInnerCanvasHeight, initial: true) { _, _ in
+            syncFrozenRowCount(computedRowCount)
+          }
+          .onChange(of: gridVM.scrollToAlbumID, initial: true) { _, newValue in
+            guard let albumID = newValue else { return }
+            gridVM.scrollToAlbumID = nil
+            let allAlbums = gridVM.currentAlbumsDisplayed
 
-              // Phase 146: Expanded detail for the expanded album (if it belongs to this column).
-              if let expandedAlbum = column.first(where: { $0.id == gridVM.expandedAlbumID }) {
-                HorizontallyExpandedAlbumView(
-                  album: expandedAlbum,
-                  currentTrackID: currentTrackID,
-                  selectedTrackIDs: Bindable(vm).selectedTrackIDs,
-                  onClose: { gridVM.expandedAlbumID = nil }
-                )
-                // Phase 147: Explicit height so the inner vertical ScrollView can function
-                // inside the outer horizontal LazyHStack.
-                .frame(height: proposedContentHeight)
-                .padding(.horizontal, 6 * ThisDevice.uiFactor) // 防止邊緣陰影被切掉。
-                .id("expanded_\(expandedAlbum.id)")
-                .onAppear { gridVM.expandedAlbumWasInView = true }
-                .onDisappear { gridVM.expandedAlbumWasInView = false }
-                .shadow(
-                  color: Color(.sRGBLinear, white: 0, opacity: 0.33),
-                  radius: 3 * ThisDevice.uiFactor
-                )
+            @MainActor
+            func trailingTask() {
+              let columns = allAlbums.chunked(into: frozenRowCount)
+              guard let colIndex = columns.firstIndex(
+                where: { $0.contains { $0.id == albumID } }
+              ) else { return }
+              withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
+                // 此處不用判定 AlbumGridItem 是否可見，因為一定可見。
+                // 為什麼一定可見呢？因為 ExpandedAlbumContent 的寬度是固定的。
+                if let newValue, gridVM.expandedAlbumID == albumID {
+                  // 使用者電腦顯示器往往都是寬的，所以這裡需要 anchor: .center 便於接下來的操作。
+                  proxy.scrollTo("expanded_\(newValue)", anchor: .center)
+                } else {
+                  proxy.scrollTo(colIndex, anchor: .center)
+                }
               }
             }
-          }
-          .padding(spacing)
-          .frame(
-            minWidth: max(canvasWidth, 0),
-            maxHeight: .infinity,
-            alignment: .topLeading
-          )
-          .coordinateSpace(name: "albumHGrid")
-          // Phase 151: Redirect unmodified vertical scroll wheel to horizontal scrolling.
-          .redirectsVerticalScrollWheelToHorizontal()
-          .onPreferenceChange(AlbumFramePreferenceKey.self) { frames in
-            gridVM.albumFrames = frames
-          }
-          .background {
-            rubberBandDragLayer
-          }
-          .overlay {
-            rubberBandRectOverlay
-          }
-        }
-        .scrollContentBackground(.hidden)
-        .animation(.none, value: scrollViewInnerCanvasHeight)
-        .onChange(of: gridVM.expandedAlbumID) { _, newValue in
-          respondToExpandedAlbumIDChanges(id: newValue, proxy: proxy)
-        }
-        .task {
-          syncFrozenRowCount(computedRowCount)
-          respondToExpandedAlbumIDChanges(proxy: proxy)
-        }
-        .onChange(of: scrollViewInnerCanvasHeight) { _, _ in
-          syncFrozenRowCount(computedRowCount)
-        }
-        .onChange(of: gridVM.scrollToAlbumID) { _, newValue in
-          guard let albumID = newValue else { return }
-          gridVM.scrollToAlbumID = nil
-          let allAlbums = gridVM.currentAlbumsDisplayed
 
-          @MainActor
-          func trailingTask() {
-            let columns = allAlbums.chunked(into: frozenRowCount)
-            guard let colIndex = columns.firstIndex(
-              where: { $0.contains { $0.id == albumID } }
-            ) else { return }
-            withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-              // 此處不用判定 AlbumGridItem 是否可見，因為一定可見。
-              // 為什麼一定可見呢？因為 ExpandedAlbumContent 的寬度是固定的。
-              if let newValue, gridVM.expandedAlbumID == albumID {
-                // 使用者電腦顯示器往往都是寬的，所以這裡需要 anchor: .center 便於接下來的操作。
-                proxy.scrollTo("expanded_\(newValue)", anchor: .center)
-              } else {
-                proxy.scrollTo(colIndex, anchor: .center)
+            if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
+              gridVM.scheduleDisplayedAlbumsUpdate(to: allAlbums, ensureVisibleAlbumID: albumID) {
+                trailingTask()
               }
-            }
-          }
-
-          if !gridVM.displayedAlbums.contains(where: { $0.id == albumID }) {
-            gridVM.scheduleDisplayedAlbumsUpdate(to: allAlbums, ensureVisibleAlbumID: albumID) {
+            } else {
               trailingTask()
             }
-          } else {
-            trailingTask()
           }
         }
       }
       // Phase 168: Pin ScrollViewReader to debounced canvasHeight, preventing
       // size collapse during debounce intervals.
       .frame(height: canvasHeight, alignment: .topLeading)
+      .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     @ViewBuilder private var trackInfoSheetContent: some View {
@@ -315,6 +270,57 @@ extension AlbumHGrid {
           .frame(width: rect.width, height: rect.height)
           .position(x: rect.midX, y: rect.midY)
           .allowsHitTesting(false)
+      }
+    }
+
+    // MARK: - Grid Scroll Content
+
+    @ViewBuilder
+    private func gridScrollContent(columns: [[Album]], viewportWidth: CGFloat) -> some View {
+      let proposedContentHeight = proposedContentHeight
+      LazyHStack(alignment: .top, spacing: spacing - 6 * ThisDevice.uiFactor) {
+        ForEach(Array(columns.enumerated()), id: \.offset) { colIdx, column in
+          albumColumn(column, rowCount: frozenRowCount)
+            .frame(height: proposedContentHeight, alignment: .topLeading)
+            .padding(.vertical, 6 * ThisDevice.uiFactor) // 防止邊緣陰影被切掉。
+            .drawingGroup()
+            .id(colIdx)
+
+          // Phase 146: Expanded detail for the expanded album (if it belongs to this column).
+          if let expandedAlbum = column.first(where: { $0.id == gridVM.expandedAlbumID }) {
+            HorizontallyExpandedAlbumView(
+              album: expandedAlbum,
+              currentTrackID: currentTrackID,
+              selectedTrackIDs: Bindable(vm).selectedTrackIDs,
+              onClose: { gridVM.expandedAlbumID = nil }
+            )
+            // Phase 147: Explicit height so the inner vertical ScrollView can function
+            // inside the outer horizontal LazyHStack.
+            .frame(height: proposedContentHeight, alignment: .topLeading)
+            .padding(.vertical, 6 * ThisDevice.uiFactor) // 防止邊緣陰影被切掉。
+            .id("expanded_\(expandedAlbum.id)")
+            .onAppear { gridVM.expandedAlbumWasInView = true }
+            .onDisappear { gridVM.expandedAlbumWasInView = false }
+            .shadow(
+              color: Color(.sRGBLinear, white: 0, opacity: 0.33),
+              radius: 3 * ThisDevice.uiFactor
+            )
+          }
+        }
+      }
+      .padding(max(0, spacing - 6 * vm.uiFactor))
+      .frame(minWidth: max(viewportWidth, 0), alignment: .topLeading)
+      .coordinateSpace(name: "albumHGrid")
+      // Phase 151: Redirect unmodified vertical scroll wheel to horizontal scrolling.
+      .redirectsVerticalScrollWheelToHorizontal()
+      .onPreferenceChange(AlbumFramePreferenceKey.self) { frames in
+        gridVM.albumFrames = frames
+      }
+      .background {
+        rubberBandDragLayer
+      }
+      .overlay {
+        rubberBandRectOverlay
       }
     }
 
