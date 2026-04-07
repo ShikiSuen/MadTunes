@@ -2,6 +2,7 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
 
+import MadTunesTips
 import SwiftUI
 
 // MARK: - DesktopMainView
@@ -193,6 +194,10 @@ struct DesktopMainView: View {
             .pickerStyle(.segmented)
             .tint(.primary)
             .fixedSize()
+            .popoverTip(
+              vm.tutorialTips.currentTip as? Tip4GridLayout,
+              arrowEdge: .top
+            )
           }
           .removeSharedBackgroundVisibility(bypassWhen: OS.isAppKit)
 

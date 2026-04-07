@@ -2,6 +2,7 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
 
+import MadTunesTips
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -113,6 +114,14 @@ final class MadTunesViewModel {
   var currentTrackArtworkData: Image?
   /// Phase 108: Pre-computed dominant color for the current track's artwork.
   var currentTrackDominantColor: Color?
+
+  /// Phase 171: Tutorial Tips.
+  var tutorialTips = TipGroup {
+    Tip4GridLayout.shared
+    Tip4ColumnBrowser.shared
+    Tip4NonStaticPlaylists.shared
+    Tip4AudioOutputDeviceSelection.shared
+  }
 
   /// Phase 145: Desktop content layout mode (replaces `useTableView: Bool`).
   var desktopContentLayout: DesktopContentLayout {

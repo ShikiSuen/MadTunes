@@ -1,6 +1,614 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "i18n.Tips.Tip4AudioOutputDeviceSelection.headerTitle" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio-Ausgabegerät festlegen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Specify Your Audio Output Device"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Especifique su dispositivo de salida de audio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spécifiez votre périphérique de sortie audio"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Specifica il dispositivo di uscita audio"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オーディオ出力デバイスを指定"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오디오 출력 장치 지정"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Especifique seu dispositivo de saída de áudio"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Укажите устройство аудиовыхода"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ses Çıkış Cihazınızı Belirleyin"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "指定您的音频输出设备"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "指定您的音訊輸出裝置"
+          }
+        }
+      }
+    },
+    "i18n.Tips.Tip4AudioOutputDeviceSelection.msg" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sie können Ihr bevorzugtes Audio-Ausgabegerät auch auf einen virtuellen Audiotreiber wie SoundFlower einstellen, um Ihr Audio an Apple MainStage oder eine beliebige AudioUnit-/VST-Host-App weiterzuleiten und Ihre eigene DSP-Kette aufzubauen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You may also specify your preferred audio output device to any virtual audio driver like SoundFlower to route your audio to Apple MainStage or any AudioUnit / VST host app to build your own DSP chain."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "También puede especificar su dispositivo de salida de audio preferido a cualquier controlador de audio virtual como SoundFlower para enrutar su audio a Apple MainStage o cualquier aplicación host AudioUnit / VST y construir su propia cadena DSP."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous pouvez également spécifier votre périphérique de sortie audio préféré vers n'importe quel pilote audio virtuel comme SoundFlower pour acheminer votre audio vers Apple MainStage ou toute application hôte AudioUnit / VST afin de construire votre propre chaîne DSP."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puoi anche specificare il tuo dispositivo di uscita audio preferito su qualsiasi driver audio virtuale come SoundFlower per instradare l'audio verso Apple MainStage o qualsiasi app host AudioUnit / VST e costruire la tua catena DSP."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SoundFlower などの仮想オーディオドライバーにオーディオ出力デバイスを指定して、Apple MainStage や任意の AudioUnit / VST ホストアプリにオーディオをルーティングし、独自の DSP チェーンを構築することもできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SoundFlower와 같은 가상 오디오 드라이버를 오디오 출력 장치로 지정하여 Apple MainStage 또는 AudioUnit / VST 호스트 앱으로 오디오를 라우팅하고 자체 DSP 체인을 구축할 수도 있습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você também pode especificar seu dispositivo de saída de áudio preferido para qualquer driver de áudio virtual como o SoundFlower para rotear seu áudio para o Apple MainStage ou qualquer aplicativo host AudioUnit / VST e construir sua própria cadeia DSP."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы также можете указать предпочтительное устройство аудиовыхода на любой виртуальный аудиодрайвер, например SoundFlower, чтобы направить звук в Apple MainStage или любое приложение-хост AudioUnit / VST для построения собственной цепочки DSP."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayrıca tercih ettiğiniz ses çıkış cihazını SoundFlower gibi herhangi bir sanal ses sürücüsüne ayarlayarak sesinizi Apple MainStage veya herhangi bir AudioUnit / VST ana bilgisayar uygulamasına yönlendirebilir ve kendi DSP zincirinizi oluşturabilirsiniz."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "您也可以将偏好的音频输出设备指定为任何虚拟音频驱动（如 SoundFlower），以便将音频路由至 Apple MainStage 或其他 AudioUnit / VST 宿主应用程序，从而构建您自己的 DSP 处理链。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "您還可以將首選音訊輸出裝置指定給任何虛擬音訊驅動程式（例如 SoundFlower），以便將音訊路由到 Apple MainStage 或任何 AudioUnit / VST 主機應用程序，從而構築您自己的 DSP 處理鏈。"
+          }
+        }
+      }
+    },
+    "i18n.Tips.Tip4ColumnBrowser.headerTitle" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erweiterter Spalten-Browser"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enhanced Column Browser"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navegador de columnas mejorado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navigateur de colonnes amélioré"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Browser a colonne avanzato"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "強化カラムブラウザ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "향상된 컬럼 브라우저"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navegador de colunas aprimorado"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Улучшенный браузер колонок"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gelişmiş Sütun Tarayıcısı"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "增强型直栏筛选器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "增強型直欄篩選器"
+          }
+        }
+      }
+    },
+    "i18n.Tips.Tip4ColumnBrowser.msg" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Spalten-Browser in dieser App unterstützt die getrennte Filterung von Albumkünstlern und Titelkünstlern."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Column Browser in this app supports filtering album artists separately from filtering track artists."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El navegador de columnas de esta aplicación permite filtrar artistas de álbum por separado de los artistas de pista."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le navigateur de colonnes de cette application permet de filtrer les artistes d'album séparément des artistes de piste."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il browser a colonne di questa app supporta il filtraggio degli artisti album separatamente dagli artisti brano."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアプリのカラムブラウザは、アルバムアーティストとトラックアーティストを個別にフィルタリングできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱의 컬럼 브라우저는 앨범 아티스트와 트랙 아티스트를 별도로 필터링할 수 있습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O navegador de colunas deste aplicativo permite filtrar artistas de álbum separadamente dos artistas de faixa."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Браузер колонок в этом приложении поддерживает раздельную фильтрацию исполнителей альбомов и исполнителей треков."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu uygulamadaki sütun tarayıcısı, albüm sanatçılarını parça sanatçılarından ayrı olarak filtrelemeyi destekler."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本软件的直栏筛选器可将专辑艺人与曲目艺人分开筛选。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "敝軟體的直欄篩選器可將專輯藝人與曲目藝人分開篩選。"
+          }
+        }
+      }
+    },
+    "i18n.Tips.Tip4GridLayout.headerTitle" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inhaltslayout wählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Content Layout"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elija la disposición del contenido"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez la disposition du contenu"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli il layout dei contenuti"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コンテンツレイアウトを選択"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "콘텐츠 레이아웃 선택"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha o layout do conteúdo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите макет содержимого"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İçerik Düzenini Seçin"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择内容布局"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇內容佈局"
+          }
+        }
+      }
+    },
+    "i18n.Tips.Tip4GridLayout.msg" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das standardmäßige horizontale Rasterlayout ist für Laptops oder Tablets konzipiert. Bei Verwendung eines Desktop-Monitors möchten Sie vielleicht andere Layouts ausprobieren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The default horizontal grid is designed for laptops or tablets. You might want to try other layouts if using a desktop monitor."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La cuadrícula horizontal predeterminada está diseñada para portátiles o tabletas. Es posible que desee probar otras disposiciones si utiliza un monitor de escritorio."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La grille horizontale par défaut est conçue pour les ordinateurs portables ou les tablettes. Vous souhaiterez peut-être essayer d'autres dispositions si vous utilisez un écran de bureau."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La griglia orizzontale predefinita è progettata per laptop o tablet. Potresti voler provare altri layout se utilizzi un monitor desktop."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デフォルトの横スクロールグリッドはノートパソコンやタブレット向けに設計されています。デスクトップモニターをお使いの場合は、他のレイアウトもお試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기본 가로 그리드는 노트북이나 태블릿을 위해 설계되었습니다. 데스크탑 모니터를 사용하는 경우 다른 레이아웃을 시도해 보실 수 있습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A grade horizontal padrão é projetada para notebooks ou tablets. Talvez você queira experimentar outros layouts se estiver usando um monitor de mesa."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Горизонтальная сетка по умолчанию предназначена для ноутбуков или планшетов. Если вы используете настольный монитор, возможно, стоит попробовать другие макеты."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varsayılan yatay ızgara düzeni dizüstü bilgisayarlar veya tabletler için tasarlanmıştır. Masaüstü monitör kullanıyorsanız diğer düzenleri denemek isteyebilirsiniz."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预设的横向卷动格状布局是针对笔电与平板电脑设计的。如果您在使用桌上显示器的话，您或许会想切换到其他的布局。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "預設的橫向捲動格狀佈局是針對筆電與平板電腦設計的。如果您在使用桌上顯示器的話，您或許會想切換到其他的佈局。"
+          }
+        }
+      }
+    },
+    "i18n.Tips.Tip4NonStaticPlaylists.headerTitle" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dynamische Playlists und Ordner-Playlists ausprobieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Dynamic Playlists and Folder Playlists"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pruebe las listas dinámicas y las listas de carpetas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Essayez les playlists dynamiques et les playlists de dossiers"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prova le playlist dinamiche e le playlist cartella"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイナミックプレイリストとフォルダプレイリストをお試しください"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동적 재생목록과 폴더 재생목록을 사용해 보세요"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimente as playlists dinâmicas e as playlists de pastas"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Попробуйте динамические плейлисты и плейлисты папок"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dinamik Oynatma Listelerini ve Klasör Oynatma Listelerini Deneyin"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "试试动态播放清单与文件夹播放清单"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "試試動態播放清單與資料夾播放清單"
+          }
+        }
+      }
+    },
+    "i18n.Tips.Tip4NonStaticPlaylists.msg" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner-Playlists aktualisieren ihren Inhalt automatisch beim Starten der App. Dynamische Playlists bestimmen ihren Inhalt durch anpassbare hierarchische Prädikate. Sie können auch eine oder mehrere Ordner-Playlists als Datenquelle einer dynamischen Playlist festlegen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder playlists automatically update their contents when starting the app. Dynamic playlists have their contents determined by customizable hierarchical predicates. You may also specify one or more folder playlists as the data source of a dynamic playlist."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las listas de carpetas actualizan automáticamente su contenido al iniciar la aplicación. Las listas dinámicas determinan su contenido mediante predicados jerárquicos personalizables. También puede especificar una o más listas de carpetas como fuente de datos de una lista dinámica."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les playlists de dossiers mettent automatiquement à jour leur contenu au démarrage de l'application. Les playlists dynamiques déterminent leur contenu par des prédicats hiérarchiques personnalisables. Vous pouvez également spécifier une ou plusieurs playlists de dossiers comme source de données d'une playlist dynamique."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le playlist cartella aggiornano automaticamente i loro contenuti all'avvio dell'app. Le playlist dinamiche hanno i loro contenuti determinati da predicati gerarchici personalizzabili. Puoi anche specificare una o più playlist cartella come origine dati di una playlist dinamica."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フォルダプレイリストはアプリ起動時に自動的に内容を更新します。ダイナミックプレイリストはカスタマイズ可能な階層述語によって内容が決定されます。1つ以上のフォルダプレイリストをダイナミックプレイリストのデータソースとして指定することもできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "폴더 재생목록은 앱 시작 시 자동으로 콘텐츠를 업데이트합니다. 동적 재생목록은 사용자 정의 가능한 계층적 술어에 의해 콘텐츠가 결정됩니다. 하나 이상의 폴더 재생목록을 동적 재생목록의 데이터 소스로 지정할 수도 있습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As playlists de pastas atualizam automaticamente seu conteúdo ao iniciar o aplicativo. As playlists dinâmicas têm seu conteúdo determinado por predicados hierárquicos personalizáveis. Você também pode especificar uma ou mais playlists de pastas como fonte de dados de uma playlist dinâmica."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плейлисты папок автоматически обновляют своё содержимое при запуске приложения. Содержимое динамических плейлистов определяется настраиваемыми иерархическими предикатами. Вы также можете указать один или несколько плейлистов папок в качестве источника данных для динамического плейлиста."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klasör oynatma listeleri, uygulama başlatıldığında içeriklerini otomatik olarak günceller. Dinamik oynatma listelerinin içerikleri özelleştirilebilir hiyerarşik koşullar tarafından belirlenir. Bir veya daha fazla klasör oynatma listesini dinamik bir oynatma listesinin veri kaynağı olarak da belirleyebilirsiniz."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件夹播放清单会在软件每次运行时自动更新内容。动态播放清单允许自订层级谓词以决定其内容显示。您也可以将某个动态播放清单的数据源设定为一个或多个文件夹播放清单。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "資料夾播放清單會在軟體每次運行時自動更新內容。動態播放清單允許自訂層級述詞以決定其內容顯示。您也可以將某個動態播放清單的資料源設定為一個或多個資料夾播放清單。"
+          }
+        }
+      }
+    }
   },
   "version" : "1.2"
 }

@@ -2,6 +2,7 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
 
+import MadTunesTips
 import SwiftUI
 
 // MARK: - PlayerControlsView
@@ -179,6 +180,10 @@ struct PlayerControlsView: View {
                         HStack(spacing: mainControlSpacing) {
                           queueToggleButton
                           columnBrowserToggleButton
+                            .popoverTip(
+                              vm.tutorialTips.currentTip as? Tip4ColumnBrowser,
+                              arrowEdge: .bottom
+                            )
                           playLoopBehaviorButton
                           volumeControls
                         }
@@ -457,6 +462,10 @@ struct PlayerControlsView: View {
       )
       .fixedSize()
       .frame(width: 28 * vm.uiFactor, height: 28 * vm.uiFactor, alignment: .leading)
+      .popoverTip(
+        vm.tutorialTips.currentTip as? Tip4AudioOutputDeviceSelection,
+        arrowEdge: .bottom
+      )
       #else
       Image(systemName: volumeIcon)
         .font(.caption)

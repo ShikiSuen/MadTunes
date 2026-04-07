@@ -2,6 +2,7 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `AGPL-3.0-or-later`.
 
+import MadTunesTips
 import SwiftUI
 
 #if os(macOS) && !targetEnvironment(macCatalyst)
@@ -148,6 +149,10 @@ struct SidebarView: View {
           .menuIndicator(.hidden)
           .buttonStyle(.bordered)
           .tint(.primary)
+          .popoverTip(
+            mainVM.tutorialTips.currentTip as? Tip4NonStaticPlaylists,
+            arrowEdge: .top
+          )
       } header: {
         Text("i18n:Sidebar.Sections.Playlists", bundle: #bundle)
       }
