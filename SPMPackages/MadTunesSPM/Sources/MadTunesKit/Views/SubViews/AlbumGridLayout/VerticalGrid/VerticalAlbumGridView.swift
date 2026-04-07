@@ -210,6 +210,25 @@ extension AlbumVGrid {
               .frame(maxWidth: .infinity, alignment: .topLeading)
           }
           .scrollIndicators(.visible)
+          .background(alignment: .trailing) {
+            if scrollBarWidth > 0 {
+              // 始終顯示捲動調的佔位符，以保證視覺平衡。
+              let placeholder = Color.primary.colorInvert().brightness(-0.4).opacity(0.3)
+              Group {
+                if OS.liquidGlassThemeSuspected {
+                  placeholder
+                    .frame(width: scrollBarWidth)
+                    .clipShape(.capsule)
+                } else {
+                  placeholder
+                    .frame(width: scrollBarWidth - 4)
+                    .clipShape(.rect)
+                    .blur(radius: 2)
+                }
+              }
+              .padding(1)
+            }
+          }
           .animation(.none, value: scrollViewInnerCanvasWidth)
           .scrollContentBackground(.hidden)
           .onChange(of: gridVM.expandedAlbumID, initial: true) { _, newValue in
@@ -260,15 +279,6 @@ extension AlbumVGrid {
       }
       .frame(width: canvasWidth, alignment: .topLeading)
       .frame(maxWidth: .infinity, alignment: .topLeading)
-      .background(alignment: .trailing) {
-        if scrollBarWidth > 0 {
-          // 始終顯示捲動調的佔位符，以保證視覺平衡。
-          Color.primary.colorInvert().brightness(-0.4).opacity(0.3)
-            .frame(width: scrollBarWidth)
-            .clipShape(.capsule)
-            .padding(1)
-        }
-      }
     }
 
     @ViewBuilder private var trackInfoSheetContent: some View {
