@@ -88,6 +88,7 @@ public final class ScreenVM {
   public var orientation: Orientation
   public var isHorizontallyCompact: Bool = OS.type == .iPhoneOS
   public var actualSidebarWidthObserved: CGFloat = 0
+  public var bottomSafeAreaInsetHeight: CGFloat = 72 * ThisDevice.uiFactor
   public var windowSizeObserved: CGSize = ScreenVM.getKeyWindowSize()
   public var splitViewVisibility: NavigationSplitViewVisibility
 

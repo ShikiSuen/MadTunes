@@ -114,7 +114,7 @@ extension AlbumHGrid {
     }
 
     private var canvasHeight: CGFloat {
-      screenVM.mainColumnCanvasSizeObserved.height
+      screenVM.mainColumnCanvasSizeObserved.height - screenVM.bottomSafeAreaInsetHeight
     }
 
     /// Raw computed row count — use `frozenRowCount` in layout instead.

@@ -52,6 +52,7 @@ struct DesktopMainView: View {
             .ignoresSafeArea(.all)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
+          // 此區域高度固定為 `72 * ThisDevice.uiFactor`。
           ZStack {
             Group {
               Group {
@@ -75,6 +76,11 @@ struct DesktopMainView: View {
               .padding([.horizontal, .bottom], 12 * vm.uiFactor)
           }
           .fixedSize(horizontal: false, vertical: true)
+          .trackCanvasSize(debounceDelay: 0.3) {
+            let newValue = $0.height.rounded(.up)
+            guard vm.screenVM.bottomSafeAreaInsetHeight != newValue else { return }
+            vm.screenVM.bottomSafeAreaInsetHeight = newValue
+          }
         }
         .toolbar {
           ToolbarItem(placement: .navigation) {
