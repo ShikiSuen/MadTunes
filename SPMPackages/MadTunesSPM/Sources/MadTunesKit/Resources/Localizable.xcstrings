@@ -7933,6 +7933,82 @@
         }
       }
     },
+    "i18n:MainMenu.Help.resetTutorialTips.Confirmation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Aktion wird beim nächsten Start der App wirksam."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will take effect on the next app launch."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto tendrá efecto en el próximo inicio de la aplicación."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cela prendra effet au prochain démarrage de l'application."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa modifica avrà effetto al prossimo avvio dell'app."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この操作は次回のアプリ起動時に反映されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 변경 사항은 다음 앱 실행 시 적용됩니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isso terá efeito na próxima vez que o aplicativo for iniciado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это вступит в силу при следующем запуске приложения."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu işlem, uygulamanın bir sonraki başlatılışında geçerli olacaktır."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此操作将在下次启动软件时生效。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此操作將在下次啟動軟體時生效。"
+          }
+        }
+      }
+    },
     "i18n:Menu.CollapseAlbum" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {

@@ -220,6 +220,21 @@ struct MainSceneView: View {
               vm.sandboxReapprovalReport = vm.library.reapproveSandboxPrivileges(folderURL: folderURL)
             }
           }
+        // Phase 171: Reset Tutorial Tips — scheduled confirmation alert.
+        Color.clear
+          .alert(
+            String(localized: "i18n:MainMenu.Help.resetTutorialTips", bundle: #bundle),
+            isPresented: Binding(
+              get: { vm.showResetTipsScheduledAlert },
+              set: { if !$0 { vm.showResetTipsScheduledAlert = false } }
+            )
+          ) {
+            Button(String(localized: "i18n:Common.Done", bundle: #bundle)) {
+              vm.showResetTipsScheduledAlert = false
+            }
+          } message: {
+            Text("i18n:MainMenu.Help.resetTutorialTips.Confirmation", bundle: #bundle)
+          }
         // Phase 164: Reapprove Sandbox Privileges — result report alert.
         Color.clear
           .alert(

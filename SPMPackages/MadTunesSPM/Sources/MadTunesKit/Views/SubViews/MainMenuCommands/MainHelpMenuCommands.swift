@@ -16,6 +16,7 @@ struct MainHelpMenuCommands: Commands {
     CommandGroup(before: .help) {
       Button {
         resetTipsOnNextStartup = true
+        vm.showResetTipsScheduledAlert = true
       } label: {
         Label(
           String(localized: "i18n:MainMenu.Help.resetTutorialTips", bundle: #bundle),

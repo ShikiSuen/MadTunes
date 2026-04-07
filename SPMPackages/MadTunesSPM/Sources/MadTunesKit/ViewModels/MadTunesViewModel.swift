@@ -116,6 +116,7 @@ final class MadTunesViewModel {
   var currentTrackDominantColor: Color?
 
   /// Phase 171: Tutorial Tips.
+  var showResetTipsScheduledAlert = false
   var tutorialTips = TipGroup {
     Tip4GridLayout.shared
     Tip4ColumnBrowser.shared
