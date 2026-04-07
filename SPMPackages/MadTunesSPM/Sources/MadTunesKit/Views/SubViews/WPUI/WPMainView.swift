@@ -67,10 +67,15 @@ struct WPMainView: View {
             WPLibrarySection()
               .overlay {
                 Group {
-                  // Empty library overlay.
+                  // Phase 172: Sandbox critical overlay (must precede empty library check).
                   if !vm.library.isImporting,
                      vm.library.hasLoadedPersistence,
-                     vm.library.tracks.isEmpty {
+                     vm.library.tracks.isEmpty,
+                     vm.library.sandboxHealthReport?.severity == .critical {
+                    WPSandboxCriticalOverlay()
+                  } else if !vm.library.isImporting,
+                            vm.library.hasLoadedPersistence,
+                            vm.library.tracks.isEmpty {
                     WPEmptyLibraryOverlay()
                   } else if vm.library.isImporting {
                     WPImportingOverlay()
@@ -287,6 +292,71 @@ struct WPSectionTitlesBar: View {
       }
     }
   }
+}
+
+// MARK: - WPSandboxCriticalOverlay
+
+/// Phase 172: Shown when all sandbox source bookmarks have been lost (critical severity).
+/// Offers "Reapprove Sandbox Privileges" and "Import Folder" to recover.
+struct WPSandboxCriticalOverlay: View {
+  // MARK: Internal
+
+  var body: some View {
+    VStack(spacing: 16) {
+      Image(systemName: "exclamationmark.triangle.fill")
+        .font(.system(size: 48))
+        .foregroundStyle(.yellow)
+
+      Text(String(localized: "i18n:SandboxHealth.CriticalTitle", bundle: #bundle))
+        .font(.system(size: 20, weight: .bold))
+        .foregroundStyle(.white)
+      Text(String(localized: "i18n:SandboxHealth.CriticalDescription", bundle: #bundle))
+        .font(.system(size: 15))
+        .foregroundStyle(.white.opacity(0.6))
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 40)
+
+      VStack(spacing: 10) {
+        Button {
+          vm.isReapproveSandboxDialogPresented = true
+        } label: {
+          Label(
+            String(localized: "i18n:Import.ReapproveSandboxPrivileges", bundle: #bundle),
+            systemImage: "lock.open"
+          )
+          .font(.system(size: 15, weight: .semibold))
+          .foregroundStyle(.white)
+          .padding(.horizontal, 24)
+          .padding(.vertical, 10)
+          .background(Color.white.opacity(0.15))
+          .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+
+        Button {
+          vm.isFolderImporterPresented = true
+        } label: {
+          Label(
+            String(localized: "i18n:Import.ImportFolder", bundle: #bundle),
+            systemImage: "folder.badge.plus"
+          )
+          .font(.system(size: 15, weight: .semibold))
+          .foregroundStyle(.white)
+          .padding(.horizontal, 24)
+          .padding(.vertical, 10)
+          .background(Color.white.opacity(0.15))
+          .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+      }
+      .padding(.top, 8)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
+  // MARK: Private
+
+  @Environment(MadTunesViewModel.self) private var vm
 }
 
 // MARK: - WPEmptyLibraryOverlay

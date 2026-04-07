@@ -57,6 +57,16 @@ struct WPLibrarySection: View {
             )
           }
 
+          // Phase 172: Reapprove Sandbox Privileges.
+          Button {
+            vm.isReapproveSandboxDialogPresented = true
+          } label: {
+            Label(
+              String(localized: "i18n:Import.ReapproveSandboxPrivileges", bundle: #bundle),
+              systemImage: "lock.open"
+            )
+          }
+
           Divider()
 
           // Selection Mode toggle.
