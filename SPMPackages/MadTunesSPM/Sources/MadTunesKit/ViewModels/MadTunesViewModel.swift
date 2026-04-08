@@ -61,6 +61,8 @@ final class MadTunesViewModel {
   var library = MusicLibrary()
   var player = AudioPlayer()
 
+  var systemColorScheme: ColorScheme?
+
   // Phase 60: Sub-ViewModels for table and grid views.
   var tableVM = AlbumTableViewModel()
   var gridVM = AlbumGridViewModel()

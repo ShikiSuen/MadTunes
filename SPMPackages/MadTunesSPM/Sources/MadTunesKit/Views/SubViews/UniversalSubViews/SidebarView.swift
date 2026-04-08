@@ -149,10 +149,15 @@ struct SidebarView: View {
           .menuIndicator(.hidden)
           .buttonStyle(.bordered)
           .tint(.primary)
-          .popoverTip(
-            mainVM.tutorialTips.currentTip as? Tip4NonStaticPlaylists,
-            arrowEdge: .top
-          )
+          .background {
+            Color.clear
+              .popoverTip(
+                mainVM.tutorialTips.currentTip as? Tip4NonStaticPlaylists,
+                arrowEdge: .top
+              )
+              .environment(\.colorScheme, mainVM.systemColorScheme ?? colorScheme)
+              .id(mainVM.systemColorScheme ?? colorScheme)
+          }
       } header: {
         Text("i18n:Sidebar.Sections.Playlists", bundle: #bundle)
       }
@@ -180,6 +185,7 @@ struct SidebarView: View {
 
   // MARK: Private
 
+  @Environment(\.colorScheme) private var colorScheme
   @Environment(MadTunesViewModel.self) private var mainVM
   @Binding private var selectedPlaylistID: UUID?
   /// Phase 160: Local rename alert state (create state is shared via MainVM).

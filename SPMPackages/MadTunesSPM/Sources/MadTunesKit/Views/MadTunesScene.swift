@@ -267,6 +267,9 @@ struct MainSceneView: View {
       vm.importURLs([url])
     }
     #endif
+    .onChange(of: colorScheme, initial: true) { _, newValue in
+      vm.systemColorScheme = newValue
+    }
   }
 
   // MARK: Private
