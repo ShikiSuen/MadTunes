@@ -148,7 +148,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您還可以將首選音訊輸出裝置指定給任何虛擬音訊驅動程式（例如 SoundFlower），以便將音訊路由到 Apple MainStage 或任何 AudioUnit / VST 主機應用程序，從而構築您自己的 DSP 處理鏈。"
+            "value" : "您還可以將首選音訊輸出裝置指定給任何虛擬音訊驅動程式（例如 SoundFlower），以便將音訊路由到 Apple MainStage 或任何 AudioUnit / VST 宿主應用，從而構築您自己的 DSP 處理鏈。"
           }
         }
       }
