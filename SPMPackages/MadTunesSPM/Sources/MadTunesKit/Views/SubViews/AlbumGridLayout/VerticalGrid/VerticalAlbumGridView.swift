@@ -372,11 +372,11 @@ extension AlbumVGrid {
     @ViewBuilder
     private func gridScrollContent(rows: [[Album]], viewportHeight: CGFloat) -> some View {
       let proposedContentWidth = proposedContentWidth
-      LazyVStack(alignment: .leading, spacing: spacing - 6 * ThisDevice.uiFactor) {
+      LazyVStack(alignment: .leading, spacing: spacing - 12 * ThisDevice.uiFactor) {
         ForEach(Array(rows.enumerated()), id: \.offset) { rowIdx, row in
           albumRow(row, columnCount: frozenColumnCount)
             .frame(width: proposedContentWidth)
-            .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
+            .padding(.horizontal, 6 * vm.uiFactor) // 防止兩側邊緣陰影被切掉。
             .drawingGroup()
             .id(rowIdx)
 

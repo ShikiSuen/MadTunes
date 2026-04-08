@@ -278,11 +278,11 @@ extension AlbumHGrid {
     @ViewBuilder
     private func gridScrollContent(columns: [[Album]], viewportWidth: CGFloat) -> some View {
       let proposedContentHeight = proposedContentHeight
-      LazyHStack(alignment: .top, spacing: spacing - 6 * ThisDevice.uiFactor) {
+      LazyHStack(alignment: .top, spacing: spacing - 12 * ThisDevice.uiFactor) {
         ForEach(Array(columns.enumerated()), id: \.offset) { colIdx, column in
           albumColumn(column, rowCount: frozenRowCount)
             .frame(height: proposedContentHeight, alignment: .topLeading)
-            .padding(.vertical, 6 * ThisDevice.uiFactor) // 防止邊緣陰影被切掉。
+            .padding(.horizontal, 6 * ThisDevice.uiFactor) // 防止兩側邊緣陰影被切掉。
             .drawingGroup()
             .id(colIdx)
 
@@ -297,7 +297,7 @@ extension AlbumHGrid {
             // Phase 147: Explicit height so the inner vertical ScrollView can function
             // inside the outer horizontal LazyHStack.
             .frame(height: proposedContentHeight, alignment: .topLeading)
-            .padding(.vertical, 6 * ThisDevice.uiFactor) // 防止邊緣陰影被切掉。
+            .padding(.horizontal, 6 * ThisDevice.uiFactor) // 防止邊緣陰影被切掉。
             .id("expanded_\(expandedAlbum.id)")
             .onAppear { gridVM.expandedAlbumWasInView = true }
             .onDisappear { gridVM.expandedAlbumWasInView = false }
