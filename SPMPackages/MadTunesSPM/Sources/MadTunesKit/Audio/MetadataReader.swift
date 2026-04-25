@@ -211,10 +211,11 @@ public enum MetadataReader: Sendable {
         : nil
 
       // Try to read album artist from iTunes metadata.
+      // Phase 173: Fallback to ID3 TPE2 (Band/Orchestra/Accompaniment) if iTunes aART is absent.
       let iTunesMeta = try await asset.load(.metadata)
       var albumArtist = await loadString(
         from: iTunesMeta,
-        id: .iTunesMetadataAlbumArtist
+        identifiers: [.iTunesMetadataAlbumArtist, .id3MetadataBand]
       )
       var composer = await loadString(
         from: iTunesMeta,
@@ -344,6 +345,20 @@ public enum MetadataReader: Sendable {
     // Non-UTF8 legacy ID3 can appear in more than just MP3 containers.
     guard shouldApplyID3EncodingFix(item: item, identifier: id) else { return rawString }
     return ID3EncodingFixer.fixEncoding(rawString)
+  }
+
+  /// Try multiple identifiers to extract a string, returning the first match.
+  private static func loadString(
+    from items: [AVMetadataItem],
+    identifiers: [AVMetadataIdentifier]
+  ) async
+    -> String? {
+    for id in identifiers {
+      if let value = await loadString(from: items, id: id) {
+        return value
+      }
+    }
+    return nil
   }
 
   private static func shouldApplyID3EncodingFix(
