@@ -63,6 +63,7 @@ struct WPColumnBrowserSheet: View {
         }
         .padding(.vertical, 8)
       }
+      .scrollEdgeSoftened()
       .background(Color.black)
       .navigationTitle(String(localized: "i18n:ColumnBrowser.Title", bundle: #bundle))
       #if !os(macOS)

@@ -112,6 +112,7 @@ struct WPAlbumDetailView: View {
             .frame(minHeight: CGFloat(liveAlbum.tracks.count) * 50)
         }
       }
+      .scrollEdgeSoftened()
       .background(Color.black.ignoresSafeArea())
       #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -203,6 +204,7 @@ struct WPArtistDetailView: View {
         }
       }
     }
+    .scrollEdgeSoftened()
     .background(Color.black.ignoresSafeArea())
     #if !os(macOS)
       .navigationBarTitleDisplayMode(.inline)
@@ -566,6 +568,7 @@ struct WPPlaylistDetailView: View {
         .padding(.horizontal, spacing)
         .padding(.vertical, spacing)
       }
+      .scrollEdgeSoftened()
     }
   }
 
@@ -693,6 +696,7 @@ struct WPPlaylistDetailView: View {
         }
       }
     }
+    .scrollEdgeSoftened()
   }
 
   /// Phase 124: A single selectable track row with checkmark + context menu.

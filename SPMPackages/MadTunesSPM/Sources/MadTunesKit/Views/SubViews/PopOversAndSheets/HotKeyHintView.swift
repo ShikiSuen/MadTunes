@@ -101,6 +101,7 @@ struct HotKeyHintView: View {
           ScrollView {
             popoverContent
           }
+          .scrollEdgeSoftened()
           .toolbar {
             Button {
               isPopoverPresented = false
@@ -117,6 +118,7 @@ struct HotKeyHintView: View {
             .padding(12 * vm.uiFactor)
             .frame(minWidth: 260 * vm.uiFactor)
         }
+        .scrollEdgeSoftened()
       }
     #endif
   }

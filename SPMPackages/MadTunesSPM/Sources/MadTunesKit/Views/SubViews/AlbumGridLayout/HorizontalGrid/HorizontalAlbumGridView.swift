@@ -146,6 +146,7 @@ extension AlbumHGrid {
               .frame(height: scrollViewInnerCanvasHeight, alignment: .topLeading)
               .frame(maxHeight: .infinity, alignment: .topLeading)
           }
+          .scrollEdgeSoftened()
           .scrollIndicators(.visible)
           .animation(.none, value: scrollViewInnerCanvasHeight)
           .scrollContentBackground(.hidden)

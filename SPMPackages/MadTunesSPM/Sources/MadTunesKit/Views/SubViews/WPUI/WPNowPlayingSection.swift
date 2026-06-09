@@ -118,6 +118,7 @@ struct WPNowPlayingSection: View {
         }
         .frame(maxWidth: .infinity)
       }
+      .scrollEdgeSoftened()
     }
   }
 

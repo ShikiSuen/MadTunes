@@ -274,6 +274,7 @@ struct WPPivotBar: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 6)
       }
+      .scrollEdgeSoftened()
       .onChange(of: currentPivot) { _, newPivot in
         withAnimation {
           proxy.scrollTo(newPivot, anchor: .center)
@@ -307,6 +308,7 @@ struct WPAlbumTilesView: View {
         .padding(.horizontal, spacing)
         .padding(.vertical, spacing)
       }
+      .scrollEdgeSoftened()
     }
   }
 
@@ -583,6 +585,7 @@ struct WPArtistListView: View {
         }
       }
     }
+    .scrollEdgeSoftened()
   }
 
   // MARK: Private
@@ -614,6 +617,7 @@ struct WPTrackListView: View {
         }
       }
     }
+    .scrollEdgeSoftened()
   }
 
   @ViewBuilder

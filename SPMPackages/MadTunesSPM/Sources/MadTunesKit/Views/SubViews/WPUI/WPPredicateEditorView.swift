@@ -39,6 +39,7 @@ struct WPPredicateEditorView: View {
             }
             .padding(16)
           }
+          .scrollEdgeSoftened()
 
           footerCard
         }

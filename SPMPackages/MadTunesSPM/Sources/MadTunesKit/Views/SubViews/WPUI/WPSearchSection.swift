@@ -101,6 +101,7 @@ struct WPSearchSection: View {
                 }
                 .padding(.horizontal, 20)
               }
+              .scrollEdgeSoftened()
             }
 
             // Track results.
@@ -115,6 +116,7 @@ struct WPSearchSection: View {
             }
           }
         }
+        .scrollEdgeSoftened()
       }
     }
   }

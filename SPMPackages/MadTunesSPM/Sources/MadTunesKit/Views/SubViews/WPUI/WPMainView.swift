@@ -285,6 +285,7 @@ struct WPSectionTitlesBar: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 8)
       }
+      .scrollEdgeSoftened()
       .onChange(of: currentSection) { _, newSection in
         withAnimation {
           proxy.scrollTo(newSection, anchor: .center)

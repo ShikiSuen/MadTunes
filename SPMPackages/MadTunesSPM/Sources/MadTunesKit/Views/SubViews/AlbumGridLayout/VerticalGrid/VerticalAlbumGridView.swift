@@ -46,6 +46,7 @@ extension AlbumVGrid {
                   gridVM.expandedAlbumWasInView = false
                 }
               }
+              .scrollEdgeSoftened()
               .scrollContentBackground(.hidden)
               .background {
                 Rectangle()
@@ -210,6 +211,7 @@ extension AlbumVGrid {
               .frame(maxWidth: .infinity, alignment: .topLeading)
           }
           .scrollIndicators(.visible)
+          .scrollEdgeSoftened()
           .background(alignment: .trailing) {
             if scrollBarWidth > 0 {
               // 始終顯示捲動調的佔位符，以保證視覺平衡。

@@ -255,6 +255,7 @@ struct ColumnBrowserView: View {
       }
       .padding(.vertical, 8 * vm.uiFactor)
     }
+    .scrollEdgeSoftened()
     .frame(maxHeight: .infinity, alignment: .top)
     .frame(
       width: 200 * vm.uiFactor,

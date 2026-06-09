@@ -270,6 +270,7 @@ struct MainSceneView: View {
     .onChange(of: colorScheme, initial: true) { _, newValue in
       vm.systemColorScheme = newValue
     }
+    .scrollEdgeSoftened()
   }
 
   // MARK: Private

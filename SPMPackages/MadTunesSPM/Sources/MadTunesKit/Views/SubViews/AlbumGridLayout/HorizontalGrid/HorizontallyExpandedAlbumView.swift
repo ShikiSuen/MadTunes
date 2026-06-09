@@ -102,6 +102,7 @@ extension AlbumHGrid {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
           }
+          .scrollEdgeSoftened()
           .scrollContentBackground(.hidden)
           // Phase 153: Auto-scroll to highlighted track during keyboard navigation.
           .onChange(of: vm.gridVM.expandedTrackScrollTargetID) { _, newID in

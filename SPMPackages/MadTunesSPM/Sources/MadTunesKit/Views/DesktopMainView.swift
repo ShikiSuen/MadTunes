@@ -39,6 +39,7 @@ struct DesktopMainView: View {
           }
         }
         .environment(\.colorScheme, OS.liquidGlassThemeSuspected ? .dark : colorScheme)
+        .scrollEdgeSoftened()
         .navigationSplitViewColumnWidth(
           min: 210 * vm.uiFactor,
           ideal: 210 * vm.uiFactor,
@@ -47,6 +48,7 @@ struct DesktopMainView: View {
     } detail: {
       let albums = vm.gridVM.currentAlbumsDisplayed
       contentArea(albums: albums)
+        .scrollEdgeSoftened()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
           Color(white: colorScheme == .dark ? 0.15 : 0.95)
