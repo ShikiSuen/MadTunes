@@ -634,7 +634,7 @@ final class MadTunesViewModel {
   private func observeDesktopContentLayoutChange() {
     withObservationTracking {
       _ = self.desktopContentLayout
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
         let newValue = self.desktopContentLayout
@@ -664,7 +664,7 @@ final class MadTunesViewModel {
   private func observeExpandedAlbumIDChange() {
     withObservationTracking {
       _ = self.gridVM.expandedAlbumID
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
         self.selectedTrackIDs.removeAll()
@@ -680,7 +680,7 @@ final class MadTunesViewModel {
   private func observeSelectedPlaylistIDChange() {
     withObservationTracking {
       _ = self.selectedPlaylistID
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
         let newValue = self.selectedPlaylistID
@@ -703,7 +703,7 @@ final class MadTunesViewModel {
   private func observeCurrentTrackChange() {
     withObservationTracking {
       _ = self.player.currentTrack?.id
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
         if let track = self.player.currentTrack {
@@ -738,7 +738,7 @@ final class MadTunesViewModel {
   private func observeUIModeSwitching() {
     withObservationTracking {
       _ = self.screenVM.isHorizontallyCompact
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
         let isWPUI = WPPhoneViewModel.shouldUseWPUI(screenVM: self.screenVM)
@@ -761,7 +761,7 @@ final class MadTunesViewModel {
   private func observePredicateEditorDismissal() {
     withObservationTracking {
       _ = self.predicateEditorPlaylist
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
         if self.predicateEditorPlaylist == nil {
@@ -776,7 +776,7 @@ final class MadTunesViewModel {
   private func observePlaybackError() {
     withObservationTracking {
       _ = self.player.lastPlaybackError
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
         if self.player.lastPlaybackError != nil {

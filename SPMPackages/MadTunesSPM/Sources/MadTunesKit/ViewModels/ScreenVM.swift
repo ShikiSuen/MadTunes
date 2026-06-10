@@ -220,7 +220,7 @@ public final class ScreenVM {
       _ = isHorizontallyCompact
       _ = actualSidebarWidthObserved
       _ = windowSizeObserved.hashValue
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let this = self else { return }
         this.updateHash4Tracking()
@@ -233,7 +233,7 @@ public final class ScreenVM {
   private func registerSplitViewVisibilityObservation() {
     withObservationTracking {
       _ = splitViewVisibility
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let this = self else { return }
         this.persistSplitViewVisibility()

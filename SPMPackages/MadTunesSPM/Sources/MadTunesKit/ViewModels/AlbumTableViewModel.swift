@@ -854,7 +854,7 @@ final class AlbumTableViewModel {
   private func observeCurrentTracksChange() {
     withObservationTracking {
       _ = self.currentTracksDisplayed
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
         self.scheduleDisplayedTracksUpdate(to: self.currentTracksDisplayed)

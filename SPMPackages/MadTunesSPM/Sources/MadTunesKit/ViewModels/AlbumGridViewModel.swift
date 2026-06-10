@@ -602,7 +602,7 @@ final class AlbumGridViewModel {
   private func observeCurrentAlbumsChange() {
     withObservationTracking {
       _ = self.currentAlbumsDisplayed
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
         self.scheduleDisplayedAlbumsUpdate(to: self.currentAlbumsDisplayed)

@@ -546,7 +546,6 @@ struct ProgressScrubber: View {
     self.currentTime = currentTime
     self.duration = duration
     self.onSeek = onSeek
-    self.dragValue = dragValue
   }
 
   // MARK: Internal

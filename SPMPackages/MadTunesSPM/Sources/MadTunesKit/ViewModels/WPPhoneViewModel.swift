@@ -376,7 +376,7 @@ final class WPPhoneViewModel {
   private func observeCurrentTrackForActivity() {
     withObservationTracking {
       _ = self.mainVM?.player.currentTrack?.id
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
         if let track = self.mainVM?.player.currentTrack {
@@ -391,7 +391,7 @@ final class WPPhoneViewModel {
   private func observeImportCompletion() {
     withObservationTracking {
       _ = self.mainVM?.library.isImporting
-    } onChange: {
+    } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
         let isImporting = self.mainVM?.library.isImporting ?? false
