@@ -90,22 +90,11 @@ public final class ScreenVM {
   public var actualSidebarWidthObserved: CGFloat = 0
   public var bottomSafeAreaInsetHeight: CGFloat = 72 * ThisDevice.uiFactor
   public var windowSizeObserved: CGSize = ScreenVM.getKeyWindowSize()
+  public var mainColumnCanvasSizeObserved: CGSize = ScreenVM.getKeyWindowSize()
   public var splitViewVisibility: NavigationSplitViewVisibility
 
   public private(set) var hashForTracking: Int = 0
   public private(set) var windowSizeEverObserved: Bool = false
-
-  public var mainColumnCanvasSizeObserved: CGSize {
-    var newResult = windowSizeObserved
-    guard splitViewVisibility != .detailOnly else { return newResult }
-    newResult.width -= actualSidebarWidthObserved
-    // macOS 26 傻逼透顶的 sidebar padding 在 macOS 27 被消灭了。
-    if OS.liquidGlassThemeSuspected, OS.sidebarHasPadding {
-      newResult.width -= 10
-    }
-    guard newResult.width > 0 else { return windowSizeObserved }
-    return newResult
-  }
 
   public var isPhonePortraitSituation: Bool {
     isHorizontallyCompact && windowSizeObserved.width <= 440
@@ -212,6 +201,8 @@ public final class ScreenVM {
     hasher.combine(actualSidebarWidthObserved)
     hasher.combine(windowSizeObserved.width)
     hasher.combine(windowSizeObserved.height)
+    hasher.combine(mainColumnCanvasSizeObserved.width)
+    hasher.combine(mainColumnCanvasSizeObserved.height)
     hashForTracking = hasher.finalize()
   }
 
@@ -220,6 +211,7 @@ public final class ScreenVM {
       _ = isHorizontallyCompact
       _ = actualSidebarWidthObserved
       _ = windowSizeObserved.hashValue
+      _ = mainColumnCanvasSizeObserved.hashValue
     } onChange: { [weak self] in
       Task { @MainActor [weak self] in
         guard let this = self else { return }

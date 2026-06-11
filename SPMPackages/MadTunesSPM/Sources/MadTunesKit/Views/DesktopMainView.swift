@@ -53,6 +53,14 @@ struct DesktopMainView: View {
         .background {
           Color(white: colorScheme == .dark ? 0.15 : 0.95)
             .ignoresSafeArea(.all)
+            .trackCanvasSize(debounceDelay: 0.3) {
+              var newSize = $0
+              newSize.width.round(.up)
+              newSize.height.round(.up)
+              let oldSize = vm.screenVM.mainColumnCanvasSizeObserved
+              guard oldSize.width != newSize.width || oldSize.height != newSize.height else { return }
+              vm.screenVM.mainColumnCanvasSizeObserved = newSize
+            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
           // 此區域高度固定為 `72 * ThisDevice.uiFactor`。
