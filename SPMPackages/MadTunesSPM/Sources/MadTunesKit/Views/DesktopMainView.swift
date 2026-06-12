@@ -31,12 +31,7 @@ struct DesktopMainView: View {
             }
           }
           .ignoresSafeArea(.all)
-          .trackCanvasSize(debounceDelay: 0.3) {
-            let existingWidth = vm.screenVM.actualSidebarWidthObserved
-            let newValue = $0.width.rounded(.up)
-            guard existingWidth != newValue else { return }
-            vm.screenVM.actualSidebarWidthObserved = newValue
-          }
+          .trackCanvasSize(debounceDelay: 0.3) { vm.screenVM.handleTrackedSidebarCanvasSize($0) }
         }
         .environment(\.colorScheme, OS.liquidGlassThemeSuspected ? .dark : colorScheme)
         .scrollEdgeSoftened()
@@ -53,14 +48,7 @@ struct DesktopMainView: View {
         .background {
           Color(white: colorScheme == .dark ? 0.15 : 0.95)
             .ignoresSafeArea(.all)
-            .trackCanvasSize(debounceDelay: 0.3) {
-              var newSize = $0
-              newSize.width.round(.up)
-              newSize.height.round(.up)
-              let oldSize = vm.screenVM.mainColumnCanvasSizeObserved
-              guard oldSize.width != newSize.width || oldSize.height != newSize.height else { return }
-              vm.screenVM.mainColumnCanvasSizeObserved = newSize
-            }
+            .trackCanvasSize(debounceDelay: 0.3) { vm.screenVM.handleTrackedMainColumnCanvasSize($0) }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
           // 此區域高度固定為 `72 * ThisDevice.uiFactor`。
