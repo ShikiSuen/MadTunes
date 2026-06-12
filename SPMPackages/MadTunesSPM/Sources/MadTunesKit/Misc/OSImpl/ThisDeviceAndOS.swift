@@ -49,7 +49,7 @@ extension ThisDevice {
   }()
 
   /// 判定系統配備的記憶體容量是否低於一個需要強制照顧效能的閾值。
-  public static var isLegacyDeviceOrInsufficientRAM: Bool {
+  public static let isLegacyDeviceOrInsufficientRAM: Bool = {
     let ramBytes = ProcessInfo.processInfo.physicalMemory
     /// 進位制。
     let degree: Double = switch OS.type {
@@ -64,22 +64,32 @@ extension ThisDevice {
     let ramGB = Double(ramBytes) / degree / degree / degree
     let threshold = Double(deviceRAMInsufficientThresholdAsGiB)
     return ramGB < (threshold - delta)
-  }
+  }()
 
-  public static var deviceRAMInsufficientThresholdAsGiB: Int {
+  public static let deviceRAMInsufficientThresholdAsGiB: Int = {
     switch OS.type {
-    case .macOS: 16
-    case .iPadOS: 8 // <- Only for MadTunes.
+    case .macOS:
+      if #available(macOS 27, macCatalyst 27, iOS 27, *) {
+        8 // macOS 27 效能優化良好。
+      } else {
+        12
+      }
+    case .iPadOS:
+      if #available(iOS 26, *) {
+        16
+      } else {
+        8
+      }
     case .iPhoneOS: 8
     case .watchOS: 1
     case .tvOS: 4
     }
-  }
+  }()
 
-  public static var deviceBannedForUIGlassDecorations: Bool {
+  public static let deviceBannedForUIGlassDecorations: Bool = {
     let legacyDeviceOrLessRAM = ThisDevice.isLegacyDeviceOrInsufficientRAM
     return ThisDevice.isIntelProcessor || legacyDeviceOrLessRAM
-  }
+  }()
 }
 
 // MARK: - DeviceIDCache
