@@ -24,7 +24,8 @@ struct DesktopMainView: View {
         .saturation(vm.library.isImporting ? 0 : 1)
         .background {
           Group {
-            if colorScheme == .dark {
+            let is27OrNewer = ProcessInfo().operatingSystemVersion.majorVersion >= 27
+            if colorScheme == .dark, !is27OrNewer {
               Color.clear
             } else {
               Color.secondary.colorInvert()
@@ -70,6 +71,10 @@ struct DesktopMainView: View {
               BottomBarBackground()
             }
             PlayerControlsView(player: vm.player, artworkData: vm.currentTrackArtworkData)
+              .shadow(
+                color: colorScheme == .dark ? .black : .clear,
+                radius: 1
+              )
               .fixedSize()
               .frame(maxWidth: .infinity)
               .padding([.horizontal, .bottom], 12 * vm.uiFactor)

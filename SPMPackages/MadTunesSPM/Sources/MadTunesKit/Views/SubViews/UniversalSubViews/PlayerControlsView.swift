@@ -795,12 +795,20 @@ private struct EqualSideLayout: Layout {
 // MARK: - GlassEffectModifier
 
 private struct GlassEffectModifier: ViewModifier {
+  // MARK: Internal
+
   func body(content: Content) -> some View {
     Group {
+      let is27OrNewer = ProcessInfo().operatingSystemVersion.majorVersion >= 27
       if #available(macOS 26.0, iOS 26.0, *), OS.liquidGlassThemeSuspected {
         content
           .background {
             GlassyAlbumOverlay().opacity(0.1)
+              .background {
+                if colorScheme == .dark, is27OrNewer {
+                  Color.secondary.colorInvert()
+                }
+              }
           }
           .clipShape(.capsule)
           .glassEffect(.regular, in: .capsule)
@@ -816,4 +824,8 @@ private struct GlassEffectModifier: ViewModifier {
       }
     }
   }
+
+  // MARK: Private
+
+  @Environment(\.colorScheme) private var colorScheme
 }
