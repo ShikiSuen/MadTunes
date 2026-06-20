@@ -58,7 +58,7 @@ struct SidebarView: View {
             Section {
               if playlist.kind == .dynamicList {
                 Button {
-                  mainVM.openPredicateEditor(for: playlist)
+                  mainVM.attemptToOpenPredicateEditorAsync(for: playlist)
                 } label: {
                   Label(
                     String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),

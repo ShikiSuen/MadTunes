@@ -36,7 +36,7 @@ struct WPPlaylistsSection: View {
             Section {
               if playlist.kind == .dynamicList {
                 Button {
-                  vm.openPredicateEditor(for: playlist)
+                  vm.attemptToOpenPredicateEditorAsync(for: playlist)
                 } label: {
                   Label(
                     String(localized: "i18n:Sidebar.EditPredicates", bundle: #bundle),

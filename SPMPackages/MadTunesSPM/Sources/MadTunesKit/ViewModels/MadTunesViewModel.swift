@@ -242,6 +242,13 @@ final class MadTunesViewModel {
     }
   }
 
+  func attemptToOpenPredicateEditorAsync(for playlist: Playlist) {
+    // Async this task to avoid jittering the now-playing audio.
+    Task { @MainActor [weak self] in
+      self?.openPredicateEditor(for: playlist)
+    }
+  }
+
   func openPredicateEditor(for playlist: Playlist) {
     predicateEditorVM = PredicateEditorViewModel(playlist: playlist, library: library)
     predicateEditorPlaylist = playlist
