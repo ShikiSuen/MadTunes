@@ -91,6 +91,28 @@ public enum MetadataReader: Sendable {
     return false
   }
 
+  // MARK: - Infrastructure Pre-Warming
+
+  /// Phase 175: Pre-warm AVFoundation's metadata parsing infrastructure by loading
+  /// tracks and format descriptions from a single representative audio file.
+  /// This triggers lazy codec/demuxer module initialization, preventing playback
+  /// jitter caused by first-time AVURLAsset usage competing with an active AVPlayer.
+  ///
+  /// Call this after library persistence loads and before user interaction begins.
+  /// The operation runs on a background cooperative thread to avoid blocking launch.
+  public static func prewarmMetadataInfrastructure(to url: URL) async {
+    let asset = AVURLAsset(url: url)
+    do {
+      let tracks = try await asset.load(.tracks)
+      if let audioTrack = tracks.first(where: { $0.mediaType == .audio }) {
+        _ = try? await audioTrack.load(.formatDescriptions)
+      }
+      _ = try? await asset.load(.commonMetadata)
+    } catch {
+      // Pre-warming is best-effort; ignore failures silently.
+    }
+  }
+
   // MARK: - Detailed Metadata
 
   /// 讀取詳盡的音軌中繼資料，包括音訊格式資訊。

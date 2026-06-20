@@ -221,6 +221,9 @@ struct WPMainView: View {
     .task {
       await vm.library.loadPersistedData()
       vm.selectedPlaylistID = vm.library.playlists.first?.id
+      // Phase 175: Pre-warm AVFoundation metadata infrastructure to prevent
+      // first-time context-menu jitter while playback is active.
+      vm.prewarmMetadataInfrastructureIfNeeded()
     }
     .trackScreenVMParameters()
   }

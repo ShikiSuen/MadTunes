@@ -232,6 +232,16 @@ final class MadTunesViewModel {
     return base.filter { trackPassesAllFilters($0, tokens: tokens, mode: searchFilterMode) }
   }
 
+  // Phase 175: Pre-warm metadata reader infrastructure to prevent first-time
+  // context menu jitter while music is playing.
+  func prewarmMetadataInfrastructureIfNeeded() {
+    guard !library.tracks.isEmpty else { return }
+    Task(priority: .low) {
+      let url = library.tracks.first!.fileURL
+      await MetadataReader.prewarmMetadataInfrastructure(to: url)
+    }
+  }
+
   func openPredicateEditor(for playlist: Playlist) {
     predicateEditorVM = PredicateEditorViewModel(playlist: playlist, library: library)
     predicateEditorPlaylist = playlist
