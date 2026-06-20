@@ -158,8 +158,6 @@ final class WPPhoneViewModel {
 
   /// Tracks for TrackInfo sheet.
   var tracksForTrackInfo: [Track] = []
-  var isTrackInfoPresented = false
-
   /// Tracks pending delete confirmation (individual track delete).
   var tracksToDelete: [Track] = []
   var showTrackDeleteConfirmation = false
@@ -184,6 +182,15 @@ final class WPPhoneViewModel {
   var isRenamePlaylistAlertPresented = false
   var renamePlaylistID: UUID?
   var renamePlaylistName = ""
+
+  // Phase 174: didSet clears companion state on esc/gesture dismiss.
+  var isTrackInfoPresented = false {
+    didSet {
+      if !isTrackInfoPresented {
+        tracksForTrackInfo = []
+      }
+    }
+  }
 
   var currentSection: PanoramaSection {
     get { access(keyPath: \.currentSection); return _currentSection }

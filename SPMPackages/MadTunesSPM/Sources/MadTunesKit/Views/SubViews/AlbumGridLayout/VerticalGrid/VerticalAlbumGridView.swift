@@ -26,7 +26,7 @@ extension AlbumVGrid {
              let expandedAlbum = gridVM.displayedAlbums.first(
                where: { $0.id == gridVM.expandedAlbumID }
              ) {
-            let id = "\(expandedAlbum.id)_\(Int(canvasWidth))"
+            let id = "expAlbumLegacy_\(expandedAlbum.id)_\(gridVM.expandedAlbumViewInstanceID)"
             ScrollViewReader { proxy in
               ScrollView {
                 VerticallyExpandedAlbumView(
@@ -244,7 +244,7 @@ extension AlbumVGrid {
             guard wasVisible else { return }
             gridVM.proxyScrollDebouncer.debounceOnMain {
               withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-                proxy.scrollTo("\(expandedID)_\(Int(newWidth))")
+                proxy.scrollTo("expAlbum_\(expandedID)_\(gridVM.expandedAlbumViewInstanceID)")
               }
             }
           }
@@ -262,7 +262,7 @@ extension AlbumVGrid {
               withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
                 let isAlbumGridItemVisible = gridVM.albumFrames[albumID] != nil
                 if isAlbumGridItemVisible, let newValue, gridVM.expandedAlbumID == albumID, !gridVM.legacyHardwareMode {
-                  proxy.scrollTo("\(newValue)_\(Int(scrollViewInnerCanvasWidth))")
+                  proxy.scrollTo("expAlbum_\(newValue)_\(gridVM.expandedAlbumViewInstanceID)")
                 } else {
                   proxy.scrollTo(rowIndex, anchor: gridVM.legacyHardwareMode ? .bottom : .center)
                 }
@@ -396,7 +396,7 @@ extension AlbumVGrid {
             .frame(width: proposedContentWidth, alignment: .topLeading)
             .padding(.horizontal, 6 * vm.uiFactor) // 防止邊緣陰影被切掉。
             .drawingGroup()
-            .id("\(expandedAlbum.id)_\(Int(scrollViewInnerCanvasWidth))")
+            .id("expAlbum_\(expandedAlbum.id)_\(gridVM.expandedAlbumViewInstanceID)")
             .onAppear { gridVM.expandedAlbumWasInView = true }
             .onDisappear { gridVM.expandedAlbumWasInView = false }
             .shadow(
@@ -558,7 +558,7 @@ extension AlbumVGrid {
       ) {
         guard !gridVM.legacyHardwareMode else { return }
         withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
-          proxy.scrollTo("\(newValue)_\(Int(scrollViewInnerCanvasWidth))")
+          proxy.scrollTo("expAlbum_\(newValue)_\(gridVM.expandedAlbumViewInstanceID)")
         }
       }
     }

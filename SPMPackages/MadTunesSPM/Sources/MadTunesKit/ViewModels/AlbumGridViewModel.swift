@@ -28,7 +28,6 @@ final class AlbumGridViewModel {
 
   var albumSortOrder: AlbumSortOrder = .artistYearTitle
 
-  var expandedAlbumID: UUID?
   var displayedAlbumsCache: [Album] = []
   var highlightedAlbumIDs: Set<UUID> = []
   /// The fixed anchor for Shift+Arrow range selection. Set on click / plain arrow.
@@ -53,9 +52,6 @@ final class AlbumGridViewModel {
   var expandedAlbumFrame: CGRect?
   var preDragHighlighted: Set<UUID> = []
 
-  // MARK: - Context Menu / Sheet State
-
-  var isTrackInfoPresented = false
   var tracksForTrackInfo: [Track] = []
   var detailedMetadataList: [DetailedTrackMetadata?] = []
 
@@ -85,6 +81,47 @@ final class AlbumGridViewModel {
   /// Phase 165: Frozen column count used by VGrid keyboard navigation.
   /// Written by VerticalAlbumGridView when debounced canvasWidth changes.
   @ObservationIgnored var vGridFrozenColumnCount: Int = 0
+
+  // Phase 174: Tracks whether the expanded album view has its own track-info
+  // sheet active, so handleExpandedKeyPress can avoid collapsing the album
+  // when ESC is meant only to dismiss that sheet.
+  var expandedViewTrackInfoSheetActive = false
+
+  /// Phase 174: Brief gate (50ms) held true after expanded-view sheet dismiss,
+  /// compensating for any runloop-order uncertainty between the sheet's binding
+  /// update and the parent view's onKeyPress delivery.
+  var expandedViewTrackInfoSheetDismissGate = false
+
+  /// Phase 174: Instance counter bumped each time expandedAlbumID changes to a
+  /// non-nil value, ensuring the expanded view's .id() yields a fresh identity
+  /// so @State is never carried over from a previous expansion instance.
+  var expandedAlbumViewInstanceID: UUID = .init()
+
+  // Phase 174: didSet bumps instance ID on expand (fresh view identity)
+  // and clears sheet-tracking flags on collapse.
+  var expandedAlbumID: UUID? {
+    didSet {
+      if let newID = expandedAlbumID, newID != oldValue {
+        expandedAlbumViewInstanceID = UUID()
+      }
+      if expandedAlbumID == nil {
+        expandedViewTrackInfoSheetActive = false
+        expandedViewTrackInfoSheetDismissGate = false
+      }
+    }
+  }
+
+  // MARK: - Context Menu / Sheet State
+
+  // Phase 174: didSet clears companion state on esc/gesture dismiss.
+  var isTrackInfoPresented = false {
+    didSet {
+      if !isTrackInfoPresented {
+        tracksForTrackInfo = []
+        detailedMetadataList = []
+      }
+    }
+  }
 
   // MARK: - Phase 98: Intel Mac Performance Mode
 
@@ -185,6 +222,18 @@ final class AlbumGridViewModel {
       width: abs(current.x - origin.x),
       height: abs(current.y - origin.y)
     )
+  }
+
+  /// Phase 174: Called by expanded views when their local track-info sheet
+  /// dismisses.  Holds the dismiss gate open for one display cycle so that
+  /// any concurrent ESC key event is suppressed.
+  func noteExpandedViewTrackInfoSheetDismissed() {
+    expandedViewTrackInfoSheetActive = false
+    expandedViewTrackInfoSheetDismissGate = true
+    Task { @MainActor in
+      try? await Task.sleep(nanoseconds: 50_000_000) // 50 ms
+      expandedViewTrackInfoSheetDismissGate = false
+    }
   }
 
   // MARK: - Phase 96: ViewModel-level Observations
@@ -839,6 +888,11 @@ final class AlbumGridViewModel {
 
     if press.key == .escape
       || (press.modifiers.contains(.command) && press.key == .upArrow) {
+      // Phase 174: When the expanded view's track-info sheet is (or was just)
+      // active, ESC is meant to dismiss the sheet, not collapse the album.
+      if expandedViewTrackInfoSheetActive || expandedViewTrackInfoSheetDismissGate {
+        return .ignored
+      }
       withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) {
         expandedAlbumID = nil
       }
@@ -1299,6 +1353,11 @@ final class AlbumGridViewModel {
     // Escape or Cmd+Up: collapse
     if press.key == .escape
       || (press.modifiers.contains(.command) && press.key == .upArrow) {
+      // Phase 174: When the expanded view's track-info sheet is (or was just)
+      // active, ESC is meant to dismiss the sheet, not collapse the album.
+      if expandedViewTrackInfoSheetActive || expandedViewTrackInfoSheetDismissGate {
+        return .ignored
+      }
       withAnimation(.interactiveSpring.nerf(legacyHardwareMode)) { expandedAlbumID = nil }
       return .handled
     }

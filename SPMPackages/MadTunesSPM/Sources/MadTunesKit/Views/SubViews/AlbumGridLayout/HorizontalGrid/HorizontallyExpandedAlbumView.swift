@@ -139,6 +139,12 @@ extension AlbumHGrid {
           )
         }
       }
+      // Phase 174: Mirror sheet state to Grid VM so handleExpandedKeyPress
+      // can suppress ESC-triggered album collapse while the sheet is active.
+      .onChange(of: isTrackInfoPresented, initial: true) { _, newValue in
+        vm.gridVM.expandedViewTrackInfoSheetActive = newValue
+        if !newValue { vm.gridVM.noteExpandedViewTrackInfoSheetDismissed() }
+      }
       .alert(
         String(localized: "i18n:Alert.RemoveFromLibraryTitle", bundle: #bundle),
         isPresented: $showDeleteConfirmation

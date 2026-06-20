@@ -173,7 +173,7 @@ extension AlbumHGrid {
                 // 為什麼一定可見呢？因為 ExpandedAlbumContent 的寬度是固定的。
                 if let newValue, gridVM.expandedAlbumID == albumID {
                   // 使用者電腦顯示器往往都是寬的，所以這裡需要 anchor: .center 便於接下來的操作。
-                  proxy.scrollTo("expanded_\(newValue)", anchor: .center)
+                  proxy.scrollTo("expAlbumH_\(newValue)_\(gridVM.expandedAlbumViewInstanceID)", anchor: .center)
                 } else {
                   proxy.scrollTo(colIndex, anchor: .center)
                 }
@@ -299,7 +299,7 @@ extension AlbumHGrid {
             // inside the outer horizontal LazyHStack.
             .frame(height: proposedContentHeight, alignment: .topLeading)
             .padding(.horizontal, 6 * ThisDevice.uiFactor) // 防止邊緣陰影被切掉。
-            .id("expanded_\(expandedAlbum.id)")
+            .id("expAlbumH_\(expandedAlbum.id)_\(gridVM.expandedAlbumViewInstanceID)")
             .onAppear { gridVM.expandedAlbumWasInView = true }
             .onDisappear { gridVM.expandedAlbumWasInView = false }
             .shadow(
@@ -444,7 +444,7 @@ extension AlbumHGrid {
       ) {
         withAnimation(.interactiveSpring.nerf(gridVM.legacyHardwareMode)) {
           // 使用者電腦顯示器往往都是寬的，所以這裡需要 anchor: .center 便於接下來的操作。
-          proxy.scrollTo("expanded_\(newValue)", anchor: .center)
+          proxy.scrollTo("expAlbumH_\(newValue)_\(gridVM.expandedAlbumViewInstanceID)", anchor: .center)
         }
       }
     }

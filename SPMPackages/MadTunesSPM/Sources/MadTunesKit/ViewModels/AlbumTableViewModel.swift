@@ -63,9 +63,6 @@ final class AlbumTableViewModel {
   /// Views should bind to this instead of the raw tracks array.
   var displayedTracks: [Track] = []
 
-  // MARK: - Context Menu / Sheet State
-
-  var isTrackInfoPresented = false
   var tracksForTrackInfo: [Track] = []
   var detailedMetadataList: [DetailedTrackMetadata?] = []
 
@@ -83,6 +80,18 @@ final class AlbumTableViewModel {
 
   /// Phase 69: Whether iOS edit mode (multi-select) is active.
   var isEditModeActive = false
+
+  // MARK: - Context Menu / Sheet State
+
+  // Phase 174: didSet clears companion state on esc/gesture dismiss.
+  var isTrackInfoPresented = false {
+    didSet {
+      if !isTrackInfoPresented {
+        tracksForTrackInfo = []
+        detailedMetadataList = []
+      }
+    }
+  }
 
   var tableColumnVisibility: [String: Bool] {
     get { access(keyPath: \.tableColumnVisibility); return _tableColumnVisibility }
