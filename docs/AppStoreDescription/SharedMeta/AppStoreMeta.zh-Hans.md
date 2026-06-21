@@ -1,4 +1,4 @@
-# App Store 元数据 - MadTunes（简体中文）
+# App Store 中继资料 - MadTunes（简体中文）
 
 ## 应用名称
 

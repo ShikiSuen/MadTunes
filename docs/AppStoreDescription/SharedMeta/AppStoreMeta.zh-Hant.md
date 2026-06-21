@@ -1,4 +1,4 @@
-# App Store 元資料 - MadTunes（繁體中文）
+# App Store 中繼資料 - MadTunes（繁體中文）
 
 ## 應用程式名稱
 
