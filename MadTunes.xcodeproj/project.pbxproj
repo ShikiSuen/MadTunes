@@ -15,6 +15,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		5B1602872FE8371700D74293 /* MadTunes.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MadTunes.entitlements; sourceTree = "<group>"; };
 		5B56A2892F6658970062DEEC /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5BB9E9612F60BEB1004E2DDB /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		5BCDC4752F66DD4400635767 /* README.zh-Hant.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "README.zh-Hant.md"; sourceTree = "<group>"; };
@@ -22,7 +23,7 @@
 		AA000004000000000000000A /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AA000006000000000000000A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA000009000000000000000A /* MadTunes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MadTunes.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA00000A000000000000000A /* MadTunes.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MadTunes.entitlements; sourceTree = "<group>"; };
+		AA00000A000000000000000A /* MadTunes-AppKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "MadTunes-AppKit.entitlements"; sourceTree = "<group>"; };
 		AA00000B000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AA00000C000000000000000A /* MadTunesSPM */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = MadTunesSPM; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -71,7 +72,8 @@
 				AA00000B000000000000000A /* Info.plist */,
 				AA000006000000000000000A /* Assets.xcassets */,
 				AA000002000000000000000A /* MainApp.swift */,
-				AA00000A000000000000000A /* MadTunes.entitlements */,
+				AA00000A000000000000000A /* MadTunes-AppKit.entitlements */,
+				5B1602872FE8371700D74293 /* MadTunes.entitlements */,
 				AA000024000000000000000A /* Preview Content */,
 				5BB9E9612F60BEB1004E2DDB /* Localizable.xcstrings */,
 			);
@@ -314,6 +316,8 @@
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_ENTITLEMENTS = MadTunes/MadTunes.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphone*]" = MadTunes/MadTunes.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "MadTunes/MadTunes-AppKit.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -376,6 +380,8 @@
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_ENTITLEMENTS = MadTunes/MadTunes.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphone*]" = MadTunes/MadTunes.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "MadTunes/MadTunes-AppKit.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
