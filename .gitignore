@@ -523,3 +523,4 @@ x64/
 x86/
 xcuserdata
 *.xcscheme
+!*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
