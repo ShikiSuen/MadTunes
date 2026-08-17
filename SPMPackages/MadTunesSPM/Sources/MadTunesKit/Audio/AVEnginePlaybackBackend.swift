@@ -257,11 +257,14 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
 
   private func startTimeTimer() {
     timeTimer?.invalidate()
-    let expectedGeneration = generation
+    // Phase 176 Task 6: deliberately NO generation guard here. seek() bumps
+    // the generation, so a guarded timer would stop reporting after the
+    // first seek and freeze the progress bar. Lifetime is already managed
+    // by teardownGraph() invalidating the timer, and the audioFile guard
+    // swallows any firing that was enqueued before a teardown.
     timeTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
       Task { @MainActor [weak self] in
         guard let self,
-              self.generation == expectedGeneration,
               let file = self.audioFile
         else { return }
         let current = Double(self.currentFrameEstimate()) / file.processingFormat.sampleRate
