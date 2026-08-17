@@ -132,9 +132,12 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
   private var configChangeObserver: (any NSObjectProtocol)?
   /// Phase 176 Task 3: Serial queue for blocking engine/node `stop()` calls,
   /// keeping them off the main thread and strictly ordered against each other.
+  /// Phase 176 Task 9: QoS is deliberately .default — engine/node stop/start
+  /// internally wait on Default-QoS audio worker threads, so running them on
+  /// a higher-QoS queue trips the runtime priority-inversion diagnostic.
   private let stopQueue = DispatchQueue(
     label: "MadTunes.AVEnginePlaybackBackend.stopQueue",
-    qos: .userInitiated
+    qos: .default
   )
 
   #if os(iOS)
@@ -380,11 +383,13 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
   #if os(macOS)
   /// Route the engine's output node to the stored device UID.
   /// CoreAudio calls run off-main to avoid priority-inversion warnings
-  /// (same discipline as Phase 144).
+  /// (same discipline as Phase 144). Task 9: at .medium priority — writing
+  /// the output device reconfigures IO and waits on Default-QoS audio
+  /// worker threads, so a higher-priority task would itself be flagged.
   private func applyStoredOutputDevice() {
     guard let engine, let audioUnit = engine.outputNode.audioUnit else { return }
     let uid = outputDeviceUID
-    Task.detached(priority: .userInitiated) {
+    Task.detached(priority: .medium) {
       // Phase 176 Task 4: A nil/empty UID means "follow the system default".
       // That still requires an explicit write — the output unit does NOT
       // un-pin itself once a previous device override landed; skipping the
