@@ -12,6 +12,8 @@ import SwiftUI
 /// A `Picker` without an explicit style renders as a submenu when its
 /// container is a context menu.
 struct PlaybackEngineContextMenu: View {
+  // MARK: Internal
+
   let player: AudioPlayer
 
   var body: some View {
@@ -41,6 +43,8 @@ struct PlaybackEngineContextMenu: View {
       .tag(PlaybackEngineKind.avAudioEngine)
     }
   }
+
+  // MARK: Private
 
   private var engineKindBinding: Binding<PlaybackEngineKind> {
     Binding(

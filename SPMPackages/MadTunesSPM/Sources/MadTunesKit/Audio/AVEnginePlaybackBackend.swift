@@ -327,9 +327,19 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
   /// (same discipline as Phase 144).
   private func applyStoredOutputDevice() {
     guard let engine, let audioUnit = engine.outputNode.audioUnit else { return }
-    guard let uid = outputDeviceUID, !uid.isEmpty else { return } // nil = system default
+    let uid = outputDeviceUID
     Task.detached(priority: .userInitiated) {
-      guard let deviceID = Self.resolveDeviceID(uid: uid) else { return } // device vanished
+      // Phase 176 Task 4: A nil/empty UID means "follow the system default".
+      // That still requires an explicit write — the output unit does NOT
+      // un-pin itself once a previous device override landed; skipping the
+      // write leaves the old route stuck (silent at the expected device)
+      // until the next full graph rebuild.
+      let targetID: AudioDeviceID? = if let uid, !uid.isEmpty {
+        Self.resolveDeviceID(uid: uid) ?? Self.resolveSystemDefaultOutputDeviceID()
+      } else {
+        Self.resolveSystemDefaultOutputDeviceID()
+      }
+      guard let deviceID = targetID else { return }
       var currentID = AudioDeviceID(0)
       var propSize = UInt32(MemoryLayout<AudioDeviceID>.size)
       AudioUnitGetProperty(
@@ -383,6 +393,27 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
         )
       }
     }
+    guard status == noErr, deviceID != 0 else { return nil }
+    return deviceID
+  }
+
+  /// Phase 176 Task 4: Resolve the current system default output device.
+  private nonisolated static func resolveSystemDefaultOutputDeviceID() -> AudioDeviceID? {
+    var deviceID = AudioDeviceID(0)
+    var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+    var address = AudioObjectPropertyAddress(
+      mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+      mScope: kAudioObjectPropertyScopeGlobal,
+      mElement: kAudioObjectPropertyElementMain
+    )
+    let status = AudioObjectGetPropertyData(
+      AudioObjectID(kAudioObjectSystemObject),
+      &address,
+      0,
+      nil,
+      &size,
+      &deviceID
+    )
     guard status == noErr, deviceID != 0 else { return nil }
     return deviceID
   }
