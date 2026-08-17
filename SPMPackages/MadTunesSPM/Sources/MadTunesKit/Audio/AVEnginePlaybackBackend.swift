@@ -274,7 +274,15 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
     // first seek and freeze the progress bar. Lifetime is already managed
     // by teardownGraph() invalidating the timer, and the audioFile guard
     // swallows any firing that was enqueued before a teardown.
-    timeTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+    //
+    // Phase 176 Task 8: schedule in .common runloop modes. A .default-mode
+    // timer freezes while a context menu is open (event-tracking mode), so
+    // position reporting went stale by the menu's open duration and an
+    // engine switch issued from that menu resumed at a stale position
+    // (verified: .default fires 0x during event-tracking, .common fires
+    // normally). AVPlayer's periodic observer is GCD-driven and unaffected
+    // by runloop modes, which made the asymmetry directional.
+    let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
       Task { @MainActor [weak self] in
         guard let self,
               let file = self.audioFile
@@ -286,6 +294,8 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
         self.onPeriodicTime?(current, self.fileDuration)
       }
     }
+    RunLoop.main.add(timer, forMode: .common)
+    timeTimer = timer
   }
 
   // MARK: - Configuration Changes
