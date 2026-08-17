@@ -48,8 +48,8 @@ public final class ScreenVM {
           return nil
         }()
         guard let newOrientation else { continue }
-        try await Task.sleep(nanoseconds: 100_000_000)
-        try Task.checkCancellation()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        try? Task.checkCancellation()
         self.orientation = newOrientation
         self.updateHash4Tracking()
       }
