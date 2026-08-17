@@ -7,45 +7,47 @@ import SwiftUI
 // MARK: - PlaybackEngineContextMenu
 
 /// Phase 176: Context menu attached to every play/pause button, letting the
-/// user switch the playback pipeline between AVPlayer (default) and the
-/// experimental AVAudioEngine backend. Right-click on macOS, long-press on iOS.
+/// user switch the playback pipeline between AVPlayer (default) and
+/// AVAudioEngine. Right-click on macOS, long-press on iOS.
+/// A `Picker` without an explicit style renders as a submenu when its
+/// container is a context menu.
 struct PlaybackEngineContextMenu: View {
   let player: AudioPlayer
 
   var body: some View {
-    Button {
-      Task { await player.setPlaybackEngineKind(.avPlayer) }
-    } label: {
-      HStack {
-        Text(
-          String(
-            localized: "i18n:PlaybackEngine.AVPlayer",
-            defaultValue: "AVPlayer (Default)",
-            bundle: #bundle
-          )
+    Picker(
+      String(
+        localized: "i18n:PlaybackEngine.MenuTitle",
+        defaultValue: "Playback Engine",
+        bundle: #bundle
+      ),
+      selection: engineKindBinding
+    ) {
+      Text(
+        String(
+          localized: "i18n:PlaybackEngine.AVPlayer",
+          defaultValue: "AVPlayer (Default)",
+          bundle: #bundle
         )
-        if player.playbackEngineKind == .avPlayer {
-          Spacer()
-          Image(systemName: "checkmark")
-        }
-      }
-    }
-    Button {
-      Task { await player.setPlaybackEngineKind(.avAudioEngine) }
-    } label: {
-      HStack {
-        Text(
-          String(
-            localized: "i18n:PlaybackEngine.AVAudioEngine",
-            defaultValue: "AVAudioEngine",
-            bundle: #bundle
-          )
+      )
+      .tag(PlaybackEngineKind.avPlayer)
+      Text(
+        String(
+          localized: "i18n:PlaybackEngine.AVAudioEngine",
+          defaultValue: "AVAudioEngine",
+          bundle: #bundle
         )
-        if player.playbackEngineKind == .avAudioEngine {
-          Spacer()
-          Image(systemName: "checkmark")
-        }
-      }
+      )
+      .tag(PlaybackEngineKind.avAudioEngine)
     }
+  }
+
+  private var engineKindBinding: Binding<PlaybackEngineKind> {
+    Binding(
+      get: { player.playbackEngineKind },
+      set: { newKind in
+        Task { await player.setPlaybackEngineKind(newKind) }
+      }
+    )
   }
 }
