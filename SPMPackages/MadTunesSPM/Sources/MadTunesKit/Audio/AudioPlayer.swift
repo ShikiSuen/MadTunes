@@ -4,6 +4,7 @@
 
 import AVFoundation
 import Observation
+import SwiftUI
 
 #if os(macOS)
 import CoreAudio
@@ -39,8 +40,10 @@ public enum PlayLoopBehavior: Sendable {
 
 // MARK: - AudioPlayer
 
-/// Audio playback engine backed by AVPlayer. Manages a playback queue,
-/// supports play/pause/seek/next/previous, and reports current time via observation.
+/// Playback coordinator. Manages a playback queue, Now Playing integration and
+/// loop behavior; the actual audio rendering is delegated to an
+/// `AudioPlaybackBackend` (AVPlayer by default, or the Phase 176 experimental
+/// AVAudioEngine pipeline).
 @Observable
 @MainActor
 public final class AudioPlayer {
@@ -93,6 +96,13 @@ public final class AudioPlayer {
   /// Phase 158: Structured playback error for UI display.
   public var lastPlaybackError: PlaybackError?
 
+  /// Phase 176: The active playback pipeline (persisted; AVPlayer by default).
+  /// Mutate through `setPlaybackEngineKind(_:)` so the backend is migrated.
+  public var playbackEngineKind: PlaybackEngineKind {
+    access(keyPath: \.playbackEngineKind)
+    return _playbackEngineKind
+  }
+
   // Phase 127: Audio output device routing (macOS only).
   #if os(macOS)
   /// Audio output device manager (initialized on first access).
@@ -110,25 +120,29 @@ public final class AudioPlayer {
   /// Set the audio output device by UID. Pass `nil` for system default.
   public func setOutputDevice(uid: String?) {
     outputDeviceManager.selectedDeviceUID = uid
-    avPlayer?.audioOutputDeviceUniqueID = uid
+    backend?.setOutputDevice(uid: uid)
   }
   #endif
 
-  /// 切換迴圈模式。若正在播放且 duration 已知，會立即安裝／拆除 boundary observer。
+  /// Phase 176: Switch the playback pipeline. A loaded track is re-armed on the
+  /// new backend at the current position, keeping the playing/paused state.
+  public func setPlaybackEngineKind(_ newKind: PlaybackEngineKind) async {
+    guard newKind != playbackEngineKind else { return }
+    let trackToResume = currentTrack
+    let resumeTime = currentTime
+    let shouldAutoPlay = isPlaying
+    withMutation(keyPath: \.playbackEngineKind) { _playbackEngineKind = newKind }
+    guard trackToResume != nil else { return }
+    teardownBackend()
+    if let trackToResume {
+      await play(trackToResume, startAt: resumeTime, autoPlay: shouldAutoPlay)
+    }
+  }
+
+  /// 切換迴圈模式。新的取值會即時下發給當前播放後端。
   public func setLoopBehavior(_ newValue: PlayLoopBehavior) async {
     loopBehavior = newValue
-    let currentDuration = CMTime(seconds: duration, preferredTimescale: 600)
-    if newValue == .repeatOne,
-       isPlaying,
-       duration > 0,
-       CMTimeGetSeconds(currentDuration).isFinite {
-      setupRepeatOneLoopObserver(duration: currentDuration, generation: avPlayerGeneration)
-    } else if newValue != .repeatOne {
-      if let obs = loopBoundaryObserver {
-        avPlayer?.removeTimeObserver(obs)
-        loopBoundaryObserver = nil
-      }
-    }
+    backend?.repeatOneRequested = (newValue == .repeatOne)
   }
 
   /// Replace the queue and start playing from the given index.
@@ -162,50 +176,15 @@ public final class AudioPlayer {
   // MARK: - Playback Controls
 
   public func play(_ track: Track) async {
-    cleanupObservers()
-    avPlayer?.pause()
-
-    var playbackURL = track.fileURL
-    var bookmarkScopedURL: URL?
-
-    // If fileURL is not readable (e.g. after app relaunch), try bookmark.
-    if !FileManager.default.isReadableFile(atPath: playbackURL.path) {
-      if let bookmark = track.bookmarkData,
-         let resolved = Self.resolveBookmark(bookmark) {
-        if resolved.startAccessingSecurityScopedResource() {
-          bookmarkScopedURL = resolved
-          playbackURL = resolved
-        } else {
-          print("[AudioPlayer] ERROR: startAccessingSecurityScopedResource failed for: \(resolved.path)")
-          lastPlaybackError = .securityScopeAccessDenied(title: track.title)
-          Self.playErrorBeep()
-          return
-        }
-      } else {
-        print("[AudioPlayer] ERROR: File not readable and bookmark resolution failed for: \(playbackURL.path)")
-        lastPlaybackError = .bookmarkResolutionFailed(title: track.title)
-        Self.playErrorBeep()
-        return
-      }
-    }
-
-    // Stop any previous bookmark scope; adopt the new one.
-    stopSecurityScopedAccess()
-    activeSecurityScopedURL = bookmarkScopedURL
-
-    currentTrack = track
-    // Phase 108: Reset cached Now Playing artwork for new track.
-    nowPlayingArtworkData = nil
-    nowPlayingArtworkKey = nil
-    playViaAVPlayer(url: playbackURL)
+    await play(track, startAt: 0, autoPlay: true)
   }
 
   public func togglePlayPause() async {
-    guard let avPlayer else { return }
+    guard let backend else { return }
     if isPlaying {
-      avPlayer.pause()
+      backend.pause()
     } else {
-      avPlayer.play()
+      backend.resume()
     }
     isPlaying.toggle()
     // Phase 105: Update Now Playing Info.
@@ -213,10 +192,7 @@ public final class AudioPlayer {
   }
 
   public func stop() async {
-    cleanupObservers()
-    avPlayer?.pause()
-    avPlayer = nil
-    restoreHALBuffer()
+    teardownBackend()
     stopSecurityScopedAccess()
     currentTrack = nil
     currentTime = 0
@@ -258,7 +234,7 @@ public final class AudioPlayer {
     switch loopBehavior {
     case .repeatOne:
       await seek(to: 0)
-      avPlayer?.play()
+      backend?.resume()
     case .shuffle:
       currentIndex = Int.random(in: 0 ..< queue.count)
       await play(queue[currentIndex])
@@ -286,22 +262,22 @@ public final class AudioPlayer {
   }
 
   public func seek(to time: TimeInterval) async {
-    guard let avPlayer else { return }
-    let cmTime = CMTime(seconds: time, preferredTimescale: 600)
+    guard backend != nil else { return }
     currentTime = time
-    await avPlayer.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
+    backend?.seek(to: time)
     // Phase 105: Update Now Playing Info.
     updateNowPlayingInfo()
   }
 
   // MARK: Private
 
-  private var avPlayer: AVPlayer?
-  private var avPlayerEndObserver: Any?
-  private var avPlayerGeneration: UInt = 0
-  private var timeObserver: Any?
-  private var loopBoundaryObserver: Any?
-  private var itemStatusObservation: NSKeyValueObservation?
+  /// Phase 176: Persisted pipeline selection, bridged like Phase 145.
+  @ObservationIgnored @AppStorage("MadTunes.playbackEngineKind")
+  private var _playbackEngineKind: PlaybackEngineKind = .avPlayer
+
+  /// Phase 176: The backend currently rendering audio (`nil` while stopped).
+  private var backend: (any AudioPlaybackBackend)?
+
   private var activeSecurityScopedURL: URL?
   private var savedHALBufferFrameSize: UInt32?
 
@@ -341,6 +317,73 @@ public final class AudioPlayer {
     #endif
   }
 
+  // MARK: - Backend Management (Phase 176)
+
+  /// Returns the backend matching `playbackEngineKind`, creating and wiring
+  /// one when necessary.
+  private func ensureBackend() -> any AudioPlaybackBackend {
+    if let backend, backend.kind == playbackEngineKind { return backend }
+    backend?.stop()
+    backend = nil
+
+    let newBackend: any AudioPlaybackBackend = switch playbackEngineKind {
+    case .avPlayer:
+      AVPlayerPlaybackBackend()
+    case .avAudioEngine:
+      AVEnginePlaybackBackend()
+    }
+
+    newBackend.onReadyToPlay = { [weak self] loadedDuration in
+      guard let self else { return }
+      if loadedDuration.isFinite, loadedDuration > 0 {
+        self.duration = loadedDuration
+      }
+      // Phase 105: Update Now Playing Info when track is ready to play.
+      self.updateNowPlayingInfo()
+    }
+    newBackend.onPeriodicTime = { [weak self] current, reportedDuration in
+      guard let self else { return }
+      self.currentTime = current
+      if reportedDuration.isFinite, reportedDuration > 0 {
+        self.duration = reportedDuration
+      }
+      // Phase 105: Update Now Playing Info periodically.
+      self.updateNowPlayingInfo()
+    }
+    newBackend.onNaturalEnd = { [weak self] in
+      guard let self, self.isPlaying else { return }
+      Task { @MainActor in
+        await self.next()
+      }
+    }
+    newBackend.onFailure = { [weak self] in
+      guard let self else { return }
+      self.lastPlaybackError = .avPlayerFailed(title: self.currentTrack?.title ?? "?")
+      Self.playErrorBeep()
+      self.isPlaying = false
+    }
+    newBackend.onExternalPlayStateChange = { [weak self] playing in
+      guard let self else { return }
+      self.isPlaying = playing
+      self.updateNowPlayingInfo()
+    }
+
+    newBackend.volume = volume
+    newBackend.repeatOneRequested = (loopBehavior == .repeatOne)
+    #if os(macOS)
+    newBackend.setOutputDevice(uid: outputDeviceManager.selectedDeviceUID)
+    #endif
+
+    backend = newBackend
+    return newBackend
+  }
+
+  private func teardownBackend() {
+    backend?.stop()
+    backend = nil
+    restoreHALBuffer()
+  }
+
   @MainActor
   private func observeLibraryChanges() async {
     // Use the Observable macro helper to track changeID.
@@ -372,9 +415,8 @@ public final class AudioPlayer {
     } onChange: { [weak self] in
       guard let this = self else { return }
       Task { @MainActor in
-        guard let avPlayer = this.avPlayer else { return }
-        if avPlayer.volume != this.volume {
-          avPlayer.volume = this.volume
+        if let backend = this.backend, backend.volume != this.volume {
+          backend.volume = this.volume
         }
         // keep observing future changes
         await this.observeVolumeChanges()
@@ -405,10 +447,11 @@ public final class AudioPlayer {
 
   // MARK: - HAL Buffer Management
 
-  /// Enlarge the default output device's I/O buffer so AVPlayer's high-quality
-  /// SRC has enough time per cycle, preventing HALC overload jitter.
+  /// Enlarge the default output device's I/O buffer so the render pipeline has
+  /// enough time per cycle, preventing HALC overload jitter.
   private func enlargeHALBufferIfNeeded() {
     #if os(macOS)
+    guard savedHALBufferFrameSize == nil else { return } // already enlarged
     let desiredFrames: UInt32 = 1024
 
     var deviceID = AudioDeviceID(0)
@@ -468,167 +511,48 @@ public final class AudioPlayer {
     #endif
   }
 
-  // MARK: - AVPlayer Playback
+  // MARK: - Track Loading
 
-  private func playViaAVPlayer(url: URL) {
-    enlargeHALBufferIfNeeded()
-    let item = AVPlayerItem(url: url)
-    // Phase 127 investigation: no public API exists for controlling AVPlayer SRC quality.
-    // `AVMutableAudioMixInputParameters.audioProcessingSettings` +
-    // `AVSampleRateConverterAlgorithmKey` / `AVSampleRateConverterAlgorithm_Mastering`
-    // were removed from the macOS SDK (not present in macOS 26 SDK).
-    // SRC is handled transparently by coreaudiod; apps cannot influence its quality tier.
-    //
-    // DO NOT set `item.audioTimePitchAlgorithm = .spectral` here.
-    // `audioTimePitchAlgorithm` controls the time-stretch algorithm, which only engages
-    // when AVPlayer.rate ≠ 1.0 (scaled edits / varispeed). At rate == 1.0, AVFoundation
-    // bypasses the pitch/time-stretch pipeline entirely, but `.spectral` still inserts
-    // an extra DSP stage that causes audible quality degradation — instruments lose
-    // transient "breath" at higher volumes (verified by A/B listening test, Phase 127).
-    // The macOS 12+ default `.timeDomain` must be left in place.
+  private func play(_ track: Track, startAt: TimeInterval, autoPlay: Bool) async {
+    var playbackURL = track.fileURL
+    var bookmarkScopedURL: URL?
 
-    if avPlayer == nil {
-      // Replace directly — do NOT nil-out first, which causes a pipeline
-      // teardown race (FigFilePlayer err=-12864).
-      avPlayer = AVPlayer(playerItem: item)
-      avPlayer?.volume = volume
-      // Phase 127: Apply selected audio output device.
-      #if os(macOS)
-      avPlayer?.audioOutputDeviceUniqueID = outputDeviceManager.selectedDeviceUID
-      #endif
-    } else {
-      avPlayer?.replaceCurrentItem(with: item)
-    }
-
-    duration = currentTrack?.duration ?? 0
-    isPlaying = true
-
-    avPlayerGeneration &+= 1
-    let expectedGeneration = avPlayerGeneration
-
-    // KVO: wait for the new item to be ready before playing.
-    itemStatusObservation = item.observe(\.status, options: [.new]) { [weak self] observedItem, _ in
-      Task { @MainActor [weak self] in
-        guard let self, self.avPlayerGeneration == expectedGeneration else { return }
-        self.itemStatusObservation = nil
-        switch observedItem.status {
-        case .readyToPlay:
-          self.avPlayer?.play()
-          let dur = CMTimeGetSeconds(observedItem.duration)
-          if dur.isFinite, dur > 0 {
-            self.duration = dur
-            if self.loopBehavior == .repeatOne {
-              self.setupRepeatOneLoopObserver(
-                duration: observedItem.duration,
-                generation: expectedGeneration
-              )
-            }
-          }
-          // Phase 105: Update Now Playing Info when track is ready to play.
-          self.updateNowPlayingInfo()
-        case .failed:
-          print("[AudioPlayer] itemStatusObservation AVPlayerGeneration Status Failure.")
-          self.lastPlaybackError = .avPlayerFailed(title: self.currentTrack?.title ?? "?")
+    // If fileURL is not readable (e.g. after app relaunch), try bookmark.
+    if !FileManager.default.isReadableFile(atPath: playbackURL.path) {
+      if let bookmark = track.bookmarkData,
+         let resolved = Self.resolveBookmark(bookmark) {
+        if resolved.startAccessingSecurityScopedResource() {
+          bookmarkScopedURL = resolved
+          playbackURL = resolved
+        } else {
+          print("[AudioPlayer] ERROR: startAccessingSecurityScopedResource failed for: \(resolved.path)")
+          lastPlaybackError = .securityScopeAccessDenied(title: track.title)
           Self.playErrorBeep()
-          self.isPlaying = false
-        default:
-          break
+          return
         }
+      } else {
+        print("[AudioPlayer] ERROR: File not readable and bookmark resolution failed for: \(playbackURL.path)")
+        lastPlaybackError = .bookmarkResolutionFailed(title: track.title)
+        Self.playErrorBeep()
+        return
       }
     }
 
-    setupTimeObserver(generation: expectedGeneration)
-    setupEndObserver(for: item, generation: expectedGeneration)
-  }
+    // Stop any previous bookmark scope; adopt the new one.
+    stopSecurityScopedAccess()
+    activeSecurityScopedURL = bookmarkScopedURL
 
-  // MARK: - Observation Setup
+    currentTrack = track
+    // Phase 108: Reset cached Now Playing artwork for new track.
+    nowPlayingArtworkData = nil
+    nowPlayingArtworkKey = nil
 
-  private func setupTimeObserver(generation: UInt) {
-    let interval = CMTime(seconds: 0.25, preferredTimescale: 600)
-    timeObserver = avPlayer?.addPeriodicTimeObserver(
-      forInterval: interval, queue: .main
-    ) { [weak self] time in
-      Task { @MainActor in
-        guard let self, self.avPlayerGeneration == generation else { return }
-        self.currentTime = CMTimeGetSeconds(time)
-        if let dur = self.avPlayer?.currentItem?.duration {
-          let secs = CMTimeGetSeconds(dur)
-          if secs.isFinite, secs > 0 { self.duration = secs }
-        }
-        // Phase 105: Update Now Playing Info periodically.
-        self.updateNowPlayingInfo()
-      }
-    }
-  }
-
-  private func setupEndObserver(for item: AVPlayerItem, generation: UInt) {
-    if let oldObserver = avPlayerEndObserver {
-      NotificationCenter.default.removeObserver(oldObserver)
-    }
-    // For .repeatOne the boundary observer handles looping;
-    // this notification fires only if seek latency causes us to miss the boundary
-    // (unlikely for local files), so next() still handles it correctly.
-    avPlayerEndObserver = NotificationCenter.default.addObserver(
-      forName: .AVPlayerItemDidPlayToEndTime,
-      object: item,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor [weak self] in
-        guard let self,
-              self.isPlaying,
-              self.avPlayerGeneration == generation
-        else { return }
-        await self.next()
-      }
-    }
-  }
-
-  /// Sets up a boundary-time observer that seeks to the beginning ~0.17 s before
-  /// the item's natural end, keeping the AVPlayer pipeline active and achieving
-  /// a near-gapless loop without AVPlayerLooper's decoder-teardown overhead.
-  private func setupRepeatOneLoopObserver(duration: CMTime, generation: UInt) {
-    if let obs = loopBoundaryObserver {
-      avPlayer?.removeTimeObserver(obs)
-      loopBoundaryObserver = nil
-    }
-    // 0.17 s head-start gives the decoder enough time to re-prime from the
-    // beginning before the last audio buffer drains — enough even for AAC.
-    let offset = CMTime(value: 17, timescale: 100)
-    let loopPoint = CMTimeSubtract(duration, offset)
-    guard CMTimeGetSeconds(loopPoint) > 0 else { return }
-
-    loopBoundaryObserver = avPlayer?.addBoundaryTimeObserver(
-      forTimes: [NSValue(time: loopPoint)],
-      queue: .main
-    ) { [weak self] in
-      Task { @MainActor [weak self] in
-        guard let self,
-              self.loopBehavior == .repeatOne,
-              self.avPlayerGeneration == generation
-        else { return }
-        // Player is still in the "playing" state here — seek repositions
-        // it without tearing down the pipeline, so it auto-resumes.
-        self.avPlayer?.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
-      }
-    }
-  }
-
-  private func cleanupObservers() {
-    itemStatusObservation?.invalidate()
-    itemStatusObservation = nil
-    if let obs = timeObserver {
-      avPlayer?.removeTimeObserver(obs)
-      timeObserver = nil
-    }
-    if let obs = loopBoundaryObserver {
-      avPlayer?.removeTimeObserver(obs)
-      loopBoundaryObserver = nil
-    }
-    if let obs = avPlayerEndObserver {
-      NotificationCenter.default.removeObserver(obs)
-      avPlayerEndObserver = nil
-    }
-    restoreHALBuffer()
+    if backend == nil { enlargeHALBufferIfNeeded() }
+    let activeBackend = ensureBackend()
+    currentTime = startAt
+    duration = track.duration
+    isPlaying = autoPlay
+    activeBackend.play(url: playbackURL, startAt: startAt, autoPlay: autoPlay)
   }
 
   private func stopSecurityScopedAccess() {

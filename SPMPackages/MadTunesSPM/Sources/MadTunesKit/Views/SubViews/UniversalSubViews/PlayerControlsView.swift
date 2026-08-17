@@ -369,6 +369,10 @@ struct PlayerControlsView: View {
           .frame(width: 32 * vm.uiFactor, height: 32 * vm.uiFactor)
           .contentShape(.rect)
       }
+      // Phase 176: Right-click / long-press switches the playback pipeline.
+      .contextMenu {
+        PlaybackEngineContextMenu(player: player)
+      }
       Button { Task { await player.next() } } label: {
         Image(systemName: "forward.fill")
           .font(.title3)

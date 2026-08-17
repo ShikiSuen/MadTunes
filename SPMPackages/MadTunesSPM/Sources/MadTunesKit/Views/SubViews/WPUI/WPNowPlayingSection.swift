@@ -261,6 +261,10 @@ struct WPTransportControls: View {
           .foregroundStyle(.white)
       }
       .buttonStyle(.plain)
+      // Phase 176: Right-click / long-press switches the playback pipeline.
+      .contextMenu {
+        PlaybackEngineContextMenu(player: player)
+      }
 
       Button {
         Task { await player.next() }
