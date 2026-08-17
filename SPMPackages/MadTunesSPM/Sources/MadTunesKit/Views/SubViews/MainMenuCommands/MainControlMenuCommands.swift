@@ -343,51 +343,12 @@ struct MainControlMenuCommands: Commands {
     #endif
   }
 
-  // Phase 127: Audio output device submenu (macOS only).
+  // Phase 127: Audio output device routing (macOS only).
   #if os(macOS)
   @ViewBuilder private var audioOutputDeviceMenu: some View {
-    let manager = vm.player.outputDeviceManager
-    let currentUID = manager.selectedDeviceUID
-    let defaultUID = manager.cachedSystemDefaultDeviceUID
-
-    Menu {
-      Button {
-        vm.player.setOutputDevice(uid: nil)
-      } label: {
-        HStack {
-          Text(
-            String(
-              localized: "i18n:AudioOutput.SystemDefault",
-              defaultValue: "System Default",
-              bundle: #bundle
-            )
-          )
-          if currentUID == nil {
-            Spacer()
-            Image(systemName: "checkmark")
-          }
-        }
-      }
-
-      Divider()
-
-      ForEach(manager.outputDevices) { device in
-        Button {
-          vm.player.setOutputDevice(uid: device.uid)
-        } label: {
-          HStack {
-            Text(verbatim: device.name)
-            if device.uid == defaultUID {
-              Text(verbatim: "⌂").foregroundStyle(.secondary)
-            }
-            if device.uid == currentUID {
-              Spacer()
-              Image(systemName: "checkmark")
-            }
-          }
-        }
-      }
-    } label: {
+    // Phase 177: Picker-style device list — renders as a submenu with the
+    // system checkmark on the current device (replaces hand-rolled buttons).
+    AudioOutputDevicePicker(player: vm.player) {
       Label(
         String(
           localized: "i18n:AudioOutput.Label",
@@ -397,6 +358,7 @@ struct MainControlMenuCommands: Commands {
         systemImage: "speaker.wave.2.circle"
       )
     }
+    .pickerStyle(.menu)
   }
   #endif
 }

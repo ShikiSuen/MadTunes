@@ -121,6 +121,7 @@ Located at the bottom of the window, includes:
 **Audio Output Device Selection (macOS only)**
 - Click the volume icon or use the Control menu to select audio output device
 - Supports selecting System Default or specific audio interfaces (e.g., external DAC, BlackHole, etc.)
+- The currently selected device is marked with a checkmark in the menu
 
 ---
 
