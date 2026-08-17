@@ -173,6 +173,14 @@ public final class AudioOutputDeviceManager {
         guard let uid = Self.uidForDeviceSync(deviceID),
               let name = Self.nameForDeviceSync(deviceID) else { continue }
 
+        // Phase 176 Task 5: Hide CoreAudio's transient per-process aggregates
+        // (`CADefaultDeviceAggregate-<pid>-<n>`), which exist while an
+        // AVAudioEngine is running; routing our own output into our own
+        // engine's aggregate would be meaningless. User-created AMS
+        // aggregates use other UID schemes (e.g. `~:AMS2_Aggregate:0`)
+        // and stay listed.
+        if uid.hasPrefix("CADefaultDeviceAggregate") { continue }
+
         devices.append(AudioOutputDevice(id: deviceID, uid: uid, name: name))
       }
       return devices
