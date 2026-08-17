@@ -76,7 +76,7 @@ The UI design for iPhone and small-window iPad follows the UI design language us
 
 ## Technical Notes
 
-When writing an audiophile audio player for Mac, you must use AVPlayer (from macOS built-in AVFoundation Framework); AVAudioEngine has no way to achieve the same playback fidelity. This conclusion comes from over a hundred trials and errors during development. These albums / tracks are used during the tests.
+When writing an audiophile audio player for Mac, use AVPlayer (from the built-in AVFoundation framework) as the default pipeline: it keeps decoding and rendering entirely inside Apple's CoreAudio path with no app-inserted DSP. MadTunes also ships an experimental AVAudioEngine pipeline (right-click or long-press the play/pause button to switch) so the two render paths can be compared directly in-app; AVPlayer remains the default because it is the path every listening session and loopback measurement during development was validated against. These albums / tracks are used during the tests.
 
 - Brian Tyler: Call of Duty: Modern Warfare 3 (2011) Soundtrack
 - KATOU Tatsuya: Shokugeki no Souma (TV Anime Soundtrack)

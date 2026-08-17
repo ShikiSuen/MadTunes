@@ -217,6 +217,7 @@ The table view displays all tracks as a flat list. Columns include Name, Length,
 | Double-click Album Art | Locate current album in main view |
 | Click Time Display | Toggle between elapsed time / remaining time |
 | Drag Progress Bar | Seek to position |
+| Right-click / Long-press Play/Pause Button | Switch playback engine (AVPlayer / AVAudioEngine) |
 
 ---
 
