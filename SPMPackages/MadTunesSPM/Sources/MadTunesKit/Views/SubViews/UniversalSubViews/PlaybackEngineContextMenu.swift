@@ -37,7 +37,7 @@ struct PlaybackEngineContextMenu: View {
         Text(
           String(
             localized: "i18n:PlaybackEngine.AVAudioEngine",
-            defaultValue: "AVAudioEngine (Experimental)",
+            defaultValue: "AVAudioEngine",
             bundle: #bundle
           )
         )

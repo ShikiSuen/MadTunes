@@ -9631,73 +9631,73 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine (experimentell)"
+            "value" : "AVAudioEngine"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine (Experimental)"
+            "value" : "AVAudioEngine"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine (experimental)"
+            "value" : "AVAudioEngine"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine (expérimental)"
+            "value" : "AVAudioEngine"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine (sperimentale)"
+            "value" : "AVAudioEngine"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine（実験的）"
+            "value" : "AVAudioEngine"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine(실험적)"
+            "value" : "AVAudioEngine"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine (Experimental)"
+            "value" : "AVAudioEngine"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine (экспериментальный)"
+            "value" : "AVAudioEngine"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine (Deneysel)"
+            "value" : "AVAudioEngine"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine（实验性）"
+            "value" : "AVAudioEngine"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AVAudioEngine（實驗性）"
+            "value" : "AVAudioEngine"
           }
         }
       }

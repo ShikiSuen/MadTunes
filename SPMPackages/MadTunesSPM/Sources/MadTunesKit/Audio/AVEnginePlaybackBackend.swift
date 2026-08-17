@@ -86,11 +86,29 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
   }
 
   func seek(to time: TimeInterval) {
-    guard playerNode != nil, audioFile != nil else { return }
+    guard let node = playerNode, audioFile != nil else { return }
     generation &+= 1
     let wasPlaying = isNodePlaying
-    playerNode?.stop()
-    scheduleSegment(from: framePosition(for: time), autoPlay: wasPlaying, generation: generation)
+    let startFrame = framePosition(for: time)
+    let expectedGeneration = generation
+    // Phase 176 Task 3: AVAudioPlayerNode.stop() internally waits on a
+    // Default-QoS worker thread; calling it on the main thread trips the
+    // runtime priority-inversion diagnostic. Stop off-main, then hop back
+    // to reschedule — stop must precede scheduleSegment because stop()
+    // clears the node's pending events. All stops funnel through the serial
+    // `stopQueue`, so a rapid second seek cannot have its freshly scheduled
+    // segment wiped by the first seek's belated stop.
+    let refs = SendableEngineRefs(engine: nil, node: node)
+    stopQueue.async { [weak self] in
+      refs.node?.stop()
+      Task { @MainActor [weak self] in
+        guard let self,
+              self.generation == expectedGeneration,
+              self.playerNode === refs.node
+        else { return }
+        self.scheduleSegment(from: startFrame, autoPlay: wasPlaying, generation: expectedGeneration)
+      }
+    }
   }
 
   #if os(macOS)
@@ -112,6 +130,12 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
   private var isNodePlaying = false
   private var timeTimer: Timer?
   private var configChangeObserver: (any NSObjectProtocol)?
+  /// Phase 176 Task 3: Serial queue for blocking engine/node `stop()` calls,
+  /// keeping them off the main thread and strictly ordered against each other.
+  private let stopQueue = DispatchQueue(
+    label: "MadTunes.AVEnginePlaybackBackend.stopQueue",
+    qos: .userInitiated
+  )
 
   #if os(iOS)
   private var interruptionObserver: (any NSObjectProtocol)?
@@ -154,8 +178,15 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
     }
     wasPlayingBeforeInterruption = false
     #endif
-    playerNode?.stop()
-    engine?.stop()
+    // Phase 176 Task 3: node/engine stop() internally wait on a Default-QoS
+    // worker thread; calling them on the main thread trips the runtime
+    // priority-inversion diagnostic. The refs box keeps the old pair alive
+    // until the detached stop completes; state is detached on-main right away.
+    let refs = SendableEngineRefs(engine: engine, node: playerNode)
+    stopQueue.async {
+      refs.node?.stop()
+      refs.engine?.stop()
+    }
     playerNode = nil
     engine = nil
     audioFile = nil
@@ -260,20 +291,31 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
   /// Device hot-plug or sample-rate change invalidated the render graph:
   /// rebuild the engine around the same file and resume where we were.
   private func handleConfigurationChange(generation expectedGeneration: UInt) {
-    guard generation == expectedGeneration, let file = audioFile else { return }
+    guard generation == expectedGeneration, audioFile != nil else { return }
     let resumeFrame = currentFrameEstimate()
     let shouldResume = isNodePlaying
-    playerNode?.stop()
-    engine?.stop()
+    // Phase 176 Task 3: same priority-inversion discipline as teardownGraph —
+    // stop the old pair off-main, then rebuild on the main actor in order.
+    let refs = SendableEngineRefs(engine: engine, node: playerNode)
     engine = nil
     playerNode = nil
-    do {
-      try buildGraph(for: file)
-      scheduleSegment(from: resumeFrame, autoPlay: shouldResume, generation: expectedGeneration)
-    } catch {
-      print("[AVEngineBackend] ERROR: Failed to rebuild after configuration change: \(error)")
-      teardownGraph()
-      onFailure?()
+    stopQueue.async { [weak self] in
+      refs.node?.stop()
+      refs.engine?.stop()
+      Task { @MainActor [weak self] in
+        guard let self,
+              self.generation == expectedGeneration,
+              let file = self.audioFile
+        else { return }
+        do {
+          try self.buildGraph(for: file)
+          self.scheduleSegment(from: resumeFrame, autoPlay: shouldResume, generation: expectedGeneration)
+        } catch {
+          print("[AVEngineBackend] ERROR: Failed to rebuild after configuration change: \(error)")
+          self.teardownGraph()
+          self.onFailure?()
+        }
+      }
     }
   }
 
@@ -388,4 +430,16 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
     }
   }
   #endif
+}
+
+// MARK: - SendableEngineRefs
+
+/// Phase 176 Task 3: @unchecked Sendable box for handing engine references to
+/// a detached task. AVAudioEngine / AVAudioPlayerNode lifecycle calls are
+/// internally locked and safe to invoke off-main; the box only satisfies
+/// Swift 6 region isolation. Strong references keep the retired pair alive
+/// until the detached `stop()` completes.
+private struct SendableEngineRefs: @unchecked Sendable {
+  let engine: AVAudioEngine?
+  let node: AVAudioPlayerNode?
 }
