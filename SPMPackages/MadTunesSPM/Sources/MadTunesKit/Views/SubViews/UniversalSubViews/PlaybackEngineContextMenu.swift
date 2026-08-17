@@ -42,6 +42,7 @@ struct PlaybackEngineContextMenu: View {
       )
       .tag(PlaybackEngineKind.avAudioEngine)
     }
+    .pickerStyle(.inline)
   }
 
   // MARK: Private
