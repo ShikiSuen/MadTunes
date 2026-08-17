@@ -146,6 +146,14 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
   private var outputDeviceUID: String?
   #endif
 
+  // MARK: - Position Reporting
+
+  /// Phase 176 Task 7: Last position sampled while the node was actually
+  /// rendering. A configuration change kills render timestamps before the
+  /// recovery code runs, so recovery must resume from this rather than from
+  /// a fresh (already-fallen-back) estimate.
+  private var lastRenderedFrame: AVAudioFramePosition = 0
+
   // MARK: - Graph Management
 
   /// Build and start a fresh engine + player node pair for `file`.
@@ -192,6 +200,7 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
     audioFile = nil
     fileDuration = 0
     segmentStartFrame = 0
+    lastRenderedFrame = 0
     isNodePlaying = false
   }
 
@@ -221,6 +230,7 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
       return
     }
     segmentStartFrame = startFrame
+    lastRenderedFrame = startFrame
     node.scheduleSegment(
       file,
       startingFrame: startFrame,
@@ -246,12 +256,14 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
     }
   }
 
-  // MARK: - Position Reporting
-
   private func currentFrameEstimate() -> AVAudioFramePosition {
-    guard let node = playerNode, let file = audioFile else { return 0 }
-    guard let nodeTime = node.lastRenderTime,
-          let playerTime = node.playerTime(forNodeTime: nodeTime) else { return segmentStartFrame }
+    renderedFrameIfAvailable() ?? lastRenderedFrame
+  }
+
+  private func renderedFrameIfAvailable() -> AVAudioFramePosition? {
+    guard let node = playerNode, let file = audioFile,
+          let nodeTime = node.lastRenderTime,
+          let playerTime = node.playerTime(forNodeTime: nodeTime) else { return nil }
     return min(segmentStartFrame + playerTime.sampleTime, file.length)
   }
 
@@ -267,6 +279,9 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
         guard let self,
               let file = self.audioFile
         else { return }
+        if let rendered = self.renderedFrameIfAvailable() {
+          self.lastRenderedFrame = rendered
+        }
         let current = Double(self.currentFrameEstimate()) / file.processingFormat.sampleRate
         self.onPeriodicTime?(current, self.fileDuration)
       }
@@ -282,42 +297,70 @@ final class AVEnginePlaybackBackend: AudioPlaybackBackend {
     let expectedGeneration = generation
     configChangeObserver = NotificationCenter.default.addObserver(
       forName: .AVAudioEngineConfigurationChange,
-      object: engine,
+      object: nil,
       queue: .main
-    ) { [weak self] _ in
+    ) { [weak self] note in
+      // Sending `note` into the MainActor task would trip Swift 6 region
+      // isolation; box the engine reference instead (the box is Sendable).
+      let refs = SendableEngineRefs(engine: note.object as? AVAudioEngine, node: nil)
       Task { @MainActor [weak self] in
-        self?.handleConfigurationChange(generation: expectedGeneration)
+        guard let self else { return }
+        // Phase 176 Task 7: only react to our CURRENT engine — notifications
+        // from a retired engine (e.g. its belated device application) are
+        // stale by definition.
+        guard let current = self.engine, refs.engine === current else { return }
+        self.handleConfigurationChange(generation: expectedGeneration)
       }
     }
   }
 
-  /// Device hot-plug or sample-rate change invalidated the render graph:
-  /// rebuild the engine around the same file and resume where we were.
+  /// A device hot-plug / sample-rate change — or our own output-device
+  /// application — interrupted the render thread.
+  ///
+  /// Phase 176 Task 7: recover with a same-engine restart. Verified on
+  /// macOS 26: a device change kills the node's render timestamps, a bare
+  /// `node.stop()` + reschedule + `play()` does NOT revive them, an engine
+  /// stop/start DOES — and it fires no further notification, so recovery
+  /// cannot loop. (The previous rebuild-per-notification design looped:
+  /// every fresh engine needed a fresh device application, which fired the
+  /// next notification.) Rebuild the graph only when the system actually
+  /// detached our node or the restart failed.
   private func handleConfigurationChange(generation expectedGeneration: UInt) {
     guard generation == expectedGeneration, audioFile != nil else { return }
     let resumeFrame = currentFrameEstimate()
     let shouldResume = isNodePlaying
-    // Phase 176 Task 3: same priority-inversion discipline as teardownGraph —
-    // stop the old pair off-main, then rebuild on the main actor in order.
+    // Phase 176 Task 3: stop/start off-main (priority-inversion discipline).
     let refs = SendableEngineRefs(engine: engine, node: playerNode)
-    engine = nil
-    playerNode = nil
     stopQueue.async { [weak self] in
       refs.node?.stop()
       refs.engine?.stop()
+      var restarted = false
+      if let engine = refs.engine {
+        do {
+          try engine.start()
+          restarted = true
+        } catch {
+          restarted = false
+        }
+      }
       Task { @MainActor [weak self] in
         guard let self,
               self.generation == expectedGeneration,
               let file = self.audioFile
         else { return }
-        do {
-          try self.buildGraph(for: file)
-          self.scheduleSegment(from: resumeFrame, autoPlay: shouldResume, generation: expectedGeneration)
-        } catch {
-          print("[AVEngineBackend] ERROR: Failed to rebuild after configuration change: \(error)")
-          self.teardownGraph()
-          self.onFailure?()
+        let nodeDetached = self.playerNode?.engine == nil
+        guard restarted, !nodeDetached else {
+          do {
+            try self.buildGraph(for: file)
+            self.scheduleSegment(from: resumeFrame, autoPlay: shouldResume, generation: expectedGeneration)
+          } catch {
+            print("[AVEngineBackend] ERROR: Failed to rebuild after configuration change: \(error)")
+            self.teardownGraph()
+            self.onFailure?()
+          }
+          return
         }
+        self.scheduleSegment(from: resumeFrame, autoPlay: shouldResume, generation: expectedGeneration)
       }
     }
   }
