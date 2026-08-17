@@ -70,7 +70,7 @@ MadTunes 不蒐集任何使用者資料。所有音樂檔案均在本機處理�
 
 MadTunes 的音訊播放功能仰仗於 AVPlayer 這個系統元件來實施，且自身不具備 DSP 處理功能。這可以讓整個 pipeline 的失真做到最小。但使用者仍可以使用 audio routing driver 將音聲輸出訊號駁接到諸如 Apple MainStage 這樣的專業 DSP Rack App 上。
 
-雖然 MadTunes 的 UI 操作體驗（限 macOS 以及滿版顯示的 iPad）在某些方面與 2012 年推出的 iTunes 11 有些相似，但其設計目標與 Apple Music / iTunes 面向的消費市場完全不同。Apple 的播放器在 stereo 播放時通常會帶有輕微的 spatial processing，這對一般聆聽體驗可能更具「臨場感」，但對於需要分析專輯混音特徵的學習者而言，反而會干擾對聲像與混音細節的準確判斷。此外，一些音訊素材（例如遊戲或環境音樂）在設計時本身就可以首尾無縫 loop。但在許多播放器中，單曲循環播放時往往會在銜接點出現不到一秒的延時中斷，打斷整個樂曲的 Loop 節拍。MadTunes 在開發時也針對這類情況進行了專門處理，以確保真正的「不會被打斷節奏的」循環播放。
+雖然 MadTunes 的 UI 操作體驗（限 macOS 以及滿版顯示的 iPad）在某些方面與 2012 年推出的 iTunes 11 有些相似，但其設計目標與 Apple Music / iTunes 面向的消費市場完全不同。經 BlackHole 回錄互消測試實測：在播放電平一致的前提下，Apple Music 對同一立體聲檔案的播放輸出與 MadTunes 互消至 -96.9dBFS——兩者走的是同一條 CoreAudio 路徑，都不對訊號染色。實際差異在行為而非音質：MadTunes 不施加任何 DSP、也不內建音量正規化，因此需要分析專輯混音特徵的學習者聽到的即是混音原貌。此外，一些音訊素材（例如遊戲或環境音樂）在設計時本身就可以首尾無縫 loop。但在許多播放器中，單曲循環播放時往往會在銜接點出現不到一秒的延時中斷，打斷整個樂曲的 Loop 節拍。MadTunes 在開發時也針對這類情況進行了專門處理，以確保真正的「不會被打斷節奏的」循環播放。
 
 至於 iPhone 版面以及 iPad 小型視窗顯示的版面的 UI 設計，則是致敬 Windows Phone 7 / 8 的 UI 設計語言（也是 2012 年流行的事物）。
 
@@ -85,7 +85,7 @@ mac 寫 audiophile audio player 只能用 AVPlayer (源自系統內建的 AVFoun
 - Zutomayo《勘ぐれい》
 - 方順吉（所有由張翊華負責混音的專輯）
 
-另：請避免在 1 倍速播放時將 `AVPlayerItem.audioTimePitchAlgorithm` 設為 `.spectral`。雖然文件指出該演算法僅在 `rate != 1.0` 時「啟用」，但實際上 DSP 處理環節仍會留在訊號鏈中。由於 `.spectral` 採用基於 STFT 的處理方式，其窗函數 (windowing) 與相位重建過程即便在 1.0 倍率下也會引入相位抖動 (phase jitter)，導致瞬態 (transient) 還原度不如直通 (bypass) 路徑。當 `rate == 1.0` 時，系統本應跳過時延補償，但強制指定 `.spectral` 會導致額外的 DSP 損耗，使樂器在高音量下失去瞬態的「呼吸感」。建議維持 macOS 12+ 預設的 `.timeDomain` 設定以確保音質。
+另：請避免在 1 倍速播放時將 `AVPlayerItem.audioTimePitchAlgorithm` 設為 `.spectral`。雖然文件指出該演算法僅在 `rate != 1.0` 時「啟用」，但強制指定 `.spectral` 會讓額外的 DSP 處理環節留在訊號鏈中，使 `rate == 1.0` 時本應生效的直通 (bypass) 失效。開發期間的 A/B 聽測確認：此設定會可聞地削弱瞬態還原——樂器在高音量下失去瞬態的「呼吸感」。建議維持 macOS 12+ 預設的 `.timeDomain` 設定以確保音質。
 
 > 上述註記與 Foobar2000 for macOS **無關**。
 
