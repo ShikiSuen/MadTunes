@@ -570,17 +570,26 @@ struct WPQueueSheet: View {
           }
           if !vm.player.queue.isEmpty {
             ToolbarItem(placement: .cancellationAction) {
-              Button {
-                var shuffledQueue = vm.player.queue
-                let currentIndex = vm.player.currentIndex
-                if currentIndex < shuffledQueue.count {
-                  let current = shuffledQueue.remove(at: currentIndex)
-                  shuffledQueue.shuffle()
-                  shuffledQueue.insert(current, at: 0)
-                  Task { await vm.player.setQueue(shuffledQueue, startingAt: 0) }
+              HStack(spacing: 20) {
+                Button {
+                  Task { await vm.player.clearQueueKeepingCurrentTrack() }
+                } label: {
+                  Image(systemName: "trash")
                 }
-              } label: {
-                Image(systemName: "shuffle")
+                .disabled(!canClearQueueExceptCurrent)
+                .accessibilityLabel(String(localized: "i18n:Queue.ClearExceptCurrent", bundle: #bundle))
+                Button {
+                  var shuffledQueue = vm.player.queue
+                  let currentIndex = vm.player.currentIndex
+                  if currentIndex < shuffledQueue.count {
+                    let current = shuffledQueue.remove(at: currentIndex)
+                    shuffledQueue.shuffle()
+                    shuffledQueue.insert(current, at: 0)
+                    Task { await vm.player.setQueue(shuffledQueue, startingAt: 0) }
+                  }
+                } label: {
+                  Image(systemName: "shuffle")
+                }
               }
             }
           }
@@ -596,6 +605,13 @@ struct WPQueueSheet: View {
 
   @Environment(MadTunesViewModel.self) private var vm
   @Environment(WPPhoneViewModel.self) private var phoneVM
+
+  /// Phase 178: Whether the "clear except current" action can remove anything.
+  private var canClearQueueExceptCurrent: Bool {
+    guard !vm.player.queue.isEmpty else { return false }
+    guard let current = vm.player.currentTrack else { return true }
+    return vm.player.queue.contains { $0.id != current.id }
+  }
 }
 
 // MARK: - WPAccentColorPicker

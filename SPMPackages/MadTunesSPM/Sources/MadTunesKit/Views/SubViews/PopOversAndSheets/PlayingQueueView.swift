@@ -25,6 +25,16 @@ struct PlayingQueueView: View {
           .font(.headline)
         Spacer()
         Button {
+          Task { await player.clearQueueKeepingCurrentTrack() }
+        } label: {
+          Image(systemName: "trash")
+            .font(.caption)
+        }
+        .buttonStyle(.plain)
+        .disabled(!canClearQueueExceptCurrent)
+        .opacity(canClearQueueExceptCurrent ? 1 : 0.4)
+        .help(String(localized: "i18n:Queue.ClearExceptCurrent", bundle: #bundle))
+        Button {
           scrambleQueue()
         } label: {
           Image(systemName: "shuffle")
@@ -117,6 +127,13 @@ struct PlayingQueueView: View {
   private var dynamicHeight: CGFloat? {
     guard !player.queue.isEmpty else { return nil }
     return min(CGFloat(player.queue.count) * 56 * vm.uiFactor + 60 * vm.uiFactor, 460 * vm.uiFactor)
+  }
+
+  /// Phase 178: Whether the "clear except current" action can remove anything.
+  private var canClearQueueExceptCurrent: Bool {
+    guard !player.queue.isEmpty else { return false }
+    guard let current = player.currentTrack else { return true }
+    return player.queue.contains { $0.id != current.id }
   }
 
   private func rowBackground(for index: Int) -> some View {

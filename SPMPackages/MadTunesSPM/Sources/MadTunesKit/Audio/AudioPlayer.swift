@@ -163,6 +163,20 @@ public final class AudioPlayer {
     // 不修改 currentIndex，不中斷當前播放
   }
 
+  /// Phase 178: Clear every queued track except the currently playing one
+  /// (whether playing or paused). When no track is current, the queue is
+  /// emptied entirely.
+  public func clearQueueKeepingCurrentTrack() async {
+    guard !queue.isEmpty else { return }
+    guard let current = currentTrack else {
+      queue.removeAll()
+      currentIndex = 0
+      return
+    }
+    let idsToRemove = Set(queue.map(\.id)).subtracting([current.id])
+    await removeFromQueue(trackIDs: idsToRemove)
+  }
+
   /// Move a track within the queue (for drag-to-reorder).
   public func moveQueueItem(from source: IndexSet, to destination: Int) async {
     let oldTrack = queue.indices.contains(currentIndex) ? queue[currentIndex] : nil
