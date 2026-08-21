@@ -447,15 +447,16 @@ public final class AudioPlayer {
     if let curr = currentTrack, ids.contains(curr.id) {
       // track was playing -> stop entirely
       await stop()
-    } else if let curr = currentTrack, let newIdx = queue.firstIndex(where: { $0.id == curr.id }) {
+    }
+    // Phase 178: Re-sync currentIndex so a bulk removal can never leave it
+    // pointing outside the remaining queue (stale-index residue).
+    if queue.isEmpty {
+      currentIndex = 0
+    } else if let curr = currentTrack,
+              let newIdx = queue.firstIndex(where: { $0.id == curr.id }) {
       currentIndex = newIdx
-    } else {
-      // queue no longer contains current track (could have been removed indirectly)
-      if !queue.isEmpty {
-        // pick first remaining track as a fallback? but we expect stop() earlier
-      } else {
-        currentIndex = 0
-      }
+    } else if !queue.indices.contains(currentIndex) {
+      currentIndex = max(0, min(currentIndex, queue.count - 1))
     }
   }
 

@@ -410,6 +410,10 @@ public final class MusicLibrary {
       playlists[1].trackIDs = []
     }
     hasLoadedPersistence = false
+    // Phase 178: Notify observers (e.g. AudioPlayer's queue purger) that the
+    // library track set changed — otherwise the playback queue would keep
+    // stale tracks after a database wipe.
+    changeID = UUID()
   }
 
   // MARK: - Lazy Artwork Loading (Phase 108: SwiftData-backed)
