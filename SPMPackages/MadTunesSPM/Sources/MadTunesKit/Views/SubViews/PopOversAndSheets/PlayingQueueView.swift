@@ -88,6 +88,42 @@ struct PlayingQueueView: View {
               rowBackground(for: index)
             )
             .contentShape(.rect)
+            .contextMenu {
+              // Phase 178: Queue-track context menu. "Play Next" is intentionally
+              // omitted (isCurrentTrack: true hides it in TrackContextMenu).
+              Button(role: .destructive) {
+                removeFromQueue(at: index)
+              } label: {
+                Label(
+                  String(localized: "i18n:Queue.RemoveFromQueue", bundle: #bundle),
+                  systemImage: "xmark.circle"
+                )
+              }
+              Divider()
+              TrackContextMenu(
+                tracks: [track],
+                library: vm.library,
+                audioPlayer: player,
+                currentPlaylistID: vm.selectedPlaylistID,
+                isCurrentTrack: true,
+                onShowTrackInfo: {
+                  Task {
+                    detailedMetadataForTrack = await MetadataReader.readDetailedMetadata(from: track.fileURL)
+                    trackForTrackInfo = track
+                    isTrackInfoPresented = true
+                  }
+                },
+                onShowDeleteConfirmation: {
+                  trackForDeleteConfirmation = track
+                  showDeleteConfirmation = true
+                },
+                onNewPlaylistWithTracks: { ids in
+                  trackIDsForNewPlaylist = ids
+                  newPlaylistName = ""
+                  showNewPlaylistAlert = true
+                }
+              )
+            }
             .onTapGesture {
               highlightedIndex = index
               Task { await player.setQueue(player.queue, startingAt: index) }
@@ -112,6 +148,40 @@ struct PlayingQueueView: View {
       }
     }
     .frame(width: 460 * vm.uiFactor, height: dynamicHeight)
+    // Phase 178: Local hosts for queue-track context-menu actions (Get Info /
+    // Remove from Library / New Playlist) — mirrors PlayerControlsView's wiring.
+    .sheet(isPresented: $isTrackInfoPresented) {
+      if let track = trackForTrackInfo {
+        TrackInfoView(track: track, detailedMetadata: detailedMetadataForTrack)
+      }
+    }
+    .alert(
+      String(localized: "i18n:Alert.RemoveFromLibraryTitle", bundle: #bundle),
+      isPresented: $showDeleteConfirmation
+    ) {
+      Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
+      Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
+        if let track = trackForDeleteConfirmation {
+          Task { await vm.removeTracksFromLibrary([track.id]) }
+        }
+        trackForDeleteConfirmation = nil
+      }
+    } message: {
+      Text("i18n:Alert.RemoveTracksMessage:\(1)", bundle: #bundle)
+    }
+    .alert(
+      String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),
+      isPresented: $showNewPlaylistAlert
+    ) {
+      TextField(
+        String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle),
+        text: $newPlaylistName
+      )
+      Button(String(localized: "i18n:Common.Create", bundle: #bundle)) {
+        commitNewPlaylist()
+      }
+      Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
+    }
   }
 
   // MARK: Private
@@ -123,6 +193,16 @@ struct PlayingQueueView: View {
   /// Phase 108: Per-popover artwork cache (non-observable, no cascade).
   /// Phase 112: Store decoded Image instead of raw Data to avoid JPEG re-decode.
   @State private var queueArtworkCache: [String: Image] = [:]
+
+  // Phase 178: Local hosts for queue-track context-menu actions.
+  @State private var isTrackInfoPresented = false
+  @State private var detailedMetadataForTrack: DetailedTrackMetadata?
+  @State private var trackForTrackInfo: Track?
+  @State private var showDeleteConfirmation = false
+  @State private var trackForDeleteConfirmation: Track?
+  @State private var showNewPlaylistAlert = false
+  @State private var newPlaylistName = ""
+  @State private var trackIDsForNewPlaylist: Set<UUID> = []
 
   private var dynamicHeight: CGFloat? {
     guard !player.queue.isEmpty else { return nil }
@@ -146,6 +226,20 @@ struct PlayingQueueView: View {
     } else {
       return Color.clear
     }
+  }
+
+  /// Phase 178: Commit the "new playlist with tracks" alert (mirrors
+  /// PlayerControlsView.commitNewPlaylistAlert).
+  private func commitNewPlaylist() {
+    let name = newPlaylistName.trimmingCharacters(in: .whitespaces)
+    guard !name.isEmpty else { return }
+    let existingNames = Set(vm.library.playlists.dropFirst(2).map(\.name))
+    guard !existingNames.contains(name) else { return }
+    vm.library.addPlaylist(name: name)
+    if let newPlaylist = vm.library.playlists.last {
+      vm.library.addTracks(trackIDsForNewPlaylist, toPlaylist: newPlaylist.id)
+    }
+    trackIDsForNewPlaylist = []
   }
 
   private func removeFromQueue(at index: Int) {

@@ -535,19 +535,45 @@ struct WPQueueSheet: View {
                 }
               }
               .listRowBackground(Color.black)
+              // Phase 178: Queue-track context menu. "Play Next" is intentionally
+              // omitted (isCurrentTrack: true hides it in TrackContextMenu).
+              .contextMenu {
+                Button(role: .destructive) {
+                  removeQueueRow(at: index)
+                } label: {
+                  Label(
+                    String(localized: "i18n:Queue.RemoveFromQueue", bundle: #bundle),
+                    systemImage: "xmark.circle"
+                  )
+                }
+                Divider()
+                TrackContextMenu(
+                  tracks: [track],
+                  library: vm.library,
+                  audioPlayer: vm.player,
+                  currentPlaylistID: nil,
+                  isCurrentTrack: true,
+                  onShowTrackInfo: {
+                    Task {
+                      detailedMetadataForTrack = await MetadataReader.readDetailedMetadata(from: track.fileURL)
+                      trackForTrackInfo = track
+                      isTrackInfoPresented = true
+                    }
+                  },
+                  onShowDeleteConfirmation: {
+                    trackForDeleteConfirmation = track
+                    showDeleteConfirmation = true
+                  },
+                  onNewPlaylistWithTracks: { ids in
+                    trackIDsForNewPlaylist = ids
+                    newPlaylistName = ""
+                    showNewPlaylistAlert = true
+                  }
+                )
+              }
             }
             .onDelete { indexSet in
-              var newQueue = vm.player.queue
-              for index in indexSet.sorted().reversed() {
-                guard newQueue.indices.contains(index) else { continue }
-                newQueue.remove(at: index)
-              }
-              if newQueue.isEmpty {
-                Task { await vm.player.stop() }
-              } else {
-                let newIndex = min(vm.player.currentIndex, newQueue.count - 1)
-                Task { await vm.player.setQueue(newQueue, startingAt: newIndex) }
-              }
+              removeQueueRows(at: indexSet)
             }
             .onMove { source, destination in
               Task { await vm.player.moveQueueItem(from: source, to: destination) }
@@ -599,6 +625,41 @@ struct WPQueueSheet: View {
       #endif
     }
     .preferredColorScheme(.dark)
+    // Phase 178: Local hosts for queue-track context-menu actions (Get Info /
+    // Remove from Library / New Playlist) — self-contained so they present
+    // above this sheet without depending on the underlying WPUI hosts.
+    .sheet(isPresented: $isTrackInfoPresented) {
+      if let track = trackForTrackInfo {
+        TrackInfoView(track: track, detailedMetadata: detailedMetadataForTrack)
+      }
+    }
+    .alert(
+      String(localized: "i18n:Alert.RemoveFromLibraryTitle", bundle: #bundle),
+      isPresented: $showDeleteConfirmation
+    ) {
+      Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
+      Button(String(localized: "i18n:Common.Remove", bundle: #bundle), role: .destructive) {
+        if let track = trackForDeleteConfirmation {
+          Task { await vm.removeTracksFromLibrary([track.id]) }
+        }
+        trackForDeleteConfirmation = nil
+      }
+    } message: {
+      Text("i18n:Alert.RemoveTracksMessage:\(1)", bundle: #bundle)
+    }
+    .alert(
+      String(localized: "i18n:Sidebar.Alert.NewPlaylistTitle", bundle: #bundle),
+      isPresented: $showNewPlaylistAlert
+    ) {
+      TextField(
+        String(localized: "i18n:Sidebar.Alert.PlaylistNamePlaceholder", bundle: #bundle),
+        text: $newPlaylistName
+      )
+      Button(String(localized: "i18n:Common.Create", bundle: #bundle)) {
+        commitNewPlaylist()
+      }
+      Button(String(localized: "i18n:Common.Cancel", bundle: #bundle), role: .cancel) {}
+    }
   }
 
   // MARK: Private
@@ -606,11 +667,52 @@ struct WPQueueSheet: View {
   @Environment(MadTunesViewModel.self) private var vm
   @Environment(WPPhoneViewModel.self) private var phoneVM
 
+  // Phase 178: Local hosts for queue-track context-menu actions.
+  @State private var isTrackInfoPresented = false
+  @State private var detailedMetadataForTrack: DetailedTrackMetadata?
+  @State private var trackForTrackInfo: Track?
+  @State private var showDeleteConfirmation = false
+  @State private var trackForDeleteConfirmation: Track?
+  @State private var showNewPlaylistAlert = false
+  @State private var newPlaylistName = ""
+  @State private var trackIDsForNewPlaylist: Set<UUID> = []
+
   /// Phase 178: Whether the "clear except current" action can remove anything.
   private var canClearQueueExceptCurrent: Bool {
     guard !vm.player.queue.isEmpty else { return false }
     guard let current = vm.player.currentTrack else { return true }
     return vm.player.queue.contains { $0.id != current.id }
+  }
+
+  private func removeQueueRow(at index: Int) {
+    removeQueueRows(at: IndexSet([index]))
+  }
+
+  private func removeQueueRows(at indexSet: IndexSet) {
+    var newQueue = vm.player.queue
+    for index in indexSet.sorted().reversed() {
+      guard newQueue.indices.contains(index) else { continue }
+      newQueue.remove(at: index)
+    }
+    if newQueue.isEmpty {
+      Task { await vm.player.stop() }
+    } else {
+      let newIndex = min(vm.player.currentIndex, newQueue.count - 1)
+      Task { await vm.player.setQueue(newQueue, startingAt: newIndex) }
+    }
+  }
+
+  /// Phase 178: Commit the "new playlist with tracks" alert.
+  private func commitNewPlaylist() {
+    let name = newPlaylistName.trimmingCharacters(in: .whitespaces)
+    guard !name.isEmpty else { return }
+    let existingNames = Set(vm.library.playlists.dropFirst(2).map(\.name))
+    guard !existingNames.contains(name) else { return }
+    vm.library.addPlaylist(name: name)
+    if let newPlaylist = vm.library.playlists.last {
+      vm.library.addTracks(trackIDsForNewPlaylist, toPlaylist: newPlaylist.id)
+    }
+    trackIDsForNewPlaylist = []
   }
 }
 
