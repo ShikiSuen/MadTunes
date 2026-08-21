@@ -371,6 +371,8 @@ In the playing queue panel you can:
 - **Remove Track**: Click × button or press Delete key
 - **Scramble**: Click shuffle button at top
 - **Move Up/Down**: Use arrow buttons for fine adjustments
+- **Clear Except Current**: Click the trash button at the top to remove every queued track except the one currently playing (or paused)
+- **Track Context Menu**: Right-click (or long-press) a track for actions — remove from queue, add to playlist, get info, favorite, etc.
 
 ### Loop Modes
 
